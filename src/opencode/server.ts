@@ -2,8 +2,11 @@ import { execute } from '../terminal/executor';
 import {
   HEALTH_CHECK_URL,
   HEALTH_CHECK_TIMEOUT,
+  LOG_PATH,
+  LOG_TAIL_LINES,
   READY_POLL_INTERVAL,
   READY_TIMEOUT,
+  STARTUP_CHECK_DELAY,
   KILL_COMMAND,
   HARD_KILL_COMMAND,
   STOP_POLL_TIMEOUT,
@@ -28,8 +31,25 @@ export async function isServerUp(): Promise<boolean> {
   }
 }
 
+async function readLogTail(): Promise<string> {
+  try {
+    const output = await execute(`tail -n ${LOG_TAIL_LINES} ${LOG_PATH} || true`);
+    return String(output).trim();
+  } catch {
+    return '';
+  }
+}
+
 export async function startServer(): Promise<void> {
   await execute(buildStartCommand());
+  await new Promise((resolve) => setTimeout(resolve, STARTUP_CHECK_DELAY));
+  const pgrepOutput = String(await execute('pgrep -f "opencode serve" || true')).trim();
+  if (!pgrepOutput) {
+    const logTail = await readLogTail();
+    throw new Error(
+      `OpenCode server process exited immediately after start.\nLast log lines:\n${logTail || '(no log output)'}`,
+    );
+  }
 }
 
 export async function waitForReady(): Promise<void> {
