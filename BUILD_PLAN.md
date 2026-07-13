@@ -17,12 +17,12 @@ Target: MVP that launches OpenCode's web UI inside Acode via a toolbar icon.
 
 ## Phase 1 — Plugin skeleton
 
-- [ ] Set up TypeScript + esbuild build (`npm run build` → tsc --noEmit → esbuild bundle + zip)
-- [ ] `plugin.json`: id, name, version, `main`, icon, `readme`, `files`
-- [ ] `src/main.ts`: `acode.setPluginInit(id, (baseUrl, $page, options) => {...})` — options provides `cacheFile` and `cacheFileUrl`
-- [ ] `acode.setPluginUnmount(id, () => {...})` — clean up command/icon on uninstall
-- [ ] Register a toolbar icon via `acode.addIcon` bound to a command that opens `$page` full-screen
-- [ ] Confirm: tapping the icon opens an empty full-page view. Nothing else yet.
+- [x] Set up TypeScript + esbuild build (`npm run build` → tsc --noEmit → esbuild bundle + zip)
+- [x] `plugin.json`: id, name, version, `main`, icon, `readme`, `files`
+- [x] `src/main.ts`: `acode.setPluginInit(id, (baseUrl, $page, options) => {...})` — options provides `cacheFile` and `cacheFileUrl`
+- [x] `acode.setPluginUnmount(id, () => {...})` — clean up command/icon on uninstall
+- [x] Register a toolbar icon via `acode.addIcon` bound to a command that opens `$page` full-screen
+- [x] Confirm: tapping the icon opens an empty full-page view. Nothing else yet.
 
 ---
 
