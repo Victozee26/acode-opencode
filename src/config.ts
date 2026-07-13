@@ -21,7 +21,7 @@ export const STOP_POLL_TIMEOUT = 3000;
 export const STOP_POLL_INTERVAL = 500;
 
 export function buildStartCommand(): string {
-  return `nohup opencode serve --port ${PORT} --hostname ${HOSTNAME} > ${LOG_PATH} 2>&1 < /dev/null &`;
+  return `nohup opencode serve --port ${PORT} --hostname ${HOSTNAME} --print-logs > ${LOG_PATH} 2>&1 < /dev/null &`;
 }
 
 export const STATUS_MESSAGES: Record<string, string> = {
