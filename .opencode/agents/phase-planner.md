@@ -66,9 +66,10 @@ src/
 
 ## Process
 
-1. Scan relevant source files to understand existing modules, APIs, and data models.
-2. Map the user's requested feature to the state-machine architecture and module boundaries.
-3. Decompose into independent phases.
+1. **Delegate exploration.** Use the `task` tool to dispatch `explore` sub-agents to scan source files, grep for patterns, and gather context. Never read files directly yourself — you will bloat your context and lose focus on planning. Each exploration task should return precise findings (file paths, types, signatures) to inform the plan.
+2. Assemble the sub-agent findings.
+3. Map the user's requested feature to the state-machine architecture and module boundaries.
+4. Decompose into independent phases.
 
 ## Definition: Independent Phase
 
