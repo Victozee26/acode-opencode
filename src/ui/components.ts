@@ -52,7 +52,7 @@ export function createIframe(src: string): HTMLIFrameElement {
   return iframe;
 }
 
-export function createHeaderBar(projectPath: string | null, onRestart: () => void): HTMLElement {
+export function createHeaderBar(onRestart: () => void): HTMLElement {
   const header = document.createElement('div');
   header.style.cssText = `
     display: flex;
@@ -65,7 +65,7 @@ export function createHeaderBar(projectPath: string | null, onRestart: () => voi
   `;
 
   const projectLabel = document.createElement('span');
-  projectLabel.textContent = projectPath ?? 'OpenCode';
+  projectLabel.textContent = 'OpenCode';
   projectLabel.style.cssText = `
     font-size: 14px;
     color: var(--text-color, #ccc);
@@ -73,7 +73,7 @@ export function createHeaderBar(projectPath: string | null, onRestart: () => voi
   header.appendChild(projectLabel);
 
   const restartBtn = document.createElement('button');
-  restartBtn.textContent = 'Restart for this project';
+  restartBtn.textContent = 'Restart';
   restartBtn.style.cssText = `
     padding: 4px 12px;
     background: var(--primary-color, #06f);

@@ -24,13 +24,12 @@ export function render(
     case AppState.CheckingInstall:
     case AppState.Installing:
     case AppState.CheckingServer:
-    case AppState.ResolvingPath:
     case AppState.StartingServer:
       renderLoading($page, state);
       break;
 
     case AppState.Ready:
-      renderReady($page, context, onRestart);
+      renderReady($page, onRestart);
       break;
 
     case AppState.Error:
@@ -59,10 +58,9 @@ function renderLoading($page: Acode.WCPage, state: AppState): void {
 
 function renderReady(
   $page: Acode.WCPage,
-  context: StateContext,
   onRestart: () => void,
 ): void {
-  $page.header.appendChild(createHeaderBar(context.projectPath, onRestart));
+  $page.header.appendChild(createHeaderBar(onRestart));
   $page.body.appendChild(createIframe('http://127.0.0.1:4096'));
 }
 

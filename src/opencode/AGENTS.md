@@ -18,7 +18,7 @@ Owned by the root AGENTS.md. Two export modules:
 - `startServer()` fires `nohup ... & disown` via `execute()`. The caller must not call `execute()` directly for server start.
 - `waitForReady()` polls `isServerUp()` every `READY_POLL_INTERVAL` ms until `READY_TIMEOUT`.
 - `stopServer()` runs `pkill -f "opencode serve"` — best-effort, errors are swallowed.
-- `restartForProject()` is stop → start sequential, no concurrent semantics.
+- `restartServer()` is stop → start sequential, no concurrent semantics.
 - All commands are defined in `src/config.ts` — never inline shell commands here.
 
 ## Work Guidance

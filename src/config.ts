@@ -12,15 +12,14 @@ export const INSTALL_OPENCODE_COMMAND = 'npm install -g opencode-ai';
 export const CHECK_COMMAND = 'which opencode';
 export const KILL_COMMAND = 'pkill -f "opencode serve"';
 
-export function buildStartCommand(projectPath: string): string {
-  return `cd ${projectPath} && nohup opencode serve --port ${PORT} --hostname ${HOSTNAME} > ${LOG_PATH} 2>&1 & disown`;
+export function buildStartCommand(): string {
+  return `nohup opencode serve --port ${PORT} --hostname ${HOSTNAME} > ${LOG_PATH} 2>&1 & disown`;
 }
 
 export const STATUS_MESSAGES: Record<string, string> = {
   [AppState.CheckingInstall]: 'Checking OpenCode installation…',
   [AppState.Installing]: 'Installing OpenCode…',
   [AppState.CheckingServer]: 'Checking server status…',
-  [AppState.ResolvingPath]: 'Resolving project path…',
   [AppState.StartingServer]: 'Starting OpenCode server…',
 };
 

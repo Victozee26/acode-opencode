@@ -4,14 +4,12 @@ import { AppState } from './types';
 import { onStateChange, transition, setError, reset } from './state';
 import { render } from './ui/index';
 import { checkInstalled, installOpenCode } from './opencode/install';
-import { isServerUp, startServer, waitForReady, restartForProject } from './opencode/server';
-import { resolveProjectPath } from './project';
+import { isServerUp, startServer, waitForReady, restartServer } from './opencode/server';
 
 const ICON_ID = 'opencode-icon';
 
 class AcodePlugin {
   private $page: Acode.WCPage | null = null;
-  private projectPath: string | null = null;
   private isRunning = false;
 
   async init(
@@ -61,29 +59,16 @@ class AcodePlugin {
 
       const serverUp = await isServerUp();
       if (serverUp) {
-        transition(AppState.Ready, { projectPath: this.projectPath });
+        transition(AppState.Ready);
         return;
       }
 
-      transition(AppState.ResolvingPath);
+      transition(AppState.StartingServer);
 
-      const resolvedPath = resolveProjectPath();
-      if (!resolvedPath) {
-        setError(
-          'No project found',
-          'Open a file from an Alpine-native project first.\nSAF-opened files are not supported.',
-        );
-        this.isRunning = false;
-        return;
-      }
-
-      this.projectPath = resolvedPath;
-      transition(AppState.StartingServer, { projectPath: resolvedPath });
-
-      await startServer(resolvedPath);
+      await startServer();
       await waitForReady();
 
-      transition(AppState.Ready, { projectPath: resolvedPath });
+      transition(AppState.Ready);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message, '');
@@ -91,17 +76,12 @@ class AcodePlugin {
   }
 
   private async handleRestart(): Promise<void> {
-    if (!this.projectPath) {
-      this.startFlow();
-      return;
-    }
-
-    transition(AppState.StartingServer, { projectPath: this.projectPath });
+    transition(AppState.StartingServer);
 
     try {
-      await restartForProject(this.projectPath);
+      await restartServer();
       await waitForReady();
-      transition(AppState.Ready, { projectPath: this.projectPath });
+      transition(AppState.Ready);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message, '');

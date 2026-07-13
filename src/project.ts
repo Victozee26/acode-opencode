@@ -1,26 +1,3 @@
-export function resolveProjectPath(): string | null {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const editorManager = acode.require('editorManager') as any;
-    const activeFile = editorManager?.activeFile;
-
-    if (!activeFile?.uri) {
-      return null;
-    }
-
-    const path = String(activeFile.uri);
-
-    if (path.startsWith('content://')) {
-      return null;
-    }
-
-    const lastSlash = path.lastIndexOf('/');
-    if (lastSlash <= 0) {
-      return null;
-    }
-
-    return path.substring(0, lastSlash);
-  } catch {
-    return null;
-  }
-}
+// The OpenCode web UI allows users to open and switch between any folders
+// at runtime — no server restart is needed. Project path resolution is no
+// longer required; this module is kept for future SAF-bridging support.

@@ -25,19 +25,17 @@ src/
   project.ts            # resolveProjectPath()
   terminal/executor.ts  # thin wrapper over acode.require('terminal')
   opencode/install.ts   # checkInstalled, installOpenCode
-  opencode/server.ts    # isServerUp, startServer, stopServer, restartForProject
+  opencode/server.ts    # isServerUp, startServer, stopServer, restartServer
   ui/index.ts           # render() orchestrator, one render func per state
   ui/components.ts      # DOM factory functions (spinner, iframe, header, error)
 ```
 
-**State machine** (`src/types.ts` — `AppState` enum): `Idle → CheckingInstall → Installing → CheckingServer → ResolvingPath → StartingServer → Ready`. Error can be entered from any state. UI is purely reactive via `onStateChange` listener.
+**State machine** (`src/types.ts` — `AppState` enum): `Idle → CheckingInstall → Installing → CheckingServer → StartingServer → Ready`. Error can be entered from any state. UI is purely reactive via `onStateChange` listener.
 
 ## Hard constraints (non-negotiable)
 
-- **Alpine-native paths only.** `content://` URIs (SAF) are rejected in `resolveProjectPath()`. Projects must be cloned/created inside Alpine's filesystem.
 - **Fixed port 4096, loopback only.** `opencode serve --port 4096 --hostname 127.0.0.1`. Never bind to `0.0.0.0` without adding auth.
 - **Executor.execute is blocking.** The terminal module resolves only after the command exits. All long-running commands (server start) MUST use `nohup ... & disown` — never call `execute()` without this pattern for persistent processes.
-- **Single server, single project.** Switching projects means restarting the one server, not spawning a second instance.
 
 ## Code conventions
 
@@ -141,4 +139,4 @@ When the user requests a durable behavior change, record it here or in the relev
 - `src/opencode/AGENTS.md` — OpenCode lifecycle: install checks, installation, server start/stop/restart, health polling.
 - `src/ui/AGENTS.md` — DOM rendering layer: render orchestrator per state, vanilla DOM component factories.
 - `src/terminal/AGENTS.md` — Terminal abstraction wrapping `acode.require('terminal')`.
-- `src/main.ts`, `src/types.ts`, `src/state.ts`, `src/config.ts`, `src/project.ts` — Cross-cutting infrastructure owned directly by root AGENTS.md.
+- `src/main.ts`, `src/types.ts`, `src/state.ts`, `src/config.ts` — Cross-cutting infrastructure owned directly by root AGENTS.md.

@@ -6,8 +6,8 @@ An Acode plugin that runs OpenCode (AI coding agent) as a background HTTP server
 inside Acode's built-in Alpine Linux terminal, and displays OpenCode's web UI
 in a full-page iframe, launched from a dedicated toolbar icon.
 
-No TUI, no xterm rendering of OpenCode. One local server, one active project
-at a time.
+The OpenCode web UI natively supports browsing and switching between any
+folders at runtime — no server restart or pre-configured project path needed.
 
 ---
 
@@ -21,7 +21,7 @@ graph TB
         sm["state machine (TS)"]
         iframe["iframe"]
         subgraph alpine["Alpine Linux (proot sandbox, via Acode's terminal)"]
-            server["opencode serve --port 4096 --hostname 127.0.0.1<br/>(installed via: npm install -g opencode-ai)<br/>cwd = active project (must be Alpine-native path)"]
+            server["opencode serve --port 4096 --hostname 127.0.0.1<br/>(installed via: npm install -g opencode-ai)"]
         end
     end
     icon -- "tap" --> page
@@ -39,12 +39,9 @@ since we're loading the full page, not fetching cross-origin data into JS
 
 ## 3. Constraints (things that are true regardless of preference)
 
-**C1 — Project path must be Alpine-native.**
-OpenCode's server and Alpine's shell share one filesystem. Projects opened
-via Android's Storage Access Framework (SAF) picker often don't resolve to
-a plain path Alpine can `cd` into. MVP requires the project to have been
-cloned/created inside Alpine's home directory. Out of scope: bridging
-SAF-opened folders (would need a copy-in/sync-out layer — a v2 feature).
+**C1 — Server runs from any directory.**
+The OpenCode web UI lets users open and switch between any folders at runtime.
+There is no need to `cd` into a project directory before starting the server.
 
 **C2 — Fixed port, not dynamic.**
 `opencode serve`/`opencode web` auto-assign a random port unless told
@@ -66,10 +63,10 @@ Server binds `127.0.0.1`, never `0.0.0.0`. No `OPENCODE_SERVER_PASSWORD` is
 set for MVP — acceptable only because the server is unreachable outside the
 device itself. Do not change the hostname binding without adding auth.
 
-**C6 — Single server, single active project.**
-Switching projects means restarting the one server pointed at a new `cwd`,
-not spinning up a second instance on another port. Concurrent projects are
-out of scope for MVP.
+**C6 — Single server instance.**
+Only one `opencode serve` process runs at a time. Restart is available as
+a recovery action (e.g. after crash or config change), but there is no
+need to restart to switch projects — the web UI handles folder navigation.
 
 ---
 
@@ -84,12 +81,11 @@ stateDiagram-v2
     installing --> checking_server : success
     installing --> error_install : fail
     checking_server --> ready : up
-    checking_server --> resolving_path : down
-    resolving_path --> starting_server
+    checking_server --> starting_server : down
     starting_server --> ready : up
     starting_server --> error_start : timeout
     starting_server --> error_start : crash
-    ready --> resolving_path : restart (user-triggered)
+    ready --> starting_server : restart (user-triggered)
 ```
 
 `ready` renders the iframe. Any `error` state shows the relevant log tail
@@ -106,10 +102,10 @@ and a retry action. `restart` (user-triggered) re-enters at
 | `config.ts` | All named constants (port, URLs, commands, timeouts, status messages) |
 | `types.ts` | `AppState` enum, `StateContext`, `ErrorInfo`, `StateListener`, `CommandBinding` |
 | `state.ts` | State machine: `transition()`, `onStateChange()`, `setError()`, `reset()` |
-| `project.ts` | `resolveProjectPath()` — reads active project root from `editorManager`, validates it's Alpine-native (C1) |
+| `project.ts` | Held for future SAF-bridging support; not used in current flow |
 | `terminal/executor.ts` | Thin wrapper around `acode.require('terminal').Executor` (`execute(command, alpine)`) |
 | `opencode/install.ts` | `checkInstalled()`, `installOpenCode()` — npm-based installation into Alpine |
-| `opencode/server.ts` | `isServerUp()`, `startServer()`, `waitForReady()`, `stopServer()`, `restartForProject()` |
+| `opencode/server.ts` | `isServerUp()`, `startServer()`, `waitForReady()`, `stopServer()`, `restartServer()` |
 | `ui/index.ts` | `render()` orchestrator dispatching to one render function per `AppState` |
 | `ui/components.ts` | Vanilla DOM factory functions: spinner, iframe, header bar, error display |
 
@@ -124,8 +120,8 @@ apk add --no-cache nodejs npm && npm install -g opencode-ai
 # check installed
 which opencode
 
-# start server, backgrounded and detached (Phase 3)
-cd <project> && nohup opencode serve --port 4096 --hostname 127.0.0.1 \
+# start server, backgrounded and detached
+nohup opencode serve --port 4096 --hostname 127.0.0.1 \
   > /tmp/opencode.log 2>&1 & disown
 
 # health check (JS side, not shell)
@@ -140,7 +136,7 @@ pkill -f "opencode serve"
 ## 7. Explicit non-goals (MVP)
 
 - SAF-opened project support
-- Multi-project / multi-port concurrency
+- Multi-server / multi-port concurrency
 - Custom theming or CSS scaling of the OpenCode web UI
 - Server auth / password protection
 - Auto-updating the `opencode-ai` package

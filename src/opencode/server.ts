@@ -25,8 +25,8 @@ export async function isServerUp(): Promise<boolean> {
   }
 }
 
-export async function startServer(projectPath: string): Promise<void> {
-  await execute(buildStartCommand(projectPath));
+export async function startServer(): Promise<void> {
+  await execute(buildStartCommand());
 }
 
 export async function waitForReady(): Promise<void> {
@@ -50,7 +50,7 @@ export async function stopServer(): Promise<void> {
   }
 }
 
-export async function restartForProject(projectPath: string): Promise<void> {
+export async function restartServer(): Promise<void> {
   await stopServer();
-  await startServer(projectPath);
+  await startServer();
 }

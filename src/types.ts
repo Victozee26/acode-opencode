@@ -3,7 +3,6 @@ export enum AppState {
   CheckingInstall = 'checking-install',
   Installing = 'installing',
   CheckingServer = 'checking-server',
-  ResolvingPath = 'resolving-path',
   StartingServer = 'starting-server',
   Ready = 'ready',
   Error = 'error',
@@ -16,7 +15,7 @@ export interface ErrorInfo {
 
 export interface StateContext {
   currentState: AppState;
-  projectPath: string | null;
+  projectPath?: string | null;
   error: ErrorInfo | null;
 }
 
