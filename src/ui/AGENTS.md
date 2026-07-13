@@ -19,6 +19,7 @@ Owned by the root AGENTS.md. Two export modules:
 - `escapeHtml()` is a module-private helper in `components.ts` — all user/external strings rendered as HTML must pass through it.
 - Styles use CSS custom properties (`var(--primary-color, fallback)`) for Acode theming compatibility.
 - `createErrorDisplay()` unconditionally renders a retry button when error exists; the log tail `<pre>` block is conditional on `logTail` being truthy.
+- The error heading `<h3>` has `white-space: pre-wrap` for legible multi-line summaries. `message` is a short summary (first line of the error); `logTail` is the diagnostic detail (remaining lines).
 - Event handlers (`onRestart`, `onRetry`) are attached via `addEventListener`, never inline `onclick` attributes.
 
 ## Work Guidance

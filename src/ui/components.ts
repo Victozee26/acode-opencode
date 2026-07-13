@@ -93,7 +93,7 @@ export function createErrorDisplay(context: StateContext, onRetry: () => void): 
   const errorInfo = context.error;
 
   wrapper.innerHTML = `
-    <h3 style="color: var(--error-color, #f44); margin-bottom: 12px;">
+    <h3 style="color: var(--error-color, #f44); margin-bottom: 12px; white-space: pre-wrap;">
       ${escapeHtml(errorInfo?.message ?? 'An unknown error occurred')}
     </h3>
   `;

@@ -5,6 +5,7 @@ import { onStateChange, transition, setError, reset } from './state';
 import { render } from './ui/index';
 import { checkInstalled, installOpenCode } from './opencode/install';
 import { isServerUp, startServer, waitForReady, restartServer } from './opencode/server';
+import { ERROR_FALLBACK_MESSAGE } from './config';
 
 const ICON_ID = 'opencode-icon';
 
@@ -70,8 +71,8 @@ export class AcodePlugin {
 
       transition(AppState.Ready);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message, message || 'No output captured. Check /tmp/opencode.log in Alpine terminal.');
+      const { summary, logTail } = this.extractErrorInfo(err);
+      setError(summary, logTail);
     }
   }
 
@@ -83,9 +84,18 @@ export class AcodePlugin {
       await waitForReady();
       transition(AppState.Ready);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message, message || 'No output captured. Check /tmp/opencode.log in Alpine terminal.');
+      const { summary, logTail } = this.extractErrorInfo(err);
+      setError(summary, logTail);
     }
+  }
+
+  private extractErrorInfo(err: unknown): { summary: string; logTail: string } {
+    const rawMessage = err instanceof Error ? err.message : String(err);
+    const text = rawMessage || ERROR_FALLBACK_MESSAGE;
+    const lines = text.split('\n');
+    const summary = lines[0];
+    const logTail = lines.slice(1).join('\n');
+    return { summary, logTail };
   }
 }
 

@@ -6,6 +6,7 @@ export const STARTUP_CHECK_DELAY = 500;
 export const LOG_TAIL_LINES = 20;
 export const HEALTH_CHECK_URL = `${BASE_URL}/doc`;
 export const HEALTH_CHECK_TIMEOUT = 2000;
+export const ERROR_FALLBACK_MESSAGE = 'No output captured. Check /tmp/opencode.log in Alpine terminal.';
 export const READY_POLL_INTERVAL = 1000;
 export const READY_TIMEOUT = 15000;
 
