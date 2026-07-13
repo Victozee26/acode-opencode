@@ -39,14 +39,14 @@ Target: MVP that launches OpenCode's web UI inside Acode via a toolbar icon.
 
 ## Phase 3 — Server lifecycle
 
-- [ ] Write `isServerUp()`: `fetch('http://127.0.0.1:4096/doc', { mode: 'no-cors' })` wrapped in try/catch + timeout (~2s)
-- [ ] Write `startServer()`:
+- [x] Write `isServerUp()`: `fetch('http://127.0.0.1:4096/doc', { mode: 'no-cors' })` wrapped in try/catch + timeout (~2s)
+- [x] Write `startServer()`:
   ```
   execute(`nohup opencode serve --port 4096 --hostname 127.0.0.1 > /tmp/opencode.log 2>&1 & disown`)
   ```
-- [ ] Write `waitForReady()`: poll `isServerUp()` every 1s, timeout at 15s, surface a clear timeout error (don't hang silently)
-- [ ] Write `restartServer()`: kill existing process (`pkill -f "opencode serve"` inside Alpine, best-effort) then `startServer()` again
-- [ ] Manually test: force-kill the app, reopen, confirm plugin correctly detects "already running" vs "needs restart"
+- [x] Write `waitForReady()`: poll `isServerUp()` every 1s, timeout at 15s, surface a clear timeout error (don't hang silently)
+- [x] Write `restartServer()`: kill existing process (`pkill -f "opencode serve"` inside Alpine, best-effort) then `startServer()` again
+- [x] Manually test: force-kill the app, reopen, confirm plugin correctly detects "already running" vs "needs restart"
 
 ---
 
