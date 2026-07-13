@@ -79,20 +79,17 @@ describe('startFlow', () => {
     expect(mockInstallOpenCode).toHaveBeenCalled();
   });
 
-  it('installOpenCode throws → setError called with message as both args', async () => {
+  it('installOpenCode throws → setError called with summary and empty logTail', async () => {
     mockCheckInstalled.mockResolvedValue(false);
     mockInstallOpenCode.mockRejectedValue(new Error('Installation failed (deps): EACCES'));
 
     const plugin = makePlugin();
     await (plugin as any).startFlow();
 
-    expect(mockSetError).toHaveBeenCalledWith(
-      'Installation failed (deps): EACCES',
-      'Installation failed (deps): EACCES',
-    );
+    expect(mockSetError).toHaveBeenCalledWith('Installation failed (deps): EACCES', '');
   });
 
-  it('waitForReady throws "Server did not respond" → setError called with message', async () => {
+  it('waitForReady throws "Server did not respond" → setError with summary and empty logTail', async () => {
     mockCheckInstalled.mockResolvedValue(true);
     mockIsServerUp.mockResolvedValue(false);
     mockWaitForReady.mockRejectedValue(new Error('Server did not respond within 15s'));
@@ -100,10 +97,7 @@ describe('startFlow', () => {
     const plugin = makePlugin();
     await (plugin as any).startFlow();
 
-    expect(mockSetError).toHaveBeenCalledWith(
-      'Server did not respond within 15s',
-      'Server did not respond within 15s',
-    );
+    expect(mockSetError).toHaveBeenCalledWith('Server did not respond within 15s', '');
   });
 
   it('uses fallback log message when error message is empty', async () => {
@@ -115,12 +109,12 @@ describe('startFlow', () => {
     await (plugin as any).startFlow();
 
     expect(mockSetError).toHaveBeenCalledWith(
-      '',
       'No output captured. Check /tmp/opencode.log in Alpine terminal.',
+      '',
     );
   });
 
-  it('handles non-Error rejection (string)', async () => {
+  it('handles non-Error rejection (string) → setError with summary and empty logTail', async () => {
     mockCheckInstalled.mockResolvedValue(true);
     mockIsServerUp.mockResolvedValue(false);
     mockStartServer.mockRejectedValue('plain string error');
@@ -128,10 +122,7 @@ describe('startFlow', () => {
     const plugin = makePlugin();
     await (plugin as any).startFlow();
 
-    expect(mockSetError).toHaveBeenCalledWith(
-      'plain string error',
-      'plain string error',
-    );
+    expect(mockSetError).toHaveBeenCalledWith('plain string error', '');
   });
 });
 
@@ -148,12 +139,12 @@ describe('handleRestart', () => {
     expect(mockWaitForReady).toHaveBeenCalled();
   });
 
-  it('restartServer throws → setError with message as both args', async () => {
+  it('restartServer throws → setError with summary and empty logTail', async () => {
     mockRestartServer.mockRejectedValue(new Error('port busy'));
 
     const plugin = makePlugin();
     await (plugin as any).handleRestart();
 
-    expect(mockSetError).toHaveBeenCalledWith('port busy', 'port busy');
+    expect(mockSetError).toHaveBeenCalledWith('port busy', '');
   });
 });

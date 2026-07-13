@@ -20,6 +20,10 @@ describe('createErrorDisplay', () => {
     expect(btn).not.toBeNull();
     expect(btn!.textContent).toBe('Retry');
     expect(el.querySelector('pre')).toBeNull();
+
+    const h3 = el.querySelector('h3');
+    expect(h3).not.toBeNull();
+    expect(h3!.textContent).toContain('Something broke');
   });
 
   it('renders retry button when error has no logTail (falsy)', () => {
@@ -30,6 +34,17 @@ describe('createErrorDisplay', () => {
 
     expect(el.querySelector('button')).not.toBeNull();
     expect(el.querySelector('pre')).toBeNull();
+  });
+
+  it('<h3> has white-space: pre-wrap', () => {
+    const ctx = makeContext({ message: 'Error', logTail: '' });
+    const onRetry = vi.fn();
+
+    const el = createErrorDisplay(ctx, onRetry);
+    const h3 = el.querySelector('h3') as HTMLHeadingElement;
+
+    expect(h3).not.toBeNull();
+    expect(h3.style.whiteSpace).toBe('pre-wrap');
   });
 
   it('renders both <pre> block and retry button when logTail is non-empty', () => {
