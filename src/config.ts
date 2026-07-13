@@ -9,7 +9,7 @@ export const HEALTH_CHECK_URL = `${BASE_URL}/global/health`;
 export const HEALTH_CHECK_TIMEOUT = 2000;
 export const ERROR_FALLBACK_MESSAGE = 'No output captured. Check /tmp/opencode.log in Alpine terminal.';
 export const READY_POLL_INTERVAL = 1000;
-export const READY_TIMEOUT = 60000;
+export const READY_TIMEOUT = 15000;
 
 export const INSTALL_DEPS_COMMAND = 'apk add --no-cache nodejs npm';
 export const INSTALL_OPENCODE_COMMAND = 'npm install -g opencode-ai';
