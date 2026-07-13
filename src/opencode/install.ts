@@ -11,6 +11,16 @@ export async function checkInstalled(): Promise<boolean> {
 }
 
 export async function installOpenCode(): Promise<void> {
-  await execute(INSTALL_DEPS_COMMAND);
-  await execute(INSTALL_OPENCODE_COMMAND);
+  try {
+    await execute(INSTALL_DEPS_COMMAND);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Installation failed (deps): ${message}`);
+  }
+  try {
+    await execute(INSTALL_OPENCODE_COMMAND);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Installation failed (opencode): ${message}`);
+  }
 }

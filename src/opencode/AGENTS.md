@@ -13,7 +13,7 @@ Owned by the root AGENTS.md. Two export modules:
 ## Local Contracts
 
 - `checkInstalled()` runs `which opencode` and returns boolean — errors mean not installed.
-- `installOpenCode()` runs two sequential commands: install deps (`apk add nodejs npm`), then `npm install -g opencode-ai`. Both are blocking.
+- `installOpenCode()` runs two sequential commands: install deps (`apk add nodejs npm`), then `npm install -g opencode-ai`. Both are blocking. On failure, throws `Error` with distinct prefixes — `"Installation failed (deps): "` or `"Installation failed (opencode): "` — followed by the captured error message and command output from `execute()`.
 - `isServerUp()` uses `fetch` with `no-cors` mode and `AbortController` timeout — NOT a standard HTTP health check. Addresses WebView CORS constraints.
 - `startServer()` fires `nohup ... & disown` via `execute()`. The caller must not call `execute()` directly for server start.
 - `waitForReady()` polls `isServerUp()` every `READY_POLL_INTERVAL` ms until `READY_TIMEOUT`.
