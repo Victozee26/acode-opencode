@@ -23,7 +23,7 @@ src/
   state.ts              # state machine (transition, onStateChange, reset)
   config.ts             # all named constants (port, URLs, commands, status messages)
   project.ts            # resolveProjectPath()
-  terminal/executor.ts  # thin wrapper over acode.require('terminal')
+  terminal/executor.ts  # thin wrapper over global Executor
   opencode/install.ts   # checkInstalled, installOpenCode
   opencode/server.ts    # isServerUp, startServer, stopServer, restartServer
   ui/index.ts           # render() orchestrator, one render func per state
@@ -138,7 +138,7 @@ When the user requests a durable behavior change, record it here or in the relev
 
 - `src/opencode/AGENTS.md` — OpenCode lifecycle: install checks, installation, server start/stop/restart, health polling.
 - `src/ui/AGENTS.md` — DOM rendering layer: render orchestrator per state, vanilla DOM component factories.
-- `src/terminal/AGENTS.md` — Terminal abstraction wrapping `acode.require('terminal')`.
+- `src/terminal/AGENTS.md` — Terminal abstraction wrapping global `Executor`.
 - `src/main.ts`, `src/types.ts`, `src/state.ts`, `src/config.ts` — Cross-cutting infrastructure owned directly by root AGENTS.md.
 - `docs/SPEC.md` — Technical specification and architecture documentation.
 - `docs/BUILD_PLAN.md` — Phased build/implementation plan.

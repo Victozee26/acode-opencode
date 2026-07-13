@@ -21,7 +21,7 @@ export class AcodePlugin {
     _cacheFileUrl: string,
   ): Promise<void> {
     this.$page = $page;
-    $page.settitle('OpenCode');
+    ($page as any).setTitle('OpenCode');
 
     onStateChange((state, context) => {
       if (this.$page) {
