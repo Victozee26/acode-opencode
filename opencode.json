@@ -1,4 +1,14 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "lsp": true
+  "lsp": true,
+  "plugin": ["opencode-runtime-fallback"],
+  "agent": {
+    "explore": {
+      "variant": "max",
+      "model": "opencode-go/deepseek-v4-flash",
+      "fallback_models": [
+        "opencode/big-pickle"
+      ]
+    }
+  }
 }

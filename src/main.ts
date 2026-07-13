@@ -7,13 +7,15 @@ import { checkInstalled, installOpenCode } from './opencode/install';
 import { isServerUp, startServer, waitForReady, restartServer } from './opencode/server';
 import { ERROR_FALLBACK_MESSAGE } from './config';
 
-const ICON_ID = 'opencode-icon';
+const ICON_CLASS = 'opencode-icon';
 
 export class AcodePlugin {
   private $page: Acode.WCPage | null = null;
   private isRunning = false;
+  private sideButton: Acode.SideButton | null = null;
 
   async init(
+    baseUrl: string,
     $page: Acode.WCPage,
     _cacheFile: Acode.FileSystem,
     _cacheFileUrl: string,
@@ -33,10 +35,23 @@ export class AcodePlugin {
       }
     });
 
-    acode.addIcon(ICON_ID, 'icon.png');
+    const iconUrl = baseUrl + 'icon.png';
+    acode.addIcon(ICON_CLASS, iconUrl);
+
+    const SideButton = acode.require('sideButton');
+    this.sideButton = SideButton({
+      text: 'OpenCode',
+      icon: ICON_CLASS,
+      onclick: () => {
+        this.$page?.show();
+      },
+    });
+    this.sideButton.show();
   }
 
   async destroy(): Promise<void> {
+    this.sideButton?.hide();
+    this.sideButton = null;
     this.$page?.off('show', () => {});
     this.$page = null;
     reset();
@@ -112,7 +127,7 @@ if (window.acode) {
       if (!baseUrl.endsWith('/')) {
         baseUrl += '/';
       }
-      await acodePlugin.init($page, cacheFile, cacheFileUrl);
+      await acodePlugin.init(baseUrl, $page, cacheFile, cacheFileUrl);
     },
   );
 
