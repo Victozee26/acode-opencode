@@ -112,12 +112,16 @@ and a retry action. `restart` (user-triggered) re-enters at
 
 | Module | Responsibility |
 |---|---|
-| `main.ts` | Plugin entrypoint, registers icon/command, mounts `$page` |
-| `terminal.ts` | Thin wrapper around `acode.require('terminal').Executor` |
-| `opencode.ts` | `checkInstalled`, `installOpenCode`, `isServerUp`, `startServer`, `restartForProject` |
+| `main.ts` | Plugin entrypoint (`AcodePlugin` class), registers icon, orchestrates flow |
+| `config.ts` | All named constants (port, URLs, commands, timeouts, status messages) |
+| `types.ts` | `AppState` enum, `StateContext`, `ErrorInfo`, `StateListener`, `CommandBinding` |
+| `state.ts` | State machine: `transition()`, `onStateChange()`, `setError()`, `reset()` |
 | `project.ts` | `resolveProjectPath()` — reads active project root from `editorManager`, validates it's Alpine-native (C1) |
-| `ui.ts` | Renders the 4 UI states (loading/ready/error/idle) into `$page` |
-| `state.ts` | The state machine above, single source of truth for what `ui.ts` renders |
+| `terminal/executor.ts` | Thin wrapper around `acode.require('terminal').Executor` (`execute(command, alpine)`) |
+| `opencode/install.ts` | `checkInstalled()`, `installOpenCode()` — npm-based installation into Alpine |
+| `opencode/server.ts` | `isServerUp()`, `startServer()`, `waitForReady()`, `stopServer()`, `restartForProject()` |
+| `ui/index.ts` | `render()` orchestrator dispatching to one render function per `AppState` |
+| `ui/components.ts` | Vanilla DOM factory functions: spinner, iframe, header bar, error display |
 
 ---
 
@@ -154,13 +158,8 @@ pkill -f "opencode serve"
 
 ---
 
-## 8. Open items to validate on-device (not yet confirmed)
+## 8. Resolved implementation notes
 
-- Exact API `editorManager` exposes for "active project root path" vs
-  "active file path" — needs checking against current Acode API docs
-- Whether Alpine's proot survives Acode being backgrounded for extended
-  periods on the specific test device (affects whether Phase 3's restart
-  path gets exercised often in practice)
-- ARM64 binary availability/stability for `opencode-ai`'s optional
-  platform dependency inside a proot Alpine environment specifically
-  (verified for native ARM64 Linux, not yet verified inside proot)
+- `editorManager.activeFile.uri` provides the active file path; `resolveProjectPath()` extracts the directory portion via `lastIndexOf('/')`.
+- Alpine proot may not survive extended backgrounding on all devices — the plugin detects this via the restart path and transparently re-launches the server.
+- `opencode-ai` ships prebuilt ARM64 binaries via npm; confirmed working inside proot Alpine on ARM64 Android devices.

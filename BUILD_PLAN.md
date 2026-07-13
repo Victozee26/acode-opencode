@@ -17,10 +17,9 @@ Target: MVP that launches OpenCode's web UI inside Acode via a toolbar icon.
 
 ## Phase 1 — Plugin skeleton
 
-- [ ] Fork `Acode-Foundation/acode-plugin` template
-- [ ] Set up TypeScript + esbuild build (`yarn build` / `yarn build --mode production`)
+- [ ] Set up TypeScript + esbuild build (`npm run build` → tsc --noEmit → esbuild bundle + zip)
 - [ ] `plugin.json`: id, name, version, `main`, icon, `readme`, `files`
-- [ ] `src/main.ts`: `acode.setPluginInit(id, (baseUrl, $page) => {...})`
+- [ ] `src/main.ts`: `acode.setPluginInit(id, (baseUrl, $page, options) => {...})` — options provides `cacheFile` and `cacheFileUrl`
 - [ ] `acode.setPluginUnmount(id, () => {...})` — clean up command/icon on uninstall
 - [ ] Register a toolbar icon via `acode.addIcon` bound to a command that opens `$page` full-screen
 - [ ] Confirm: tapping the icon opens an empty full-page view. Nothing else yet.
@@ -30,8 +29,8 @@ Target: MVP that launches OpenCode's web UI inside Acode via a toolbar icon.
 ## Phase 2 — Alpine bootstrap (state machine)
 
 - [ ] `terminal` module: `const { Executor } = acode.require('terminal')`
-- [ ] Write `checkInstalled()`: `Executor.execute('which opencode', { alpine: true })`, resolves path or throws
-- [ ] Write `installOpenCode()`: `Executor.execute('apk add --no-cache nodejs npm && npm install -g opencode-ai', { alpine: true })`
+- [ ] Write `checkInstalled()`: `execute('which opencode')` → resolves or throws
+- [ ] Write `installOpenCode()`: `execute('apk add --no-cache nodejs npm && npm install -g opencode-ai')`
 - [ ] Wire UI state: `idle → checking → installing → installed`
 - [ ] Show install progress as an indeterminate spinner (Executor doesn't stream output — don't fake a progress bar)
 - [ ] Handle install failure: show stderr/output, offer retry button
@@ -44,10 +43,7 @@ Target: MVP that launches OpenCode's web UI inside Acode via a toolbar icon.
 - [ ] Write `resolveProjectPath()`: get active project root from `editorManager` / active file's folder — **must** be a plain Alpine filesystem path (see spec, Constraint C1)
 - [ ] Write `startServer(projectPath)`:
   ```
-  Executor.execute(
-    `cd ${projectPath} && nohup opencode serve --port 4096 --hostname 127.0.0.1 > /tmp/opencode.log 2>&1 & disown`,
-    { alpine: true }
-  )
+  execute(`cd ${projectPath} && nohup opencode serve --port 4096 --hostname 127.0.0.1 > /tmp/opencode.log 2>&1 & disown`)
   ```
 - [ ] Write `waitForReady()`: poll `isServerUp()` every 1s, timeout at 15s, surface a clear timeout error (don't hang silently)
 - [ ] Write `restartForProject(projectPath)`: kill existing process (`pkill -f "opencode serve"` inside Alpine, best-effort) then `startServer()` again
