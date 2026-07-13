@@ -1,38 +1,132 @@
-import plugin from "../plugin.json";
+import plugin from '../plugin.json';
+
+import { AppState } from './types';
+import { onStateChange, transition, setError, reset } from './state';
+import { render } from './ui/index';
+import { checkInstalled, installOpenCode } from './opencode/install';
+import { isServerUp, startServer, waitForReady, restartForProject } from './opencode/server';
+import { resolveProjectPath } from './project';
+
+const ICON_ID = 'opencode-icon';
 
 class AcodePlugin {
-	public baseUrl: string | undefined;
+  private $page: Acode.WCPage | null = null;
+  private projectPath: string | null = null;
+  private isRunning = false;
 
-	async init(
-		$page: Acode.WCPage,
-		cacheFile: Acode.FileSystem,
-		cacheFileUrl: string,
-	): Promise<void> {
-		// Add your initialization code here
-	}
+  async init(
+    $page: Acode.WCPage,
+    _cacheFile: Acode.FileSystem,
+    _cacheFileUrl: string,
+  ): Promise<void> {
+    this.$page = $page;
+    $page.setTitle('OpenCode');
 
-	async destroy() {
-		// Add your cleanup code here
-	}
+    onStateChange((state, context) => {
+      if (this.$page) {
+        render(this.$page, state, context, () => this.handleRestart());
+      }
+    });
+
+    $page.on('show', () => {
+      if (!this.isRunning) {
+        this.startFlow();
+      }
+    });
+
+    acode.addIcon(ICON_ID, 'icon.png');
+  }
+
+  async destroy(): Promise<void> {
+    this.$page?.off('show', () => {});
+    this.$page = null;
+    reset();
+  }
+
+  private async startFlow(): Promise<void> {
+    if (this.isRunning) return;
+    this.isRunning = true;
+
+    transition(AppState.CheckingInstall);
+
+    try {
+      const installed = await checkInstalled();
+
+      if (!installed) {
+        transition(AppState.Installing);
+        await installOpenCode();
+      }
+
+      transition(AppState.CheckingServer);
+
+      const serverUp = await isServerUp();
+      if (serverUp) {
+        transition(AppState.Ready, { projectPath: this.projectPath });
+        return;
+      }
+
+      transition(AppState.ResolvingPath);
+
+      const resolvedPath = resolveProjectPath();
+      if (!resolvedPath) {
+        setError(
+          'No project found',
+          'Open a file from an Alpine-native project first.\nSAF-opened files are not supported.',
+        );
+        this.isRunning = false;
+        return;
+      }
+
+      this.projectPath = resolvedPath;
+      transition(AppState.StartingServer, { projectPath: resolvedPath });
+
+      await startServer(resolvedPath);
+      await waitForReady();
+
+      transition(AppState.Ready, { projectPath: resolvedPath });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message, '');
+    }
+  }
+
+  private async handleRestart(): Promise<void> {
+    if (!this.projectPath) {
+      this.startFlow();
+      return;
+    }
+
+    transition(AppState.StartingServer, { projectPath: this.projectPath });
+
+    try {
+      await restartForProject(this.projectPath);
+      await waitForReady();
+      transition(AppState.Ready, { projectPath: this.projectPath });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message, '');
+    }
+  }
 }
 
 if (window.acode) {
-	const acodePlugin = new AcodePlugin();
-	acode.setPluginInit(
-		plugin.id,
-		async (
-			baseUrl: string,
-			$page: Acode.WCPage,
-			{ cacheFileUrl, cacheFile }: Acode.PluginInitOptions,
-		) => {
-			if (!baseUrl.endsWith("/")) {
-				baseUrl += "/";
-			}
-			acodePlugin.baseUrl = baseUrl;
-			await acodePlugin.init($page, cacheFile, cacheFileUrl);
-		},
-	);
-	acode.setPluginUnmount(plugin.id, () => {
-		acodePlugin.destroy();
-	});
+  const acodePlugin = new AcodePlugin();
+
+  acode.setPluginInit(
+    plugin.id,
+    async (
+      baseUrl: string,
+      $page: Acode.WCPage,
+      { cacheFileUrl, cacheFile }: Acode.PluginInitOptions,
+    ) => {
+      if (!baseUrl.endsWith('/')) {
+        baseUrl += '/';
+      }
+      await acodePlugin.init($page, cacheFile, cacheFileUrl);
+    },
+  );
+
+  acode.setPluginUnmount(plugin.id, () => {
+    acodePlugin.destroy();
+  });
 }
