@@ -30,6 +30,7 @@ Owned by the root AGENTS.md. Two export modules:
 
 `npm test` runs Vitest with jsdom. Test files:
 - `install.test.ts` — `checkInstalled()` (true on success, false on rejection) and `installOpenCode()` (success, deps failure, opencode failure, non-Error rejections).
+- `server.test.ts` — `stopServer()` SIGTERM success, SIGTERM→SIGKILL escalation, both-fail throw, execute-throwing resilience, and `pollUntilDown` timeout/instant-down scenarios.
 
 ## Child DOX Index
 
