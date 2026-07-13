@@ -126,6 +126,63 @@ describe('startFlow', () => {
   });
 });
 
+describe('destroy', () => {
+  const mockPage = {
+    on: vi.fn(),
+    off: vi.fn(),
+    hide: vi.fn(),
+    show: vi.fn(),
+    settitle: vi.fn(),
+    body: { innerHTML: '' },
+    header: { innerHTML: '' },
+  };
+
+  const mockSideButton = {
+    show: vi.fn(),
+    hide: vi.fn(),
+  };
+
+  beforeEach(() => {
+    (globalThis as any).acode = {
+      addIcon: vi.fn(),
+      require: vi.fn().mockReturnValue(vi.fn().mockReturnValue(mockSideButton)),
+    };
+  });
+
+  it('calls $page.off with the stored show handler', async () => {
+    const plugin = makePlugin();
+    await plugin.init('https://base/', mockPage as any, {} as any, '');
+    await plugin.destroy();
+
+    const handler = mockPage.on.mock.calls[0][1];
+    expect(mockPage.off).toHaveBeenCalledWith('show', handler);
+  });
+
+  it('calls $page.hide()', async () => {
+    const plugin = makePlugin();
+    await plugin.init('https://base/', mockPage as any, {} as any, '');
+    await plugin.destroy();
+
+    expect(mockPage.hide).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call $page.off when handleShow was never set', async () => {
+    const plugin = makePlugin();
+    (plugin as any).$page = { off: mockPage.off, hide: mockPage.hide };
+    await plugin.destroy();
+
+    expect(mockPage.off).not.toHaveBeenCalled();
+    expect(mockPage.hide).toHaveBeenCalledTimes(1);
+  });
+
+  it('init() registers show listener with $page.on', async () => {
+    const plugin = makePlugin();
+    await plugin.init('https://base/', mockPage as any, {} as any, '');
+
+    expect(mockPage.on).toHaveBeenCalledWith('show', expect.any(Function));
+  });
+});
+
 describe('handleRestart', () => {
   it('restart+waitForReady succeeds → StartingServer→Ready', async () => {
     mockWaitForReady.mockResolvedValue(undefined);
