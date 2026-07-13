@@ -1,5 +1,10 @@
 import { StateContext } from '../types';
 
+/**
+ * Build a centered, full-size flex container used as the root wrapper for the
+ * loading and error states. Inlines layout styles so callers don't depend on a
+ * shared stylesheet.
+ */
 export function createContainer(id: string): HTMLElement {
   const el = document.createElement('div');
   el.id = id;
@@ -16,6 +21,16 @@ export function createContainer(id: string): HTMLElement {
   return el;
 }
 
+/**
+ * Build the loading view: a CSS-animated spinner plus a status line.
+ *
+ * The spinner's visuals and its `@keyframes` are injected per-call because the
+ * component is pure and has no access to a global stylesheet. Colors come from
+ * Acode CSS custom properties (`var(--x, fallback)`) so it adapts to Acode's
+ * active theme; the fallback is used when the variable is undefined. `innerHTML`
+ * is used for the static spinner markup, but the dynamic `statusText` is passed
+ * through `escapeHtml` first to avoid HTML injection of external strings.
+ */
 export function createSpinner(statusText: string): HTMLElement {
   const wrapper = createContainer('opencode-loading');
   wrapper.innerHTML = `
@@ -41,6 +56,10 @@ export function createSpinner(statusText: string): HTMLElement {
   return wrapper;
 }
 
+/**
+ * Build the iframe that embeds the OpenCode web UI. `src` is the loopback
+ * server URL (see `BASE_URL` in config).
+ */
 export function createIframe(src: string): HTMLIFrameElement {
   const iframe = document.createElement('iframe');
   iframe.src = src;
@@ -52,6 +71,11 @@ export function createIframe(src: string): HTMLIFrameElement {
   return iframe;
 }
 
+/**
+ * Build the header bar shown in the Ready state, with a "Restart" button wired
+ * to `onRestart`. The button handler is attached via `addEventListener` (never
+ * an inline `onclick` attribute) so the callback closure is safe from injection.
+ */
 export function createHeaderBar(onRestart: () => void): HTMLElement {
   const header = document.createElement('div');
   header.style.cssText = `
@@ -88,6 +112,13 @@ export function createHeaderBar(onRestart: () => void): HTMLElement {
   return header;
 }
 
+/**
+ * Build the error view from the current `StateContext`. Always renders a Retry
+ * button (so the user can recover from any error) and conditionally renders a
+ * scrollable diagnostics `<pre>` log tail when `context.error.logTail` exists.
+ * The `message` heading uses `white-space: pre-wrap` so multi-line summaries
+ * stay legible; both dynamic strings pass through `escapeHtml`.
+ */
 export function createErrorDisplay(context: StateContext, onRetry: () => void): HTMLElement {
   const wrapper = createContainer('opencode-error');
   const errorInfo = context.error;
@@ -135,6 +166,12 @@ export function createErrorDisplay(context: StateContext, onRetry: () => void): 
   return wrapper;
 }
 
+/**
+ * Escape a string for safe interpolation into `innerHTML`. Prevents HTML
+ * injection of external/error strings (which may contain `<`, `&`, quotes,
+ * etc.) by replacing them with entity references. Use this before any string
+ * is placed inside markup.
+ */
 function escapeHtml(text: string): string {
   const map: Record<string, string> = {
     '&': '&amp;',

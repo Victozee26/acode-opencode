@@ -10,6 +10,17 @@ import { createLogger } from '../logger';
 
 const log = createLogger('ui');
 
+/**
+ * Reactive UI orchestrator. The plugin renders purely from state: each call
+ * wipes `$page.body` and `$page.header` (full re-render, no diffing) and
+ * rebuilds the DOM for the given `AppState`. This is invoked by the state
+ * machine's `onStateChange` listener whenever the app transitions.
+ *
+ * @param $page - Acode's web component page (its `body`/`header` are DOM roots).
+ * @param state - Current `AppState` driving which view is built.
+ * @param context - State context (error info, etc.) needed by some views.
+ * @param onRestart - Callback wired into the Ready header's Restart button.
+ */
 export function render(
   $page: Acode.WCPage,
   state: AppState,
@@ -17,6 +28,7 @@ export function render(
   onRestart: () => void,
 ): void {
   log.debug(`render: ${state}`);
+  // Clear both regions first so every render starts from a clean slate.
   $page.body.innerHTML = '';
   $page.header.innerHTML = '';
 
@@ -29,6 +41,8 @@ export function render(
     case AppState.Installing:
     case AppState.CheckingServer:
     case AppState.StartingServer:
+      // Multiple intermediate states all share the same loading view; only the
+      // status message differs (looked up from STATUS_MESSAGES by state).
       renderLoading($page, state);
       break;
 
@@ -64,6 +78,8 @@ function renderReady(
   $page: Acode.WCPage,
   onRestart: () => void,
 ): void {
+  // Wires the header (Restart button -> onRestart) and embeds the OpenCode web
+  // UI via an iframe pointing at the loopback server (BASE_URL from config).
   $page.header.appendChild(createHeaderBar(onRestart));
   $page.body.appendChild(createIframe(BASE_URL));
 }
