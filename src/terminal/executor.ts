@@ -1,8 +1,15 @@
+import { createLogger } from '../logger';
+
+const log = createLogger('executor');
+
 export async function execute(command: string, alpine = true): Promise<string> {
+  log.info(`executing: ${command}`);
   try {
-    return await Executor.execute(command, alpine);
+    const result = await Executor.execute(command, alpine);
+    log.debug(`executed OK: ${command}`);
+    return result;
   } catch (err: unknown) {
-    console.log(err);
+    log.error(`executed FAILED: ${command}`, err);
     const originalMessage = err instanceof Error ? err.message : String(err);
     const output = typeof (err as Record<string, unknown>)?.output === 'string'
       ? (err as Record<string, unknown>).output as string

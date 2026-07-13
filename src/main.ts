@@ -6,6 +6,10 @@ import { render } from './ui/index';
 import { checkInstalled, installOpenCode } from './opencode/install';
 import { isServerUp, startServer, waitForReady, restartServer } from './opencode/server';
 import { ERROR_FALLBACK_MESSAGE } from './config';
+import { createLogger, setLogEnabled } from './logger';
+import { DEBUG } from './config';
+
+const log = createLogger('main');
 
 const ICON_CLASS = 'opencode-icon';
 
@@ -21,6 +25,8 @@ export class AcodePlugin {
     _cacheFile: Acode.FileSystem,
     _cacheFileUrl: string,
   ): Promise<void> {
+    setLogEnabled(DEBUG);
+    log.info('init: plugin initializing');
     this.$page = $page;
     $page.settitle('OpenCode');
 
@@ -52,6 +58,7 @@ export class AcodePlugin {
   }
 
   async destroy(): Promise<void> {
+    log.info('destroy: tearing down');
     this.sideButton?.hide();
     this.sideButton = null;
     if (this.handleShow) {
@@ -65,6 +72,7 @@ export class AcodePlugin {
   private async startFlow(): Promise<void> {
     if (this.isRunning) return;
     this.isRunning = true;
+    log.info('startFlow: beginning');
 
     transition(AppState.CheckingInstall);
 
@@ -80,6 +88,7 @@ export class AcodePlugin {
 
       const serverUp = await isServerUp();
       if (serverUp) {
+        log.info('startFlow: server already up, skipping start');
         transition(AppState.Ready);
         return;
       }
@@ -90,20 +99,25 @@ export class AcodePlugin {
       await waitForReady();
 
       transition(AppState.Ready);
+      log.info('startFlow: ready');
     } catch (err) {
+      log.error('startFlow: failed', err);
       const { summary, logTail } = this.extractErrorInfo(err);
       setError(summary, logTail);
     }
   }
 
   private async handleRestart(): Promise<void> {
+    log.info('handleRestart: restart requested');
     transition(AppState.StartingServer);
 
     try {
       await restartServer();
       await waitForReady();
       transition(AppState.Ready);
+      log.info('handleRestart: ready');
     } catch (err) {
+      log.error('handleRestart: failed', err);
       const { summary, logTail } = this.extractErrorInfo(err);
       setError(summary, logTail);
     }

@@ -6,6 +6,9 @@ import {
   createHeaderBar,
   createErrorDisplay,
 } from './components';
+import { createLogger } from '../logger';
+
+const log = createLogger('ui');
 
 export function render(
   $page: Acode.WCPage,
@@ -13,6 +16,7 @@ export function render(
   context: StateContext,
   onRestart: () => void,
 ): void {
+  log.debug(`render: ${state}`);
   $page.body.innerHTML = '';
   $page.header.innerHTML = '';
 

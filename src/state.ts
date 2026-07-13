@@ -1,4 +1,7 @@
 import { AppState, StateContext, StateListener, ErrorInfo } from './types';
+import { createLogger } from './logger';
+
+const log = createLogger('state');
 
 let context: StateContext = {
   currentState: AppState.Idle,
@@ -13,6 +16,7 @@ export function getState(): Readonly<StateContext> {
 }
 
 export function transition(newState: AppState, updates?: Partial<Omit<StateContext, 'currentState'>>): void {
+  log.info(`transition: ${context.currentState} -> ${newState}`);
   context = {
     ...context,
     ...updates,
@@ -26,6 +30,8 @@ export function transition(newState: AppState, updates?: Partial<Omit<StateConte
 }
 
 export function setError(message: string, logTail: string): void {
+  log.error(`setError: ${message}`);
+  if (logTail) log.debug(`setError logTail: ${logTail}`);
   context = {
     ...context,
     currentState: AppState.Error,
@@ -45,6 +51,7 @@ export function onStateChange(listener: StateListener): () => void {
 }
 
 export function reset(): void {
+  log.info('reset');
   context = {
     currentState: AppState.Idle,
     projectPath: null,

@@ -13,6 +13,9 @@ import {
   STOP_POLL_INTERVAL,
   buildStartCommand,
 } from '../config';
+import { createLogger } from '../logger';
+
+const log = createLogger('server');
 
 export async function isServerUp(): Promise<boolean> {
   try {
@@ -25,8 +28,10 @@ export async function isServerUp(): Promise<boolean> {
     });
 
     clearTimeout(timeoutId);
+    log.debug('isServerUp: true');
     return true;
   } catch {
+    log.debug('isServerUp: false');
     return false;
   }
 }
@@ -41,6 +46,7 @@ async function readLogTail(): Promise<string> {
 }
 
 export async function startServer(): Promise<void> {
+  log.info('startServer: launching');
   await execute(buildStartCommand());
   await new Promise((resolve) => setTimeout(resolve, STARTUP_CHECK_DELAY));
   const pgrepOutput = String(await execute('pgrep -f "opencode serve" || true')).trim();
@@ -50,14 +56,19 @@ export async function startServer(): Promise<void> {
       `OpenCode server process exited immediately after start.\nLast log lines:\n${logTail || '(no log output)'}`,
     );
   }
+  log.info(`startServer: process alive (pid ${pgrepOutput})`);
 }
 
 export async function waitForReady(): Promise<void> {
   const startedAt = Date.now();
+  log.info('waitForReady: polling started');
 
   while (Date.now() - startedAt < READY_TIMEOUT) {
     const up = await isServerUp();
-    if (up) return;
+    if (up) {
+      log.info('waitForReady: server ready');
+      return;
+    }
 
     await new Promise((resolve) => setTimeout(resolve, READY_POLL_INTERVAL));
   }
@@ -82,6 +93,7 @@ async function pollUntilDown(timeout: number): Promise<boolean> {
 }
 
 export async function stopServer(): Promise<void> {
+  log.info('stopServer: sending SIGTERM');
   try {
     await execute(KILL_COMMAND);
   } catch {
@@ -89,17 +101,26 @@ export async function stopServer(): Promise<void> {
   }
 
   const softDown = await pollUntilDown(STOP_POLL_TIMEOUT);
-  if (softDown) return;
+  if (softDown) {
+    log.info('stopServer: stopped via SIGTERM');
+    return;
+  }
 
+  log.warn('stopServer: SIGTERM failed, escalating to SIGKILL');
   await execute(HARD_KILL_COMMAND);
 
   const hardDown = await pollUntilDown(STOP_POLL_TIMEOUT);
-  if (hardDown) return;
+  if (hardDown) {
+    log.info('stopServer: stopped via SIGKILL');
+    return;
+  }
 
   throw new Error('Cannot stop server: port 4096 still occupied after SIGKILL');
 }
 
 export async function restartServer(): Promise<void> {
+  log.info('restartServer: beginning');
   await stopServer();
   await startServer();
+  log.info('restartServer: done');
 }
