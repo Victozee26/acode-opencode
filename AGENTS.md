@@ -138,7 +138,7 @@ When the user requests a durable behavior change, record it here or in the relev
 
 ## Child DOX Index
 
-- `src/opencode/` — OpenCode lifecycle: install checks, installation, server start/stop/restart, health polling. No child AGENTS.md (small scope; covered by root).
-- `src/ui/` — DOM rendering layer: render orchestrator per state, vanilla DOM component factories. No child AGENTS.md (small scope; covered by root).
-- `src/terminal/` — Terminal abstraction wrapping `acode.require('terminal')`. No child AGENTS.md (single-file; covered by root).
+- `src/opencode/AGENTS.md` — OpenCode lifecycle: install checks, installation, server start/stop/restart, health polling.
+- `src/ui/AGENTS.md` — DOM rendering layer: render orchestrator per state, vanilla DOM component factories.
+- `src/terminal/AGENTS.md` — Terminal abstraction wrapping `acode.require('terminal')`.
 - `src/main.ts`, `src/types.ts`, `src/state.ts`, `src/config.ts`, `src/project.ts` — Cross-cutting infrastructure owned directly by root AGENTS.md.
