@@ -31,7 +31,7 @@ This is an **Acode plugin** (Android WebView) that launches **OpenCode** as a ba
 2. **Blocking executor.** Any command that runs a persistent process must use `nohup ... & disown`. A plain `execute()` call for a server would hang forever.
 3. **No framework.** All DOM is vanilla. `html-tag-js` is listed as a dependency but unused — don't introduce it.
 4. **Health check is no-cors fetch.** Uses `{ mode: 'no-cors' }` with `AbortController` timeout. Do not change to a standard fetch without understanding WebView CORS implications.
-5. **No tests exist.** Testing is manual per `BUILD_PLAN.md` Phase 5 QA matrix. Do not assume a test framework.
+5. **No tests exist.** Testing is manual per `../../docs/BUILD_PLAN.md` Phase 5 QA matrix. Do not assume a test framework.
 6. **eslint/prettier not installed.** Configs exist but are inert. Install packages before running lint/format commands.
 7. **plugin.json has placeholders** for `id`, `name`, `author`. These need real values before publishing.
 
@@ -113,7 +113,7 @@ One sentence describing what this phase achieves.
 - **Open questions:** things needing clarification before implementation
 
 ### Verification
-- How to verify this phase works (manual steps aligned with BUILD_PLAN.md Phase 5 style)
+- How to verify this phase works (manual steps aligned with ../../docs/BUILD_PLAN.md Phase 5 style)
 
 ## Phase Ordering
 

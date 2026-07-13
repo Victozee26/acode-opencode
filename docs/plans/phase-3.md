@@ -1,7 +1,7 @@
 # Phase 3 — Server Lifecycle Hardening
 
 > **Status:** Core functions exist in `server.ts` but lack resilience against real-world failure modes.
-> **Source:** `BUILD_PLAN.md` lines 40–50, `SPEC.md` Section 4 (state machine), Section 6 (key commands).
+> **Source:** `../BUILD_PLAN.md` lines 40–50, `../SPEC.md` Section 4 (state machine), Section 6 (key commands).
 
 ---
 
@@ -21,7 +21,7 @@
 | Tests for `startFlow` and `handleRestart` covering timeout, restart failure, and fallback messages | `src/main.test.ts` |
 
 ### Design Divergence Note
-`BUILD_PLAN.md` Phase 3 says `isServerUp()` should target `/doc`. The config uses `HEALTH_CHECK_URL = ${BASE_URL}/doc`, matching the plan. The `no-cors` limitation (can't distinguish 200 from 500) is a known WebView constraint documented in the root `AGENTS.md` — not a bug to fix.
+`../BUILD_PLAN.md` Phase 3 says `isServerUp()` should target `/doc`. The config uses `HEALTH_CHECK_URL = ${BASE_URL}/doc`, matching the plan. The `no-cors` limitation (can't distinguish 200 from 500) is a known WebView constraint documented in the root `AGENTS.md` — not a bug to fix.
 
 ---
 
@@ -204,8 +204,8 @@ Run the full build pipeline, confirm Phase 3 passes typecheck and bundles cleanl
   - `restartServer()`: unchanged signature, but now propagates `stopServer()` errors.
   - Fix existing doc bug: `restartForProject()` → `restartServer()`.
 - **Modify:** `src/config.ts` — verify all new constants are present, no duplicates from phased rollout.
-- **Modify:** `BUILD_PLAN.md` — check off Phase 3 items.
-- **Create:** (optional) `src/opencode/server.test.ts` if time permits (manual testing is the primary verification per `BUILD_PLAN.md` Phase 5).
+- **Modify:** `../BUILD_PLAN.md` — check off Phase 3 items.
+- **Create:** (optional) `src/opencode/server.test.ts` if time permits (manual testing is the primary verification per `../BUILD_PLAN.md` Phase 5).
 - **DOX update:** `src/opencode/AGENTS.md` — update server.ts contracts; fix `restartForProject()` → `restartServer()` doc bug.
 
 ### Inputs Required
@@ -218,18 +218,18 @@ Run the full build pipeline, confirm Phase 3 passes typecheck and bundles cleanl
 - Passing `npm run build` (tsc --noEmit → esbuild bundle + zip)
 - Passing `npm test` (all existing tests; optional new server tests)
 - Updated `src/opencode/AGENTS.md` with corrected server contracts
-- Updated `BUILD_PLAN.md` Phase 3 checkboxes marked complete
+- Updated `../BUILD_PLAN.md` Phase 3 checkboxes marked complete
 
 ### Assumptions
 1. **Critical:** All three sub-phases are merged. If one phase shipped out of order, the config constants may need deduplication (e.g., `LOG_TAIL_LINES` defined in both 3-B and 3-C).
 2. **Important:** No runtime regressions — `dist.zip` should load in Acode and the full flow (install → server start → iframe) still works.
-3. **Nice-to-have:** A `server.test.ts` file covering the new behavior would improve reliability, but the `BUILD_PLAN.md` Phase 5 QA matrix is the primary verification mechanism.
+3. **Nice-to-have:** A `server.test.ts` file covering the new behavior would improve reliability, but the `../BUILD_PLAN.md` Phase 5 QA matrix is the primary verification mechanism.
 
 ### Risk / Dependency Flags
 - **Risk:** If Phase 3-B and 3-C both introduce `readLogTail()` and `LOG_TAIL_LINES` independently, there may be a merge conflict or duplicate definition. Resolve by keeping one copy.
 - **Dependencies:** Phases 3-A, 3-B, 3-C.
 - **Open questions:**
-  - Should a `server.test.ts` be written as part of this phase? The existing modules (`install.ts`, `executor.ts`, `components.ts`) all have test coverage. A `server.test.ts` would cover `isServerUp()` (AbortController behavior), `waitForReady()` polling/timeout, `stopServer()` escalation, and `startServer()` crash detection. However, `BUILD_PLAN.md` Phase 5 specifies manual testing as the primary verification. The implementer should weigh the value of automated regression tests against the time investment — at minimum, the hard-to-manually-trigger edge cases (SIGTERM fails, process disappears between check and bind) deserve test coverage.
+  - Should a `server.test.ts` be written as part of this phase? The existing modules (`install.ts`, `executor.ts`, `components.ts`) all have test coverage. A `server.test.ts` would cover `isServerUp()` (AbortController behavior), `waitForReady()` polling/timeout, `stopServer()` escalation, and `startServer()` crash detection. However, `../BUILD_PLAN.md` Phase 5 specifies manual testing as the primary verification. The implementer should weigh the value of automated regression tests against the time investment — at minimum, the hard-to-manually-trigger edge cases (SIGTERM fails, process disappears between check and bind) deserve test coverage.
 
 ### Verification
 
@@ -238,7 +238,7 @@ Run the full build pipeline, confirm Phase 3 passes typecheck and bundles cleanl
 2. `dist/main.js` and `dist.zip` are produced.
 3. `npm test` — all existing tests pass.
 
-#### Manual Test Matrix (on-device, per `BUILD_PLAN.md` Phase 5 style)
+#### Manual Test Matrix (on-device, per `../BUILD_PLAN.md` Phase 5 style)
 
 | # | Scenario | Steps | Expected Result |
 |---|----------|-------|-----------------|
@@ -276,7 +276,7 @@ Run the full build pipeline, confirm Phase 3 passes typecheck and bundles cleanl
 | 3-A | Reliable server kill with escalation + restart integrity | `server.ts`, `config.ts` | Medium |
 | 3-B | Detect immediate opencode crash within 1s instead of 15s | `server.ts`, `config.ts` | Medium |
 | 3-C | Include log tail in timeout error for diagnostics | `server.ts`, `config.ts` | Low |
-| 3-D | Build verification, DOX pass, manual test matrix | `AGENTS.md`, `BUILD_PLAN.md` | Low |
+| 3-D | Build verification, DOX pass, manual test matrix | `AGENTS.md`, `../BUILD_PLAN.md` | Low |
 
 ---
 

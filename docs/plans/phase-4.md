@@ -1,7 +1,7 @@
 # Phase 4 — UI States: Polish & Verification
 
 > **Status:** Core rendering infrastructure exists (`render()`, `createSpinner`, `createIframe`, `createHeaderBar`, `createErrorDisplay`), but has two bugs and no manual QA has been performed.
-> **Source:** `BUILD_PLAN.md` lines 53–60, `SPEC.md` Section 4 (state machine diagram), `plans/phase-3.md` lines 285–287 (cross-cutting note).
+> **Source:** `../BUILD_PLAN.md` lines 53–60, `../SPEC.md` Section 4 (state machine diagram), `phase-3.md` lines 285–287 (cross-cutting note).
 
 ---
 
@@ -149,13 +149,13 @@ Replace the hardcoded `'http://127.0.0.1:4096'` URL in `renderReady()` with the 
 ## Phase 4-C: Tests, DOX Pass, & Manual QA Matrix
 
 ### Goal
-Update automated tests to cover the new error-splitting behavior, run the full build pipeline, update all affected AGENTS.md contracts, check off BUILD_PLAN.md Phase 4 items, and define/execute the manual QA matrix for end-to-end verification (including the "$page iframe renders OpenCode chat UI" requirement).
+Update automated tests to cover the new error-splitting behavior, run the full build pipeline, update all affected AGENTS.md contracts, check off ../BUILD_PLAN.md Phase 4 items, and define/execute the manual QA matrix for end-to-end verification (including the "$page iframe renders OpenCode chat UI" requirement).
 
 ### Scope
 - **Modify:** `src/ui/components.test.ts` — add test for `white-space: pre-wrap` on `<h3>`, add test for empty-`logTail` heading-only display
 - **Modify:** `src/main.test.ts` — update tests that assert `setError(message, message)` to assert the new split behavior (`setError(summary, logTail)`)
 - **Modify:** `src/ui/AGENTS.md` — update `createErrorDisplay` contract (whitespace, message/logTail expectations), note `BASE_URL` usage in `renderReady`
-- **Modify:** `BUILD_PLAN.md` — check off all Phase 4 items
+- **Modify:** `../BUILD_PLAN.md` — check off all Phase 4 items
 - **No new files** (unless a test helper is needed for `main.test.ts` split assertions).
 - **No `AppState` changes.**
 - **DOX update:** `src/ui/AGENTS.md` (see above), root `AGENTS.md` Phase 4 progress note.
@@ -187,7 +187,7 @@ Update automated tests to cover the new error-splitting behavior, run the full b
 - `createErrorDisplay()`: heading now uses `white-space: pre-wrap`. `message` is expected to be a short summary (typically the first line of the error), `logTail` is the diagnostic detail. The `<pre>` block renders only when `logTail` is non-empty (was already true, but reasoning is now explicit).
 - `renderReady()`: uses `BASE_URL` from config instead of a hardcoded string literal.
 
-**`BUILD_PLAN.md`** — Check off all 5 Phase 4 items:
+**`../BUILD_PLAN.md`** — Check off all 5 Phase 4 items:
 ```
 - [x] `loading` state: spinner + status text
 - [x] `ready` state: `<iframe src="http://127.0.0.1:4096">` filling `$page`
@@ -214,7 +214,7 @@ Update automated tests to cover the new error-splitting behavior, run the full b
 1. `npm run build` exits clean (0).
 2. `npm test` — all tests pass, including new/modified tests.
 
-#### Manual QA Matrix (on-device, per BUILD_PLAN.md Phase 5 style)
+#### Manual QA Matrix (on-device, per ../BUILD_PLAN.md Phase 5 style)
 
 | # | Scenario | Steps | Expected Result |
 |---|----------|-------|-----------------|
@@ -253,14 +253,14 @@ Scenarios 1–4 cover the 4 structural BUILD_PLAN Phase 4 checklist items. Scena
 |-------|------|---------------|------------|
 | 4-A | Fix error heading whitespace + separate message from logTail | `components.ts`, `main.ts` | Low |
 | 4-B | Replace hardcoded URL with `BASE_URL` config constant | `index.ts` (1 line) | Very Low |
-| 4-C | Test updates, DOX pass, manual QA matrix execution | `components.test.ts`, `main.test.ts`, `AGENTS.md`, `BUILD_PLAN.md` | Low |
+| 4-C | Test updates, DOX pass, manual QA matrix execution | `components.test.ts`, `main.test.ts`, `AGENTS.md`, `../BUILD_PLAN.md` | Low |
 
 ---
 
 ## Cross-Cutting Notes
 
 ### Relationship to Phase 3
-Phase 3 introduced multi-line error messages from `startServer()` and `waitForReady()`. The Phase 3 plan explicitly flagged the newline-collapse issue for Phase 4 (see `plans/phase-3.md` lines 285–287). Phase 4-A directly resolves this.
+Phase 3 introduced multi-line error messages from `startServer()` and `waitForReady()`. The Phase 3 plan explicitly flagged the newline-collapse issue for Phase 4 (see `phase-3.md` lines 285–287). Phase 4-A directly resolves this.
 
 ### What Phase 4 Does NOT Change
 - **State machine:** No new states, no transition logic changes. The error path already works; Phase 4 only changes how error content is displayed.

@@ -140,3 +140,6 @@ When the user requests a durable behavior change, record it here or in the relev
 - `src/ui/AGENTS.md` — DOM rendering layer: render orchestrator per state, vanilla DOM component factories.
 - `src/terminal/AGENTS.md` — Terminal abstraction wrapping `acode.require('terminal')`.
 - `src/main.ts`, `src/types.ts`, `src/state.ts`, `src/config.ts` — Cross-cutting infrastructure owned directly by root AGENTS.md.
+- `docs/SPEC.md` — Technical specification and architecture documentation.
+- `docs/BUILD_PLAN.md` — Phased build/implementation plan.
+- `docs/plans/` — Phase-level implementation plans (phases 2–4).

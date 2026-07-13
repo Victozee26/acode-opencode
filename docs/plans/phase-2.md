@@ -1,7 +1,7 @@
 # Phase 2 — Alpine Bootstrap (State Machine)
 
 > **Status:** Partially implemented. Core flows exist; error handling and retry UX have gaps.
-> **Source:** `BUILD_PLAN.md` lines 29–37, `SPEC.md` Section 4 (state machine), Section 5 (module breakdown).
+> **Source:** `../BUILD_PLAN.md` lines 29–37, `../SPEC.md` Section 4 (state machine), Section 5 (module breakdown).
 
 ---
 
@@ -170,7 +170,7 @@ Run the full build pipeline, confirm Phase 2 passes typecheck and bundles cleanl
 - **Modify:** `src/terminal/AGENTS.md` (if executor contract changed in 2-A)
 - **Modify:** `src/opencode/AGENTS.md` (if install contract changed in 2-B)
 - **Modify:** `src/ui/AGENTS.md` (if `createErrorDisplay` contract changed in 2-C)
-- **Modify:** `BUILD_PLAN.md` — check off Phase 2 items
+- **Modify:** `../BUILD_PLAN.md` — check off Phase 2 items
 
 ### Inputs Required
 - All Phase 2-A through 2-D outputs
@@ -180,7 +180,7 @@ Run the full build pipeline, confirm Phase 2 passes typecheck and bundles cleanl
 ### Outputs Produced
 - Passing `npm run build` (tsc --noEmit → esbuild bundle + zip)
 - Updated AGENTS.md contracts reflecting any behavioral changes
-- Updated `BUILD_PLAN.md` with Phase 2 checkboxes marked complete
+- Updated `../BUILD_PLAN.md` with Phase 2 checkboxes marked complete
 
 ### Assumptions
 1. **Critical:** `eslint` and `prettier` packages remain uninstalled (configs are inert per root AGENTS.md "Gotchas"). Build success does not depend on them.
@@ -221,13 +221,13 @@ Run the full build pipeline, confirm Phase 2 passes typecheck and bundles cleanl
 | 2-B | Surface install errors with actual command output | `src/opencode/install.ts` | Medium |
 | 2-C | Always show retry button on error | `src/ui/components.ts` | Low |
 | 2-D | Wire caught errors into setError with logTail | `src/main.ts` | Low |
-| 2-E | Build verification, DOX pass, mark complete | `BUILD_PLAN.md`, 3 AGENTS.md files | Low |
+| 2-E | Build verification, DOX pass, mark complete | `../BUILD_PLAN.md`, 3 AGENTS.md files | Low |
 
 ---
 
 ## What Already Exists (No Changes Needed)
 
-These Phase 2 items from `BUILD_PLAN.md` are **fully implemented** in the codebase and require no work:
+These Phase 2 items from `../BUILD_PLAN.md` are **fully implemented** in the codebase and require no work:
 
 | BUILD_PLAN Item | Where Implemented |
 |----------------|-------------------|
@@ -239,4 +239,4 @@ These Phase 2 items from `BUILD_PLAN.md` are **fully implemented** in the codeba
 | Status messages per state | `src/config.ts:19-24` (`STATUS_MESSAGES`) |
 
 ### Design Divergence Note
-BUILD_PLAN says `idle → checking → installing → installed`. The implementation uses `idle → checking-install → installing → checking-server → starting-server → ready`. There is no `Installed` state — after successful install, the flow immediately checks the server. This is intentional (see `SPEC.md` Section 4 state diagram) and does not need to change.
+BUILD_PLAN says `idle → checking → installing → installed`. The implementation uses `idle → checking-install → installing → checking-server → starting-server → ready`. There is no `Installed` state — after successful install, the flow immediately checks the server. This is intentional (see `../SPEC.md` Section 4 state diagram) and does not need to change.
