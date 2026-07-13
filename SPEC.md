@@ -13,25 +13,20 @@ at a time.
 
 ## 2. Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│ Acode (Android app, WebView-based)                       │
-│                                                           │
-│  ┌───────────────┐        ┌─────────────────────────┐    │
-│  │ Toolbar icon   │──tap──▶│ Plugin $page (full page) │   │
-│  └───────────────┘        │                          │    │
-│                            │  state machine (TS)      │    │
-│                            │  ──▶ iframe               │    │
-│                            └──────────┬────────────────┘    │
-│                                       │ http://127.0.0.1:4096
-│  ┌────────────────────────────────────▼─────────────────┐  │
-│  │ Alpine Linux (proot sandbox, via Acode's terminal)    │  │
-│  │                                                       │  │
-│  │   opencode serve --port 4096 --hostname 127.0.0.1     │  │
-│  │   (installed via: npm install -g opencode-ai)         │  │
-│  │   cwd = active project (must be Alpine-native path)   │  │
-│  └───────────────────────────────────────────────────────┘  │
-└───────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph acode["Acode (Android app, WebView-based)"]
+        icon["Toolbar icon"]
+        page["Plugin page<br/>(full page)"]
+        sm["state machine (TS)"]
+        iframe["iframe"]
+        subgraph alpine["Alpine Linux (proot sandbox, via Acode's terminal)"]
+            server["opencode serve --port 4096 --hostname 127.0.0.1<br/>(installed via: npm install -g opencode-ai)<br/>cwd = active project (must be Alpine-native path)"]
+        end
+    end
+    icon -- "tap" --> page
+    page --> sm --> iframe
+    iframe -- "http://127.0.0.1:4096" --> server
 ```
 
 Communication with Alpine happens only through Acode's `terminal` module
@@ -80,26 +75,21 @@ out of scope for MVP.
 
 ## 4. State machine
 
-```
-idle
-  │ (user taps toolbar icon)
-  ▼
-checking-install ──not found──▶ installing ──success──▶ checking-server
-  │ found                                    │ fail
-  ▼                                          ▼
-checking-server                          error (install)
-  │ up                  │ down
-  ▼                     ▼
-ready              resolving-path
-                        │
-                        ▼
-                   starting-server
-                        │
-              ┌─────────┼─────────┐
-           timeout     up        crash
-              │         │          │
-              ▼         ▼          ▼
-       error (start)  ready   error (start)
+```mermaid
+stateDiagram-v2
+    [*] --> idle
+    idle --> checking_install : user taps toolbar icon
+    checking_install --> installing : not found
+    checking_install --> checking_server : found
+    installing --> checking_server : success
+    installing --> error_install : fail
+    checking_server --> ready : up
+    checking_server --> resolving_path : down
+    resolving_path --> starting_server
+    starting_server --> ready : up
+    starting_server --> error_start : timeout
+    starting_server --> error_start : crash
+    ready --> resolving_path : restart (user-triggered)
 ```
 
 `ready` renders the iframe. Any `error` state shows the relevant log tail
