@@ -194,24 +194,34 @@ describe('waitForReady', () => {
   it('times out and includes log output when server never responds', async () => {
     const logLines = 'Error: listen tcp :4096: bind: address already in use';
     mockFetch.mockRejectedValue(new Error('connection refused'));
-    mockExecute.mockResolvedValue(`  ${logLines}  \n`);
+    mockExecute.mockImplementation(async (cmd: string) => {
+      if (cmd.includes('pgrep')) return '12345';
+      return `  ${logLines}  \n`;
+    });
 
     const promise = waitForReady();
     promise.catch(() => {});
     await vi.advanceTimersByTimeAsync(READY_TIMEOUT + READY_POLL_INTERVAL);
 
-    await expect(promise).rejects.toThrow('Server did not respond within 15s');
+    await expect(promise).rejects.toThrow(
+      `Server did not respond within ${READY_TIMEOUT / 1000}s`,
+    );
     await expect(promise).rejects.toThrow(logLines);
+    await expect(promise).rejects.toThrow('Process state: alive');
   });
 
   it('times out and includes "(no log output)" when log read returns empty', async () => {
     mockFetch.mockRejectedValue(new Error('connection refused'));
-    mockExecute.mockResolvedValue('');
+    mockExecute.mockImplementation(async (cmd: string) => {
+      if (cmd.includes('pgrep')) return '';
+      return '';
+    });
 
     const promise = waitForReady();
     promise.catch(() => {});
     await vi.advanceTimersByTimeAsync(READY_TIMEOUT + READY_POLL_INTERVAL);
 
     await expect(promise).rejects.toThrow('(no log output)');
+    await expect(promise).rejects.toThrow('Process state: dead');
   });
 });

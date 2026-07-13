@@ -14,9 +14,9 @@ Owned by the root AGENTS.md. Two export modules:
 
 - `checkInstalled()` runs `which opencode` and returns boolean — errors mean not installed.
 - `installOpenCode()` runs two sequential commands: install deps (`apk add nodejs npm`), then `npm install -g opencode-ai`. Both are blocking. On failure, throws `Error` with distinct prefixes — `"Installation failed (deps): "` or `"Installation failed (opencode): "` — followed by the captured error message and command output from `execute()`.
-- `isServerUp()` uses `fetch` with `no-cors` mode and `AbortController` timeout — NOT a standard HTTP health check. Addresses WebView CORS constraints.
-- `startServer()` fires `mkdir -p && nohup ... &` via `execute()`, then waits `STARTUP_CHECK_DELAY` (500ms) and validates the process is alive via `pgrep`. If the process exited immediately (missing binary, config error, port conflict), it reads the last `LOG_TAIL_LINES` (20) from the log and throws a descriptive `Error` before the caller ever hits `waitForReady()`. The caller must not call `execute()` directly for server start.
-- `waitForReady()` polls `isServerUp()` every `READY_POLL_INTERVAL` ms until `READY_TIMEOUT`. On timeout, reads the last `LOG_TAIL_LINES` from `LOG_PATH` via `readLogTail()` and throws an `Error` that includes the log tail (or `(no log output)` if empty/unreadable).
+- `isServerUp()` uses `fetch` with `no-cors` mode and `AbortController` timeout — NOT a standard HTTP health check. Addresses WebView CORS constraints. Health-check endpoint is `/global/health` (the standard OpenCode server health endpoint).
+- `startServer()` fires `nohup ... &` via `execute()` (with `< /dev/null` stdin redirect), then waits `STARTUP_CHECK_DELAY` (500ms) and validates the process is alive via `PROCESS_CHECK_COMMAND`. If the process exited immediately (missing binary, config error, port conflict), it reads the last `LOG_TAIL_LINES` (20) from the log and throws a descriptive `Error` before the caller ever hits `waitForReady()`. The caller must not call `execute()` directly for server start.
+- `waitForReady()` polls `isServerUp()` every `READY_POLL_INTERVAL` ms until `READY_TIMEOUT`. On timeout, reads the last `LOG_TAIL_LINES` from `LOG_PATH` via `readLogTail()`, checks process state via `PROCESS_CHECK_COMMAND`, and throws an `Error` that includes process state (alive/dead/unknown), log tail (or `(no log output)` if empty/unreadable).
 - `stopServer()` runs SIGTERM via `pkill -f "opencode serve"`, polls `isServerUp()` for up to `STOP_POLL_TIMEOUT`, escalates to SIGKILL (`pkill -9`) if needed, and polls again. Throws `Error` if port is still occupied after SIGKILL.
 - `restartServer()` is stop → start sequential, no concurrent semantics.
 - All commands are defined in `src/config.ts` — never inline shell commands here.
@@ -30,7 +30,7 @@ Owned by the root AGENTS.md. Two export modules:
 
 `npm test` runs Vitest with jsdom. Test files:
 - `install.test.ts` — `checkInstalled()` (true on success, false on rejection) and `installOpenCode()` (success, deps failure, opencode failure, non-Error rejections).
-- `server.test.ts` — `stopServer()` SIGTERM success, SIGTERM→SIGKILL escalation, both-fail throw, execute-throwing resilience, and `pollUntilDown` timeout/instant-down scenarios. `startServer()` pgrep-alive resolve, process-dead throw with log output, process-dead throw with "(no log output)", `readLogTail` trimming, and `readLogTail` failure fallback to empty string. `waitForReady()` resolve-immediate on first poll, timeout-with-log, timeout-with-"(no log output)".
+- `server.test.ts` — `stopServer()` SIGTERM success, SIGTERM→SIGKILL escalation, both-fail throw, execute-throwing resilience, and `pollUntilDown` timeout/instant-down scenarios. `startServer()` pgrep-alive resolve, process-dead throw with log output, process-dead throw with "(no log output)", `readLogTail` trimming, and `readLogTail` failure fallback to empty string. `waitForReady()` resolve-immediate on first poll, timeout-with-log-and-process-state, timeout-with-"(no log output)"-and-process-dead.
 
 ## Child DOX Index
 

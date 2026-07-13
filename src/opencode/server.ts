@@ -9,6 +9,7 @@ import {
   STARTUP_CHECK_DELAY,
   KILL_COMMAND,
   HARD_KILL_COMMAND,
+  PROCESS_CHECK_COMMAND,
   STOP_POLL_TIMEOUT,
   STOP_POLL_INTERVAL,
   buildStartCommand,
@@ -49,7 +50,7 @@ export async function startServer(): Promise<void> {
   log.info('startServer: launching');
   await execute(buildStartCommand());
   await new Promise((resolve) => setTimeout(resolve, STARTUP_CHECK_DELAY));
-  const pgrepOutput = String(await execute('pgrep -f "opencode serve" || true')).trim();
+  const pgrepOutput = String(await execute(PROCESS_CHECK_COMMAND)).trim();
   if (!pgrepOutput) {
     const logTail = await readLogTail();
     throw new Error(
@@ -74,8 +75,19 @@ export async function waitForReady(): Promise<void> {
   }
 
   const logTail = await readLogTail();
+
+  let processState = 'unknown';
+  try {
+    const pgrepOutput = String(await execute(PROCESS_CHECK_COMMAND)).trim();
+    processState = pgrepOutput ? `alive (pid ${pgrepOutput})` : 'dead';
+  } catch {
+    processState = 'unknown (pgrep failed)';
+  }
+
   throw new Error(
-    `Server did not respond within ${READY_TIMEOUT / 1000}s.\nLast log lines:\n${logTail || '(no log output)'}`,
+    `Server did not respond within ${READY_TIMEOUT / 1000}s.\n` +
+    `Process state: ${processState}\n` +
+    `Last log lines:\n${logTail || '(no log output)'}`,
   );
 }
 
