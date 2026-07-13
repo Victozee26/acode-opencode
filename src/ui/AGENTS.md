@@ -29,7 +29,7 @@ Owned by the root AGENTS.md. Two export modules:
 
 ## Verification
 
-No automated tests. Manual visual inspection per BUILD_PLAN.md Phase 5.
+`npm test` runs Vitest with jsdom. Test file: `src/ui/components.test.ts`. Covers `createErrorDisplay` retry button and log tail rendering.
 
 ## Child DOX Index
 

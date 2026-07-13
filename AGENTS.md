@@ -49,7 +49,7 @@ src/
 ## Gotchas
 
 - `eslint` and `prettier` packages are **not installed** (configs exist but are inert). Install them before running lint/format.
-- No test framework exists. Testing is manual (see `BUILD_PLAN.md` Phase 5 for the QA matrix).
+- Tests use Vitest with jsdom (`npm test`). Test files live alongside source as `*.test.ts`.
 - `plugin.json` has placeholder values (`id`, `name`, `author`) that need real values before publishing.
 - `html-tag-js` is listed as a dependency but currently unused — all DOM is vanilla `document.createElement`.
 - Health-check uses `fetch(..., { mode: 'no-cors' })` with `AbortController` timeout — not a standard HTTP check. Do not change this to a normal fetch without understanding the CORS implications in the WebView context.
