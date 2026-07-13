@@ -3,7 +3,7 @@ description: "Use ONLY when the user explicitly asks for a phased implementation
 mode: primary
 permission:
   edit: allow
-  bash: deny
+  bash: allow
   task: allow
 ---
 
