@@ -1,5 +1,5 @@
 import { AppState, StateContext } from '../types';
-import { STATUS_MESSAGES } from '../config';
+import { BASE_URL, STATUS_MESSAGES } from '../config';
 import {
   createSpinner,
   createIframe,
@@ -61,7 +61,7 @@ function renderReady(
   onRestart: () => void,
 ): void {
   $page.header.appendChild(createHeaderBar(onRestart));
-  $page.body.appendChild(createIframe('http://127.0.0.1:4096'));
+  $page.body.appendChild(createIframe(BASE_URL));
 }
 
 function renderError(

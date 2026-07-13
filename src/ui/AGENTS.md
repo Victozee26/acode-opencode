@@ -15,7 +15,7 @@ Owned by the root AGENTS.md. Two export modules:
 - `render($page, state, context, onRestart)` clears `$page.body` and `$page.header`, then rebuilds based on state.
 - Every state variant has its own render function. Never add inline DOM construction in `render()`.
 - All DOM is vanilla `document.createElement` — no framework, no `html-tag-js`.
-- `createIframe()` accepts a string URL (hardcoded to `http://127.0.0.1:4096` by caller).
+- `createIframe()` accepts a string URL; `renderReady` passes `BASE_URL` from `config.ts`.
 - `escapeHtml()` is a module-private helper in `components.ts` — all user/external strings rendered as HTML must pass through it.
 - Styles use CSS custom properties (`var(--primary-color, fallback)`) for Acode theming compatibility.
 - `createErrorDisplay()` unconditionally renders a retry button when error exists; the log tail `<pre>` block is conditional on `logTail` being truthy.
