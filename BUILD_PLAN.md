@@ -7,11 +7,11 @@ Target: MVP that launches OpenCode's web UI inside Acode via a toolbar icon.
 
 ## Phase 0 — Preconditions (do this before writing code)
 
-- [ ] Acode's built-in terminal (Alpine) is set up and working on your test device
-- [ ] Manually run `apk add --no-cache nodejs npm && npm install -g opencode-ai` once by hand in the terminal, confirm `opencode --version` works — prove the happy path exists before you automate it
-- [ ] Manually `git clone` a small test repo *inside Alpine's home directory* (not via Android's file picker/SAF)
-- [ ] Manually run `opencode serve --port 4096 --hostname 127.0.0.1` and confirm you can hit `http://127.0.0.1:4096` in Acode's Live Preview plugin or any iframe test page
-- [ ] Only proceed to Phase 1 once this manual path works end-to-end. If it doesn't work by hand, it won't work automated.
+- [x] Acode's built-in terminal (Alpine) is set up and working on your test device
+- [x] Manually run `apk add --no-cache nodejs npm && npm install -g opencode-ai` once by hand in the terminal, confirm `opencode --version` works — prove the happy path exists before you automate it
+- [x] Manually `git clone` a small test repo *inside Alpine's home directory* (not via Android's file picker/SAF)
+- [x] Manually run `opencode serve --port 4096 --hostname 127.0.0.1` and confirm you can hit `http://127.0.0.1:4096` in Acode's Live Preview plugin or any iframe test page
+- [x] Only proceed to Phase 1 once this manual path works end-to-end. If it doesn't work by hand, it won't work automated.
 
 ---
 
