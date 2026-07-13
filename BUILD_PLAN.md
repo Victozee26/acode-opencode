@@ -28,12 +28,12 @@ Target: MVP that launches OpenCode's web UI inside Acode via a toolbar icon.
 
 ## Phase 2 — Alpine bootstrap (state machine)
 
-- [ ] `terminal` module: `const { Executor } = acode.require('terminal')`
-- [ ] Write `checkInstalled()`: `execute('which opencode')` → resolves or throws
-- [ ] Write `installOpenCode()`: `execute('apk add --no-cache nodejs npm && npm install -g opencode-ai')`
-- [ ] Wire UI state: `idle → checking → installing → installed`
-- [ ] Show install progress as an indeterminate spinner (Executor doesn't stream output — don't fake a progress bar)
-- [ ] Handle install failure: show stderr/output, offer retry button
+- [x] `terminal` module: `const { Executor } = acode.require('terminal')` (executor.ts with error capture)
+- [x] Write `checkInstalled()`: `execute('which opencode')` → resolves or throws
+- [x] Write `installOpenCode()`: `execute('apk add --no-cache nodejs npm')` then `npm install -g opencode-ai` (with per-step error capture)
+- [x] Wire UI state: `idle → checking → installing → checking-server → starting-server → ready` (state machine, see SPEC.md Section 4)
+- [x] Show install progress as an indeterminate spinner (Executor doesn't stream output — don't fake a progress bar)
+- [x] Handle install failure: show stderr/output in `<pre>` block, retry button always visible
 
 ---
 
