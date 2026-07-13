@@ -71,7 +71,7 @@ class AcodePlugin {
       transition(AppState.Ready);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      setError(message, '');
+      setError(message, message || 'No output captured. Check /tmp/opencode.log in Alpine terminal.');
     }
   }
 
@@ -84,7 +84,7 @@ class AcodePlugin {
       transition(AppState.Ready);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      setError(message, '');
+      setError(message, message || 'No output captured. Check /tmp/opencode.log in Alpine terminal.');
     }
   }
 }
