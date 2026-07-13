@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { startServer, stopServer } from './server';
+import { startServer, stopServer, waitForReady } from './server';
 import * as executorModule from '../terminal/executor';
 import {
   STARTUP_CHECK_DELAY,
@@ -7,6 +7,8 @@ import {
   STOP_POLL_TIMEOUT,
   KILL_COMMAND,
   HARD_KILL_COMMAND,
+  READY_POLL_INTERVAL,
+  READY_TIMEOUT,
 } from '../config';
 
 vi.mock('../terminal/executor');
@@ -178,6 +180,38 @@ describe('startServer', () => {
     const promise = startServer();
     promise.catch(() => {});
     await vi.advanceTimersByTimeAsync(STARTUP_CHECK_DELAY);
+    await expect(promise).rejects.toThrow('(no log output)');
+  });
+});
+
+describe('waitForReady', () => {
+  it('resolves immediately when isServerUp returns true on first poll', async () => {
+    mockFetch.mockResolvedValue({});
+
+    await expect(waitForReady()).resolves.toBeUndefined();
+  });
+
+  it('times out and includes log output when server never responds', async () => {
+    const logLines = 'Error: listen tcp :4096: bind: address already in use';
+    mockFetch.mockRejectedValue(new Error('connection refused'));
+    mockExecute.mockResolvedValue(`  ${logLines}  \n`);
+
+    const promise = waitForReady();
+    promise.catch(() => {});
+    await vi.advanceTimersByTimeAsync(READY_TIMEOUT + READY_POLL_INTERVAL);
+
+    await expect(promise).rejects.toThrow('Server did not respond within 15s');
+    await expect(promise).rejects.toThrow(logLines);
+  });
+
+  it('times out and includes "(no log output)" when log read returns empty', async () => {
+    mockFetch.mockRejectedValue(new Error('connection refused'));
+    mockExecute.mockResolvedValue('');
+
+    const promise = waitForReady();
+    promise.catch(() => {});
+    await vi.advanceTimersByTimeAsync(READY_TIMEOUT + READY_POLL_INTERVAL);
+
     await expect(promise).rejects.toThrow('(no log output)');
   });
 });

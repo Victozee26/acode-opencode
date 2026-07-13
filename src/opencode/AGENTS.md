@@ -30,7 +30,7 @@ Owned by the root AGENTS.md. Two export modules:
 
 `npm test` runs Vitest with jsdom. Test files:
 - `install.test.ts` — `checkInstalled()` (true on success, false on rejection) and `installOpenCode()` (success, deps failure, opencode failure, non-Error rejections).
-- `server.test.ts` — `stopServer()` SIGTERM success, SIGTERM→SIGKILL escalation, both-fail throw, execute-throwing resilience, and `pollUntilDown` timeout/instant-down scenarios. `startServer()` pgrep-alive resolve, process-dead throw with log output, process-dead throw with "(no log output)", `readLogTail` trimming, and `readLogTail` failure fallback to empty string.
+- `server.test.ts` — `stopServer()` SIGTERM success, SIGTERM→SIGKILL escalation, both-fail throw, execute-throwing resilience, and `pollUntilDown` timeout/instant-down scenarios. `startServer()` pgrep-alive resolve, process-dead throw with log output, process-dead throw with "(no log output)", `readLogTail` trimming, and `readLogTail` failure fallback to empty string. `waitForReady()` resolve-immediate on first poll, timeout-with-log, timeout-with-"(no log output)".
 
 ## Child DOX Index
 
