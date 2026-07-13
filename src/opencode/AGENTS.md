@@ -28,7 +28,8 @@ Owned by the root AGENTS.md. Two export modules:
 
 ## Verification
 
-No automated tests. Manual QA per BUILD_PLAN.md Phase 5.
+`npm test` runs Vitest with jsdom. Test files:
+- `install.test.ts` — `checkInstalled()` (true on success, false on rejection) and `installOpenCode()` (success, deps failure, opencode failure, non-Error rejections).
 
 ## Child DOX Index
 
