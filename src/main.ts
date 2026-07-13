@@ -8,7 +8,7 @@ import { isServerUp, startServer, waitForReady, restartServer } from './opencode
 
 const ICON_ID = 'opencode-icon';
 
-class AcodePlugin {
+export class AcodePlugin {
   private $page: Acode.WCPage | null = null;
   private isRunning = false;
 
