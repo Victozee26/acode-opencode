@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { stopServer } from './server';
+import { startServer, stopServer } from './server';
 import * as executorModule from '../terminal/executor';
 import {
+  STARTUP_CHECK_DELAY,
   STOP_POLL_INTERVAL,
   STOP_POLL_TIMEOUT,
   KILL_COMMAND,
@@ -115,5 +116,68 @@ describe('pollUntilDown (via stopServer)', () => {
     mockFetch.mockRejectedValue(new Error('refused'));
 
     await expect(stopServer()).resolves.toBeUndefined();
+  });
+});
+
+describe('startServer', () => {
+  it('resolves when pgrep finds the process alive after delay', async () => {
+    mockExecute
+      .mockResolvedValueOnce('ok')
+      .mockResolvedValueOnce('1234');
+
+    const promise = startServer();
+    await vi.advanceTimersByTimeAsync(STARTUP_CHECK_DELAY);
+    await expect(promise).resolves.toBeUndefined();
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+  });
+
+  it('throws with log output when process not found (pgrep returns empty)', async () => {
+    const logLines = 'Error: port conflict';
+    mockExecute
+      .mockResolvedValueOnce('ok')
+      .mockResolvedValueOnce('')
+      .mockResolvedValueOnce(`  ${logLines}  \n`);
+
+    const promise = startServer();
+    promise.catch(() => {});
+    await vi.advanceTimersByTimeAsync(STARTUP_CHECK_DELAY);
+    await expect(promise).rejects.toThrow('OpenCode server process exited');
+    await expect(promise).rejects.toThrow(logLines);
+  });
+
+  it('throws with "(no log output)" when process not found and log read returns empty', async () => {
+    mockExecute
+      .mockResolvedValueOnce('ok')
+      .mockResolvedValueOnce('')
+      .mockResolvedValueOnce('');
+
+    const promise = startServer();
+    promise.catch(() => {});
+    await vi.advanceTimersByTimeAsync(STARTUP_CHECK_DELAY);
+    await expect(promise).rejects.toThrow('(no log output)');
+  });
+
+  it('readLogTail trims whitespace from output when tail succeeds', async () => {
+    mockExecute
+      .mockResolvedValueOnce('ok')
+      .mockResolvedValueOnce('')
+      .mockResolvedValueOnce('\n  ValueError: bad config  \n\n');
+
+    const promise = startServer();
+    promise.catch(() => {});
+    await vi.advanceTimersByTimeAsync(STARTUP_CHECK_DELAY);
+    await expect(promise).rejects.toThrow('ValueError: bad config');
+  });
+
+  it('readLogTail returns empty string when tail command fails', async () => {
+    mockExecute
+      .mockResolvedValueOnce('ok')
+      .mockResolvedValueOnce('')
+      .mockRejectedValueOnce(new Error('log file missing'));
+
+    const promise = startServer();
+    promise.catch(() => {});
+    await vi.advanceTimersByTimeAsync(STARTUP_CHECK_DELAY);
+    await expect(promise).rejects.toThrow('(no log output)');
   });
 });
