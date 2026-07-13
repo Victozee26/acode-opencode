@@ -46,13 +46,13 @@ These could enhance the plugin in future iterations:
 // WRONG — will hang forever:
 await Executor.execute('opencode serve --port 4096');
 
-// CORRECT — background and detach:
+// CORRECT — background and detach (no `disown` — not available in BusyBox ash):
 await Executor.execute(
-  'nohup opencode serve --port 4096 --hostname 127.0.0.1 > /tmp/opencode.log 2>&1 & disown'
+  'mkdir -p /tmp && nohup opencode serve --port 4096 --hostname 127.0.0.1 > /tmp/opencode.log 2>&1 &'
 );
 ```
 
-The `execute()` promise resolves only after the command exits. For persistent processes (the OpenCode server), the `nohup ... & disown` pattern is mandatory.
+The `execute()` promise resolves only after the command exits. For persistent processes (the OpenCode server), the `nohup ... &` pattern is mandatory. (`disown` is a bash-ism not available in BusyBox `ash`.)
 
 ### No Output Streaming
 

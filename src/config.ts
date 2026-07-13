@@ -20,7 +20,7 @@ export const STOP_POLL_TIMEOUT = 3000;
 export const STOP_POLL_INTERVAL = 500;
 
 export function buildStartCommand(): string {
-  return `nohup opencode serve --port ${PORT} --hostname ${HOSTNAME} > ${LOG_PATH} 2>&1 & disown`;
+  return `mkdir -p "$(dirname ${LOG_PATH})" && nohup opencode serve --port ${PORT} --hostname ${HOSTNAME} > ${LOG_PATH} 2>&1 &`;
 }
 
 export const STATUS_MESSAGES: Record<string, string> = {

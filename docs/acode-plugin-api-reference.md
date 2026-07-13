@@ -221,7 +221,7 @@ Executor.execute(command: string, alpine?: boolean): Promise<string>
 
 **Critical behavior:**
 - **Blocking.** Resolves only after the command exits.
-- **For long-running processes** (servers), always use `nohup ... & disown`.
+- **For long-running processes** (servers), always use `nohup ... &` (no `disown` — not available in BusyBox `ash`).
 - **No streaming.** Output comes all at once after completion.
 - **Executing is hidden.** No visible terminal UI.
 

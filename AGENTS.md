@@ -35,7 +35,7 @@ src/
 ## Hard constraints (non-negotiable)
 
 - **Fixed port 4096, loopback only.** `opencode serve --port 4096 --hostname 127.0.0.1`. Never bind to `0.0.0.0` without adding auth.
-- **Executor.execute is blocking.** The terminal module resolves only after the command exits. All long-running commands (server start) MUST use `nohup ... & disown` — never call `execute()` without this pattern for persistent processes.
+- **Executor.execute is blocking.** The terminal module resolves only after the command exits. All long-running commands (server start) MUST use `nohup ... &` — never call `execute()` without this pattern for persistent processes. `disown` is a bash-ism not available in BusyBox `ash` (Acode's Alpine shell).
 
 ## Code conventions
 
