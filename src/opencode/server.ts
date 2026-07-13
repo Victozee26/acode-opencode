@@ -62,7 +62,10 @@ export async function waitForReady(): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, READY_POLL_INTERVAL));
   }
 
-  throw new Error(`Server did not respond within ${READY_TIMEOUT / 1000}s`);
+  const logTail = await readLogTail();
+  throw new Error(
+    `Server did not respond within ${READY_TIMEOUT / 1000}s.\nLast log lines:\n${logTail || '(no log output)'}`,
+  );
 }
 
 async function pollUntilDown(timeout: number): Promise<boolean> {
