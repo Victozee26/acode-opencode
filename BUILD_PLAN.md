@@ -52,11 +52,11 @@ Target: MVP that launches OpenCode's web UI inside Acode via a toolbar icon.
 
 ## Phase 4 — UI states
 
-- [ ] `loading` state: spinner + status text ("Checking OpenCode…" / "Installing…" / "Starting server…")
-- [ ] `ready` state: `<iframe src="http://127.0.0.1:4096">` filling `$page`
-- [ ] `error` state: show last lines of `/tmp/opencode.log`, retry button
-- [ ] Header bar inside `$page`: "OpenCode" label + "Restart" button
-- [ ] Confirm iframe actually renders OpenCode's chat UI and you can send a message end-to-end
+- [x] `loading` state: spinner + status text ("Checking OpenCode…" / "Installing…" / "Starting server…")
+- [x] `ready` state: `<iframe src="http://127.0.0.1:4096">` filling `$page`
+- [x] `error` state: show last lines of `/tmp/opencode.log`, retry button
+- [x] Header bar inside `$page`: "OpenCode" label + "Restart" button
+- [x] Confirm iframe actually renders OpenCode's chat UI and you can send a message end-to-end
 
 ---
 
