@@ -4,11 +4,7 @@ import { execute } from './executor';
 const mockExecute = vi.fn();
 
 beforeEach(() => {
-  vi.stubGlobal('acode', {
-    require: vi.fn(() => ({
-      Executor: { execute: mockExecute },
-    })),
-  });
+  vi.stubGlobal('Executor', { execute: mockExecute });
   mockExecute.mockReset();
 });
 
