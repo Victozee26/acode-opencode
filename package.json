@@ -1,0 +1,29 @@
+{
+  "name": "acode-plugin",
+  "version": "1.0.0",
+  "description": "Template for Acode plugin(Typescript)",
+  "main": "dist/main.js",
+  "repository": "https://github.com/Acode-Foundation/AcodeTSTemplate.git",
+  "author": "Acode Foundation",
+  "license": "MIT",
+  "dependencies": {
+    "acode-plugin-types": "^1.11.7-patch.2",
+    "html-tag-js": "^1.8.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.2",
+    "jszip": "^3.10.1",
+    "typescript": "^5.7.2"
+  },
+  "scripts": {
+    "dev": "node esbuild.config.mjs --serve",
+    "build": "tsc --noEmit && node esbuild.config.mjs"
+  },
+  "browserslist": [
+    "> 0.25%, not dead"
+  ],
+  "resolutions": {
+    "terser": ">=5.14.2 ",
+    "glob-parent": ">=5.1.2"
+  }
+}
