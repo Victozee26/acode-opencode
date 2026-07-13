@@ -96,7 +96,11 @@ export function createErrorDisplay(context: StateContext, onRetry: () => void): 
     <h3 style="color: var(--error-color, #f44); margin-bottom: 12px;">
       ${escapeHtml(errorInfo?.message ?? 'An unknown error occurred')}
     </h3>
-    <pre style="
+  `;
+
+  if (errorInfo?.logTail) {
+    const pre = document.createElement('pre');
+    pre.style.cssText = `
       max-width: 100%;
       max-height: 200px;
       overflow: auto;
@@ -107,25 +111,26 @@ export function createErrorDisplay(context: StateContext, onRetry: () => void): 
       font-size: 12px;
       white-space: pre-wrap;
       word-break: break-all;
-    ">${escapeHtml(errorInfo?.logTail ?? '')}</pre>
-  `;
-
-  if (errorInfo?.logTail) {
-    const retryBtn = document.createElement('button');
-    retryBtn.textContent = 'Retry';
-    retryBtn.style.cssText = `
-      margin-top: 16px;
-      padding: 8px 24px;
-      background: var(--primary-color, #06f);
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
+      margin: 0 0 16px 0;
     `;
-    retryBtn.addEventListener('click', onRetry);
-    wrapper.appendChild(retryBtn);
+    pre.textContent = errorInfo.logTail;
+    wrapper.appendChild(pre);
   }
+
+  const retryBtn = document.createElement('button');
+  retryBtn.textContent = 'Retry';
+  retryBtn.style.cssText = `
+    margin-top: 16px;
+    padding: 8px 24px;
+    background: var(--primary-color, #06f);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+  `;
+  retryBtn.addEventListener('click', onRetry);
+  wrapper.appendChild(retryBtn);
 
   return wrapper;
 }

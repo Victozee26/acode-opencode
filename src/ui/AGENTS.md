@@ -18,6 +18,7 @@ Owned by the root AGENTS.md. Two export modules:
 - `createIframe()` accepts a string URL (hardcoded to `http://127.0.0.1:4096` by caller).
 - `escapeHtml()` is a module-private helper in `components.ts` — all user/external strings rendered as HTML must pass through it.
 - Styles use CSS custom properties (`var(--primary-color, fallback)`) for Acode theming compatibility.
+- `createErrorDisplay()` unconditionally renders a retry button when error exists; the log tail `<pre>` block is conditional on `logTail` being truthy.
 - Event handlers (`onRestart`, `onRetry`) are attached via `addEventListener`, never inline `onclick` attributes.
 
 ## Work Guidance
