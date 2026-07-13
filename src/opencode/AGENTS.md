@@ -8,7 +8,7 @@ OpenCode lifecycle management: install detection, installation, server start/sto
 
 Owned by the root AGENTS.md. Two export modules:
 - `install.ts` — `checkInstalled()`, `installOpenCode()`
-- `server.ts` — `isServerUp()`, `startServer()`, `waitForReady()`, `stopServer()`, `restartForProject()`
+- `server.ts` — `isServerUp()`, `startServer()`, `waitForReady()`, `stopServer()`, `restartServer()`
 
 ## Local Contracts
 
@@ -17,7 +17,7 @@ Owned by the root AGENTS.md. Two export modules:
 - `isServerUp()` uses `fetch` with `no-cors` mode and `AbortController` timeout — NOT a standard HTTP health check. Addresses WebView CORS constraints.
 - `startServer()` fires `nohup ... & disown` via `execute()`. The caller must not call `execute()` directly for server start.
 - `waitForReady()` polls `isServerUp()` every `READY_POLL_INTERVAL` ms until `READY_TIMEOUT`.
-- `stopServer()` runs `pkill -f "opencode serve"` — best-effort, errors are swallowed.
+- `stopServer()` runs SIGTERM via `pkill -f "opencode serve"`, polls `isServerUp()` for up to `STOP_POLL_TIMEOUT`, escalates to SIGKILL (`pkill -9`) if needed, and polls again. Throws `Error` if port is still occupied after SIGKILL.
 - `restartServer()` is stop → start sequential, no concurrent semantics.
 - All commands are defined in `src/config.ts` — never inline shell commands here.
 

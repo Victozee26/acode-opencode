@@ -5,6 +5,9 @@ import {
   READY_POLL_INTERVAL,
   READY_TIMEOUT,
   KILL_COMMAND,
+  HARD_KILL_COMMAND,
+  STOP_POLL_TIMEOUT,
+  STOP_POLL_INTERVAL,
   buildStartCommand,
 } from '../config';
 
@@ -42,12 +45,35 @@ export async function waitForReady(): Promise<void> {
   throw new Error(`Server did not respond within ${READY_TIMEOUT / 1000}s`);
 }
 
+async function pollUntilDown(timeout: number): Promise<boolean> {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeout) {
+    const up = await isServerUp();
+    if (!up) return true;
+
+    await new Promise((resolve) => setTimeout(resolve, STOP_POLL_INTERVAL));
+  }
+
+  return false;
+}
+
 export async function stopServer(): Promise<void> {
   try {
     await execute(KILL_COMMAND);
   } catch {
-    // best-effort kill, ignore errors
+    // best-effort SIGTERM, check result next
   }
+
+  const softDown = await pollUntilDown(STOP_POLL_TIMEOUT);
+  if (softDown) return;
+
+  await execute(HARD_KILL_COMMAND);
+
+  const hardDown = await pollUntilDown(STOP_POLL_TIMEOUT);
+  if (hardDown) return;
+
+  throw new Error('Cannot stop server: port 4096 still occupied after SIGKILL');
 }
 
 export async function restartServer(): Promise<void> {

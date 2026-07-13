@@ -11,6 +11,9 @@ export const INSTALL_DEPS_COMMAND = 'apk add --no-cache nodejs npm';
 export const INSTALL_OPENCODE_COMMAND = 'npm install -g opencode-ai';
 export const CHECK_COMMAND = 'which opencode';
 export const KILL_COMMAND = 'pkill -f "opencode serve"';
+export const HARD_KILL_COMMAND = 'pkill -9 -f "opencode serve"';
+export const STOP_POLL_TIMEOUT = 3000;
+export const STOP_POLL_INTERVAL = 500;
 
 export function buildStartCommand(): string {
   return `nohup opencode serve --port ${PORT} --hostname ${HOSTNAME} > ${LOG_PATH} 2>&1 & disown`;
