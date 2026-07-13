@@ -13,6 +13,7 @@ export class AcodePlugin {
   private $page: Acode.WCPage | null = null;
   private isRunning = false;
   private sideButton: Acode.SideButton | null = null;
+  private handleShow!: () => void;
 
   async init(
     baseUrl: string,
@@ -29,11 +30,12 @@ export class AcodePlugin {
       }
     });
 
-    $page.on('show', () => {
+    this.handleShow = () => {
       if (!this.isRunning) {
         this.startFlow();
       }
-    });
+    };
+    $page.on('show', this.handleShow);
 
     const iconUrl = baseUrl + 'icon.png';
     acode.addIcon(ICON_CLASS, iconUrl);
@@ -52,7 +54,10 @@ export class AcodePlugin {
   async destroy(): Promise<void> {
     this.sideButton?.hide();
     this.sideButton = null;
-    this.$page?.off('show', () => {});
+    if (this.handleShow) {
+      this.$page?.off('show', this.handleShow);
+    }
+    this.$page?.hide();
     this.$page = null;
     reset();
   }
