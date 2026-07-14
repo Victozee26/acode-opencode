@@ -38,7 +38,11 @@ export const ERROR_FALLBACK_MESSAGE = 'No output captured. Check /tmp/opencode.l
 export const READY_POLL_INTERVAL = 1000;
 
 // Hard cap on total time spent waiting for Ready before giving up.
-export const READY_TIMEOUT = 15000;
+// This environment's cold boot (file picker, watcher, project refresh, location
+// services) takes ~19s before the server is actually serveable, so 15s was
+// cutting it off too early. 30s gives the first boot comfortable headroom while
+// still failing fast on a genuinely dead process.
+export const READY_TIMEOUT = 30000;
 
 // Alpine package install for the runtime (node/npm) OpenCode needs.
 export const INSTALL_DEPS_COMMAND = 'apk add --no-cache nodejs npm';
@@ -63,17 +67,25 @@ export const STOP_POLL_TIMEOUT = 3000;
 export const STOP_POLL_INTERVAL = 500;
 
 // Builds the command that launches OpenCode as a detached background server.
-// - `nohup ... &` detaches the process so it survives the (blocking) terminal
-//   execute() call returning; required for any persistent process.
-// - `> LOG_PATH 2>&1` redirects output to a file we can tail for errors, since
-//   the exec'd shell would otherwise capture it.
-// - `< /dev/null` frees stdin; without it BusyBox `ash` (Acode's Alpine shell)
-//   can block on inherited stdin, and it prevents the child from keeping the
-//   terminal's TTY open.
-// - `--print-logs` makes OpenCode echo its own logs to stdout (redirected to
-//   the log file) so we have diagnostics without losing buffered output.
+//
+// CRITICAL CONSTRAINT (discovered empirically): Acode's `Executor.execute`
+// treats the command as finished the moment its stdout pipe reaches EOF. If we
+// redirect the server's output to a FILE (`> LOG_PATH 2>&1`), the backgrounded
+// process writes to the file, the executor's pipe closes immediately, execute()
+// resolves, and Acode tears down the shell session — reaping the server (it
+// never shows in the inspector and the health probe misses it). The server must
+// therefore KEEP THE EXECUTOR'S STDOUT PIPE OPEN so the session survives.
+//
+// We achieve both survival AND a log file with `2>&1 | tee LOG_PATH`: tee holds
+// the pipe open (so the session isn't torn down) while also mirroring output to
+// the log file for diagnostics. `nohup ... &` lets execute() return at once and
+// ignores SIGHUP. `--print-logs` makes OpenCode echo its logs (line-buffered) so
+// the log file holds the real startup sequence.
+//
+// `setsid` was also tried but, combined with a file redirect, still got reaped;
+// keeping the executor pipe open via tee is the validated approach.
 export function buildStartCommand(): string {
-  return `nohup opencode serve --port ${PORT} --hostname ${HOSTNAME} --print-logs > ${LOG_PATH} 2>&1 < /dev/null &`;
+  return `nohup opencode serve --port ${PORT} --hostname ${HOSTNAME} --print-logs 2>&1 | tee ${LOG_PATH} &`;
 }
 
 // Human-readable status line shown in the UI per state. Keys are AppState

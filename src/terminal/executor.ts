@@ -7,11 +7,15 @@ const log = createLogger('executor');
  * stdout.
  *
  * IMPORTANT — BLOCKING BY NATURE: Acode's global `Executor.execute` resolves
- * only AFTER the command fully exits. This means a long-running/persistent
- * command (e.g. starting the OpenCode server) must be launched detached via
- * `nohup ... &` by the caller, otherwise this promise never resolves and the
- * plugin hangs. Note `disown` is a bash-ism unavailable in BusyBox `ash`
- * (Acode's Alpine shell), so `&` alone is the supported detachment pattern.
+ * only AFTER the command fully exits, and it treats the command as finished the
+ * moment its stdout pipe hits EOF — then tears down the shell session, reaping
+ * any backgrounded child. A persistent server MUST therefore keep that stdout
+ * pipe open: launch it as `nohup ... 2>&1 | tee LOG &` (tee holds the pipe open
+ * while still writing a log file). A plain `> LOG 2>&1` file redirect closes the
+ * pipe and gets the server reaped (it vanishes from the inspector and the health
+ * probe misses it). `setsid` was tried but combined with a file redirect was
+ * still reaped; the pipe-keep-open approach is the validated one. `disown` is a
+ * bash-ism not available in BusyBox `ash` (Acode's Alpine shell).
  *
  * @param command - The command string to execute.
  * @param alpine - Whether to run inside Alpine Linux (default true; essentially
