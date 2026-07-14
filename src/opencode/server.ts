@@ -33,22 +33,18 @@ const log = createLogger('server');
  * own behaviour, so a hung connection still reports "down" instead of hanging.
  */
 export async function isServerUp(): Promise<boolean> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT);
+
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT);
-
-    await fetch(HEALTH_CHECK_URL, {
-      mode: 'no-cors',
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-    log.debug('isServerUp: true');
-    return true;
+    const res = await fetch(HEALTH_CHECK_URL, { signal: controller.signal });
+    log.debug(`isServerUp: ${res.ok}`);
+    return res.ok; // res.ok = true only for status 200-299
   } catch {
-    // Abort (timeout) or network failure both mean the server is not reachable.
     log.debug('isServerUp: false');
     return false;
+  } finally {
+    clearTimeout(timeoutId); // ALWAYS clears, success or fail — no leaks
   }
 }
 
