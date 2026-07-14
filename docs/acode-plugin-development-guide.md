@@ -91,9 +91,9 @@ $page.show = () => {
 };
 ```
 
-### Health Check with `no-cors`
+### Health Check via `cordova.plugin.http`
 
-The health check uses `fetch(..., { mode: 'no-cors' })` with an `AbortController` timeout. This is intentional — the WebView CORS environment doesn't allow standard opaque requests. Do not change this to a normal fetch without understanding the CORS implications.
+The health check probes `http://127.0.0.1:4096/global/health` using `cordova.plugin.http` (Cordova Advanced HTTP), which performs requests on the native network stack — so WebView CORS does NOT apply and the loopback probe resolves instead of hanging. A plain `fetch` to `127.0.0.1` is blocked by WebView CORS and hangs forever, so it is only used as a fallback when `cordova.plugin.http` is absent (e.g. under Vitest/jsdom). Any response (success or a positive status) means the server is up; connection-refused/timeout means down.
 
 ### String Building in Shell Commands
 

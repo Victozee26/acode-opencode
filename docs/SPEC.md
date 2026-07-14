@@ -32,8 +32,9 @@ graph TB
 Communication with Alpine happens only through Acode's `terminal` module
 (`Executor.execute`), never a custom bridge. The iframe talks to the server
 directly over loopback HTTP — same-origin-style embedding, no CORS needed
-since we're loading the full page, not fetching cross-origin data into JS
-(except the lightweight `no-cors` health-check ping).
+since we're loading the full page, not fetching cross-origin data into JS.
+The lightweight health-check ping uses `cordova.plugin.http` (native stack,
+CORS-free) with a `fetch({ mode: 'no-cors' })` fallback for non-device runs.
 
 ---
 
@@ -125,7 +126,8 @@ nohup opencode serve --port 4096 --hostname 127.0.0.1 \
   > /tmp/opencode.log 2>&1 & disown
 
 # health check (JS side, not shell)
-fetch('http://127.0.0.1:4096/doc', { mode: 'no-cors' })
+# primary: cordova.plugin.http.get('http://127.0.0.1:4096/global/health', ...)
+# fallback (tests/dev only): fetch('http://127.0.0.1:4096/global/health', { mode: 'no-cors' })
 
 # best-effort stop before restart
 pkill -f "opencode serve"

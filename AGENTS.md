@@ -52,7 +52,7 @@ src/
 - Tests use Vitest with jsdom (`npm test`). Test files live alongside source as `*.test.ts`.
 - `plugin.json` has placeholder values (`id`, `name`, `author`) that need real values before publishing.
 - `html-tag-js` is listed as a dependency but currently unused — all DOM is vanilla `document.createElement`.
-- Health-check uses `fetch(..., { mode: 'no-cors' })` with `AbortController` timeout — not a standard HTTP check. Do not change this to a normal fetch without understanding the CORS implications in the WebView context.
+- Health-check uses `cordova.plugin.http` (Cordova Advanced HTTP) as primary — it runs on the native network stack so WebView CORS does NOT apply and a loopback probe to `127.0.0.1:4096` actually resolves (a plain `fetch` to loopback hangs forever in this WebView). Falls back to `fetch(..., { mode: 'no-cors' })` + `AbortController` only when the plugin is absent (tests/dev). Do not reintroduce a plain cross-origin `fetch` as the primary probe. See `src/opencode/AGENTS.md`.
 
 # DOX framework
 

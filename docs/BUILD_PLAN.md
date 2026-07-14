@@ -39,7 +39,7 @@ Target: MVP that launches OpenCode's web UI inside Acode via a toolbar icon.
 
 ## Phase 3 — Server lifecycle
 
-- [x] Write `isServerUp()`: `fetch('http://127.0.0.1:4096/doc', { mode: 'no-cors' })` wrapped in try/catch + timeout (~2s)
+- [x] Write `isServerUp()`: probe `http://127.0.0.1:4096/global/health` via `cordova.plugin.http` (CORS-free native request, actual resolve) with a `fetch({ mode: 'no-cors' })` + `AbortController` fallback for non-device runs (~2s timeout)
 - [x] Write `startServer()`:
   ```
   execute(`nohup opencode serve --port 4096 --hostname 127.0.0.1 > /tmp/opencode.log 2>&1 & disown`)

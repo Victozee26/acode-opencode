@@ -9,7 +9,7 @@
 
 | BUILD_PLAN Item | Where Implemented |
 |---|---|
-| `isServerUp()` — `fetch` with no-cors + AbortController timeout (2s) | `src/opencode/server.ts:11-26` |
+| `isServerUp()` — `cordova.plugin.http` probe with `fetch({ mode: 'no-cors' })` + `AbortController` fallback (2s timeout) | `src/opencode/server.ts` (`getCordovaHttp`, `createCordovaProbe`, `createFetchProbe`, `isServerUp`) |
 | `startServer()` — `nohup opencode serve ... & disown` | `src/opencode/server.ts:28-30`, `src/config.ts:15-17` (`buildStartCommand`) |
 | `waitForReady()` — poll `isServerUp()` every 1s, timeout 15s | `src/opencode/server.ts:32-43` |
 | `stopServer()` — `pkill -f "opencode serve"` (best-effort) | `src/opencode/server.ts:45-51` |
@@ -21,7 +21,7 @@
 | Tests for `startFlow` and `handleRestart` covering timeout, restart failure, and fallback messages | `src/main.test.ts` |
 
 ### Design Divergence Note
-`../BUILD_PLAN.md` Phase 3 says `isServerUp()` should target `/doc`. The config uses `HEALTH_CHECK_URL = ${BASE_URL}/doc`, matching the plan. The `no-cors` limitation (can't distinguish 200 from 500) is a known WebView constraint documented in the root `AGENTS.md` — not a bug to fix.
+`../BUILD_PLAN.md` Phase 3 says `isServerUp()` should target `/doc`. The config uses `HEALTH_CHECK_URL = ${BASE_URL}/global/health`, matching the plan's intent. Health probing uses `cordova.plugin.http` (native, CORS-free, real status) with a `fetch({ mode: 'no-cors' })` fallback — see root `AGENTS.md` and `src/opencode/AGENTS.md`.
 
 ---
 
@@ -57,7 +57,7 @@ Make `stopServer()` reliably kill the server process and verify port 4096 is fre
 
 ### Assumptions
 1. **Critical:** `pkill` is available in Acode's Alpine terminal (BusyBox provides it — confirmed by existing `KILL_COMMAND` usage).
-2. **Critical:** `isServerUp()` can distinguish "server down" from "server up" at the granularity needed for polling. The `no-cors` fetch will throw on connection refused (server down) and resolve on any TCP connection (server up). This is sufficient.
+2. **Critical:** `isServerUp()` can distinguish "server down" from "server up" at the granularity needed for polling. The `cordova.plugin.http` probe reports up on any response (status > 0) and down on connection refused; the `fetch` fallback throws on connection refused (server down) and resolves on any TCP connection (server up). This is sufficient.
 3. **Important:** `pkill -9` (SIGKILL) will kill any process matching `"opencode serve"` — no process can ignore SIGKILL. If port is still occupied after SIGKILL, something other than `opencode serve` is on port 4096, and throwing is the correct behavior.
 4. **Nice-to-have:** The 3s total wait (two 3s windows if escalation needed = up to 6s) is acceptable for a restart operation. If user perception is too slow, intervals can be tightened later.
 

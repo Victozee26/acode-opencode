@@ -14,7 +14,7 @@ Owned by the root AGENTS.md. Two export modules:
 
 - `checkInstalled()` runs `which opencode` and returns boolean — errors mean not installed.
 - `installOpenCode()` runs two sequential commands: install deps (`apk add nodejs npm`), then `npm install -g opencode-ai`. Both are blocking. On failure, throws `Error` with distinct prefixes — `"Installation failed (deps): "` or `"Installation failed (opencode): "` — followed by the captured error message and command output from `execute()`.
-- `isServerUp()` uses `fetch` with `no-cors` mode and `AbortController` timeout — NOT a standard HTTP health check. Addresses WebView CORS constraints. Health-check endpoint is `/global/health` (the standard OpenCode server health endpoint).
+- `isServerUp()` probes the `/global/health` endpoint (the standard OpenCode server health endpoint) using `cordova.plugin.http` (Cordova Advanced HTTP) when available, falling back to `fetch` with `no-cors` mode + `AbortController` only when the plugin is absent (tests/dev). `cordova.plugin.http` runs on the native network stack, so WebView CORS does NOT apply and the loopback probe actually resolves (a plain `fetch` to `127.0.0.1` hangs forever in this WebView). Resolution (or any positive status) === up; connection refused / timeout === down. We never read `res.ok` — a `no-cors` response is opaque (`status: 0`) even when the server is healthy. The probe is selected once and cached; the choice is logged.
 - `startServer()` fires `nohup ... &` via `execute()` (with `< /dev/null` stdin redirect and `--print-logs` flag), then waits `STARTUP_CHECK_DELAY` (500ms) and validates the process is alive via `PROCESS_CHECK_COMMAND`. If the process exited immediately (missing binary, config error, port conflict), it reads the last `LOG_TAIL_LINES` (20) from the log and throws a descriptive `Error` before the caller ever hits `waitForReady()`. The caller must not call `execute()` directly for server start.
 - **Why `--print-logs`:** `opencode serve` writes its logs to `~/.local/share/opencode/log/<ts>.log` by default — stdout receives only 1–2 `console.log` lines that are block-buffered by Node when piped to a file, so they almost never flush. The result is a misleading `(no log output)` in the error UI when the server is actually alive. `--print-logs` mirrors the real Effect-Log output to stderr (line-buffered, flushes immediately), so `/tmp/opencode.log` actually contains the startup sequence for diagnostics.
 - `waitForReady()` polls `isServerUp()` every `READY_POLL_INTERVAL` ms until `READY_TIMEOUT`. On timeout, reads the last `LOG_TAIL_LINES` from `LOG_PATH` via `readLogTail()`, checks process state via `PROCESS_CHECK_COMMAND`, and throws an `Error` that includes process state (alive/dead/unknown), log tail (or `(no log output)` if empty/unreadable).
@@ -25,7 +25,7 @@ Owned by the root AGENTS.md. Two export modules:
 ## Work Guidance
 
 - Add new lifecycle stages by exporting a function, not by inlining logic in `main.ts`.
-- Health check changes must preserve `no-cors` mode — the WebView blocks normal CORS requests to `127.0.0.1`.
+- Health check uses `cordova.plugin.http` as primary (bypasses WebView CORS and resolves on loopback). The `fetch` fallback must keep `no-cors` mode. Do not reintroduce a plain cross-origin `fetch` as the primary probe — it hangs in this WebView.
 
 ## Verification
 

@@ -19,33 +19,110 @@ import { createLogger } from '../logger';
 const log = createLogger('server');
 
 /**
- * Best-effort liveness probe for the OpenCode server.
+ * Resolves the Cordova Advanced HTTP plugin when present in the WebView.
  *
- * This is NOT a conventional HTTP health check. The plugin runs inside an
- * Android WebView, where a normal `fetch` to `127.0.0.1:<port>` is blocked by
- * the browser's CORS policy (cross-origin to a non-registered origin). Using
- * `mode: 'no-cors'` lets the request proceed, but the response is "opaque": we
- * cannot read status or body. We can only observe whether the request *resolved*
- * (the server accepted the connection) or *rejected/aborted* (nothing listening
- * or it timed out). So resolution === "up", anything else === "down".
+ * Acode bundles `cordova-plugin-advanced-http` and exposes it at
+ * `cordova.plugin.http`. Unlike `fetch()`, it performs requests on the native
+ * network stack, so WebView CORS rules do NOT apply — this is what makes a
+ * loopback health probe to `127.0.0.1:4096` actually resolve instead of hanging
+ * forever (the exact failure seen with `fetch({ mode: 'no-cors' })` here).
  *
- * The `AbortController` enforces `HEALTH_CHECK_TIMEOUT` independently of fetch's
- * own behaviour, so a hung connection still reports "down" instead of hanging.
+ * Returns `null` when the plugin is unavailable (e.g. under jsdom/Vitest or a
+ * build without it), so callers can fall back to `fetch`.
  */
-export async function isServerUp(): Promise<boolean> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT);
+function getCordovaHttp(): unknown | null {
+  const cordova = (window as unknown as { cordova?: { plugin?: { http?: unknown } } }).cordova;
+  const http = cordova?.plugin?.http;
+  return http ?? null;
+}
 
-  try {
-    const res = await fetch(HEALTH_CHECK_URL, { signal: controller.signal });
-    log.debug(`isServerUp: ${res.ok}`);
-    return res.ok; // res.ok = true only for status 200-299
-  } catch {
-    log.debug('isServerUp: false');
-    return false;
-  } finally {
-    clearTimeout(timeoutId); // ALWAYS clears, success or fail — no leaks
+/**
+ * Builds a health probe backed by `cordova.plugin.http`.
+ *
+ * Sends a GET with a per-request timeout (seconds). Any response — success OR a
+ * failure callback carrying a *positive* status — means something answered on
+ * the port, so the server is considered up. A negative status (native/connection
+ * error, e.g. connection refused) means nothing is listening → down. The promise
+ * never rejects: a slow request is bounded by the plugin's own timeout.
+ */
+function createCordovaProbe(http: unknown): (url: string) => Promise<boolean> {
+  const timeoutSec = HEALTH_CHECK_TIMEOUT / 1000;
+  const client = http as {
+    sendRequest: (
+      url: string,
+      options: { method: string; timeout: number },
+      success: () => void,
+      failure: (err: { status?: number }) => void,
+    ) => void;
+  };
+  return (url: string) =>
+    new Promise<boolean>((resolve) => {
+      client.sendRequest(
+        url,
+        { method: 'GET', timeout: timeoutSec },
+        () => {
+          log.debug('isServerUp (cordova): up');
+          resolve(true);
+        },
+        (err: { status?: number }) => {
+          const status = typeof err?.status === 'number' ? err.status : 0;
+          const up = status > 0;
+          log.debug(`isServerUp (cordova): ${up ? 'up' : 'down'} (status ${status})`);
+          resolve(up);
+        },
+      );
+    });
+}
+
+/**
+ * Builds a health probe backed by `fetch` with `no-cors` + `AbortController`.
+ *
+ * Fallback used when `cordova.plugin.http` is unavailable (tests, dev server).
+ * In a real Acode WebView this path hangs on loopback (CORS), so it is only
+ * correct off-device. Resolution === up (the server accepted the connection);
+ * anything else (reject/abort/timeout) === down. We deliberately do NOT read
+ * `res.ok` — a `no-cors` response is opaque with `status: 0`/`ok: false` even
+ * when the server is healthy, which would always report "down".
+ */
+function createFetchProbe(): (url: string) => Promise<boolean> {
+  return async (url: string) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT);
+    try {
+      await fetch(url, { mode: 'no-cors', signal: controller.signal });
+      log.debug('isServerUp (fetch): up');
+      return true;
+    } catch (err) {
+      const aborted = err instanceof Error && err.name === 'AbortError';
+      log.debug(`isServerUp (fetch): down${aborted ? ' (timeout)' : ''}`);
+      return false;
+    } finally {
+      clearTimeout(timeoutId); // ALWAYS clears — no timer leaks
+    }
+  };
+}
+
+let cachedProbe: ((url: string) => Promise<boolean>) | null = null;
+
+/**
+ * Returns the health probe to use, selecting it once and caching the result.
+ *
+ * Prefers `cordova.plugin.http` (native, CORS-free, resolvable on loopback);
+ * falls back to `fetch` when the plugin is absent. The choice is logged so a
+ * hung/failed probe is easy to diagnose from the plugin logs.
+ */
+function getHealthProbe(): (url: string) => Promise<boolean> {
+  if (!cachedProbe) {
+    const http = getCordovaHttp();
+    cachedProbe = http ? createCordovaProbe(http) : createFetchProbe();
+    log.info(`health probe: ${http ? 'cordova.plugin.http' : 'fetch (fallback)'}`);
   }
+  return cachedProbe;
+}
+
+export async function isServerUp(): Promise<boolean> {
+  const probe = getHealthProbe();
+  return probe(HEALTH_CHECK_URL);
 }
 
 /**
