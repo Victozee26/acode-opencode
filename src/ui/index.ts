@@ -4,6 +4,7 @@ import {
   createSpinner,
   createIframe,
   createHeaderBar,
+  createRestartButton,
   createErrorDisplay,
 } from './components';
 import { createLogger } from '../logger';
@@ -60,7 +61,7 @@ function injectBaseStyles(): void {
  * @param $page - Acode's web component page (its `body`/`header` are DOM roots).
  * @param state - Current `AppState` driving which view is built.
  * @param context - State context (error info, etc.) needed by some views.
- * @param onRestart - Callback wired into the Ready header's Restart button.
+ * @param onRestart - Callback wired into the Ready floating Restart button.
  */
 export function render(
   $page: Acode.WCPage,
@@ -148,10 +149,15 @@ function renderReady(
   $page: Acode.WCPage,
   onRestart: () => void,
 ): void {
-  // Wires the header (Restart button -> onRestart) and embeds the OpenCode web
-  // UI via an iframe pointing at the loopback server (BASE_URL from config).
-  $page.header.appendChild(createHeaderBar(onRestart));
-  $page.body.appendChild(createIframe(BASE_URL));
+  // Header is status-only (Acode re-paints it and drops our listeners), so the
+  // Restart control lives as a floating button overlaid on the iframe in the
+  // body, where our DOM reliably receives clicks.
+  $page.header.appendChild(createHeaderBar());
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'position: relative; width: 100%; height: 100%;';
+  wrapper.appendChild(createIframe(BASE_URL));
+  wrapper.appendChild(createRestartButton(onRestart));
+  $page.body.appendChild(wrapper);
 }
 
 function renderError(

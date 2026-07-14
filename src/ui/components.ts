@@ -92,16 +92,18 @@ export function createIframe(src: string): HTMLIFrameElement {
 }
 
 /**
- * Build the header bar shown in the Ready state, with a "Restart" button wired
- * to `onRestart`. The button handler is attached via `addEventListener` (never
- * an inline `onclick` attribute) so the callback closure is safe from injection.
+ * Build the header bar shown in the Ready state. Status display only — it must
+ * NOT carry interactive controls. Acode owns/re-paints the `$page.header`
+ * region and drops dynamically-appended event listeners, so the Restart action
+ * lives in the body as a floating button (see `createRestartButton`) where our
+ * DOM is fully under our control and reliably receives clicks.
  */
-export function createHeaderBar(onRestart: () => void): HTMLElement {
+export function createHeaderBar(): HTMLElement {
   const header = document.createElement('div');
   header.style.cssText = `
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     padding: 8px 16px;
     background: var(--header-bg, #1a1a2e);
     border-bottom: 1px solid var(--border-color, #333);
@@ -136,11 +138,33 @@ export function createHeaderBar(onRestart: () => void): HTMLElement {
   leftGroup.appendChild(projectLabel);
   header.appendChild(leftGroup);
 
+  return header;
+}
+
+/**
+ * Build the floating "Restart" button rendered in the body, overlaid on top of
+ * the embedded OpenCode iframe. The body region is fully under our control (the
+ * iframe there receives pointer events normally), so this button reliably
+ * receives clicks — unlike `$page.header`, which Acode re-paints and strips of
+ * our listeners. The overlay wrapper uses `pointer-events: none` so the iframe
+ * underneath stays interactive everywhere except the button itself.
+ */
+export function createRestartButton(onRestart: () => void): HTMLElement {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 10;
+    pointer-events: none;
+  `;
+
   const restartBtn = document.createElement('button');
   restartBtn.textContent = 'Restart';
   restartBtn.className = 'opencode-btn';
   restartBtn.style.cssText = `
-    padding: 5px 14px;
+    pointer-events: auto;
+    padding: 6px 16px;
     background: var(--primary-color, #06f);
     color: #fff;
     border: none;
@@ -148,11 +172,12 @@ export function createHeaderBar(onRestart: () => void): HTMLElement {
     cursor: pointer;
     font-size: 12px;
     font-weight: 500;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
   `;
   restartBtn.addEventListener('click', onRestart);
-  header.appendChild(restartBtn);
+  overlay.appendChild(restartBtn);
 
-  return header;
+  return overlay;
 }
 
 /**
