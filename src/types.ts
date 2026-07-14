@@ -23,11 +23,10 @@ export interface ErrorInfo {
 // The single immutable snapshot of plugin state broadcast on every transition.
 // Contrast with ErrorInfo: ErrorInfo is ONLY the error detail, whereas
 // StateContext is the whole app snapshot (including which state we're in and
-// the optional project path). A transition carries StateContext; an error
-// carries ErrorInfo that then lives under StateContext.error.
+// any error). A transition carries StateContext; an error carries ErrorInfo
+// that then lives under StateContext.error.
 export interface StateContext {
   currentState: AppState;
-  projectPath?: string | null;
   error: ErrorInfo | null;
 }
 

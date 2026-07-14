@@ -8,7 +8,6 @@ const log = createLogger('state');
 // a stable Readonly snapshot that won't change under a consumer's feet.
 let context: StateContext = {
   currentState: AppState.Idle,
-  projectPath: null,
   error: null,
 };
 
@@ -63,13 +62,12 @@ export function onStateChange(listener: StateListener): () => void {
   };
 }
 
-// Return the machine to its initial state, dropping any error and project
-// context — used when the plugin is torn down or the flow is restarted.
+// Return the machine to its initial state, dropping any error — used when the
+// plugin is torn down or the flow is restarted.
 export function reset(): void {
   log.info('reset');
   context = {
     currentState: AppState.Idle,
-    projectPath: null,
     error: null,
   };
 }
