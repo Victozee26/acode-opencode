@@ -24,7 +24,6 @@ src/
   config.ts             # all named constants (port, URLs, commands, status messages)
   logger.ts             # leveled logging (createLogger, setLogEnabled, setLogLevel)
   error.ts              # extractErrorInfo() — normalizes unknown errors to summary/logTail
-  project.ts            # placeholder stub for future SAF path bridging (no exports)
   terminal/executor.ts  # thin wrapper over global Executor
   opencode/install.ts   # checkInstalled, installOpenCode
   opencode/server.ts    # isServerUp, startServer, stopServer, restartServer

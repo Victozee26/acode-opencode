@@ -101,9 +101,10 @@ and a retry action. `restart` (user-triggered) re-enters at
 |---|---|
 | `main.ts` | Plugin entrypoint (`AcodePlugin` class), registers icon, orchestrates flow |
 | `config.ts` | All named constants (port, URLs, commands, timeouts, status messages) |
-| `types.ts` | `AppState` enum, `StateContext`, `ErrorInfo`, `StateListener`, `CommandBinding` |
+| `types.ts` | `AppState` enum, `StateContext`, `ErrorInfo`, `StateListener` |
 | `state.ts` | State machine: `transition()`, `onStateChange()`, `setError()`, `reset()` |
-| `project.ts` | Held for future SAF-bridging support; not used in current flow |
+| `logger.ts` | Leveled logging: `createLogger()`, `setLogEnabled()`, `setLogLevel()`, `getLogLevel()` |
+| `error.ts` | `extractErrorInfo()` — normalizes unknown errors into `{ summary, logTail }` |
 | `terminal/executor.ts` | Thin wrapper around `acode.require('terminal').Executor` (`execute(command, alpine)`) |
 | `opencode/install.ts` | `checkInstalled()`, `installOpenCode()` — npm-based installation into Alpine |
 | `opencode/server.ts` | `isServerUp()`, `startServer()`, `waitForReady()`, `stopServer()`, `restartServer()` |
