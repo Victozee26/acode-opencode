@@ -48,20 +48,42 @@ export async function isServerUp(): Promise<boolean> {
   }
 
   return new Promise<boolean>((resolve) => {
-    http.sendRequest(
-      HEALTH_CHECK_URL,
-      { method: 'GET', timeout: HEALTH_CHECK_TIMEOUT / 1000 },
-      () => {
-        log.debug('isServerUp: up');
-        resolve(true);
-      },
-      (err: { status?: number }) => {
-        const status = typeof err?.status === 'number' ? err.status : 0;
-        const up = status > 0;
-        log.debug(`isServerUp: ${up ? 'up' : 'down'} (status ${status})`);
-        resolve(up);
-      },
-    );
+    let settled = false;
+    const settle = (value: boolean) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+
+    // Independent safeguard: a missing/failed native callback must never hang
+    // the caller. waitForReady()/pollUntilDown() only check their own timeout
+    // between iterations, so an unresolved isServerUp() would freeze them.
+    const watchdog = setTimeout(() => settle(false), HEALTH_CHECK_TIMEOUT + 500);
+
+    try {
+      http.sendRequest(
+        HEALTH_CHECK_URL,
+        { method: 'GET', timeout: HEALTH_CHECK_TIMEOUT / 1000 },
+        () => {
+          log.debug('isServerUp: up');
+          clearTimeout(watchdog);
+          settle(true);
+        },
+        (err: { status?: number }) => {
+          const status = typeof err?.status === 'number' ? err.status : 0;
+          const up = status > 0;
+          log.debug(`isServerUp: ${up ? 'up' : 'down'} (status ${status})`);
+          clearTimeout(watchdog);
+          settle(up);
+        },
+      );
+    } catch {
+      // A synchronous throw from sendRequest must not break the "never rejects"
+      // contract — treat it as down rather than propagating an exception.
+      log.debug('isServerUp: sendRequest threw — down');
+      clearTimeout(watchdog);
+      settle(false);
+    }
   });
 }
 
