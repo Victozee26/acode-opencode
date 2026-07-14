@@ -3,10 +3,12 @@ import { AppState } from './types';
 import * as stateModule from './state';
 import * as installModule from './opencode/install';
 import * as serverModule from './opencode/server';
+import * as healthModule from './opencode/health';
 
 vi.mock('./state');
 vi.mock('./opencode/install');
 vi.mock('./opencode/server');
+vi.mock('./opencode/health');
 vi.mock('./ui/index');
 vi.mock('../plugin.json', () => ({
   default: { id: 'acode.plugin', name: 'Plugin', main: 'main.js', version: '1.0.0' },
@@ -16,7 +18,7 @@ const mockTransition = vi.mocked(stateModule.transition);
 const mockSetError = vi.mocked(stateModule.setError);
 const mockCheckInstalled = vi.mocked(installModule.checkInstalled);
 const mockInstallOpenCode = vi.mocked(installModule.installOpenCode);
-const mockIsServerUp = vi.mocked(serverModule.isServerUp);
+const mockIsServerUp = vi.mocked(healthModule.isServerUp);
 const mockStartServer = vi.mocked(serverModule.startServer);
 const mockWaitForReady = vi.mocked(serverModule.waitForReady);
 const mockRestartServer = vi.mocked(serverModule.restartServer);

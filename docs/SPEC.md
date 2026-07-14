@@ -107,7 +107,8 @@ and a retry action. `restart` (user-triggered) re-enters at
 | `error.ts` | `extractErrorInfo()` — normalizes unknown errors into `{ summary, logTail }` |
 | `terminal/executor.ts` | Thin wrapper around `acode.require('terminal').Executor` (`execute(command, alpine)`) |
 | `opencode/install.ts` | `checkInstalled()`, `installOpenCode()` — npm-based installation into Alpine |
-| `opencode/server.ts` | `isServerUp()`, `startServer()`, `waitForReady()`, `stopServer()`, `restartServer()` |
+| `opencode/health.ts` | `isServerUp()` — Cordova Advanced HTTP probe of `/global/health` |
+| `opencode/server.ts` | `buildStartCommand()`, `startServer()`, `waitForReady()`, `stopServer()`, `restartServer()` |
 | `ui/index.ts` | `render()` orchestrator dispatching to one render function per `AppState` |
 | `ui/components.ts` | Vanilla DOM factory functions: spinner, iframe, header bar, error display |
 
