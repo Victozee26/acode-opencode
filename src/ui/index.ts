@@ -10,6 +10,8 @@ import { createLogger } from '../logger';
 
 const log = createLogger('ui');
 
+let activeSpinner: (HTMLElement & { stop: () => void }) | null = null;
+
 // Human-readable status line per state. Keys are AppState values so the render
 // layer can index directly by the current state enum. These are presentation
 // strings and live with the UI layer rather than in config.ts.
@@ -38,6 +40,11 @@ export function render(
   onRestart: () => void,
 ): void {
   log.debug(`render: ${state}`);
+  // Stop any running spinner animation before tearing down the DOM.
+  if (activeSpinner) {
+    activeSpinner.stop();
+    activeSpinner = null;
+  }
   // Clear both regions first so every render starts from a clean slate.
   $page.body.innerHTML = '';
   $page.header.innerHTML = '';
@@ -81,7 +88,8 @@ function renderIdle($page: Acode.WCPage): void {
 
 function renderLoading($page: Acode.WCPage, state: AppState): void {
   const statusText = STATUS_MESSAGES[state] ?? 'Loading…';
-  $page.body.appendChild(createSpinner(statusText));
+  activeSpinner = createSpinner(statusText);
+  $page.body.appendChild(activeSpinner);
 }
 
 function renderReady(

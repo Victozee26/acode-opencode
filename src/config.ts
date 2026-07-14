@@ -66,3 +66,12 @@ export const PROCESS_CHECK_COMMAND = 'pgrep -f "opencode serve" || true';
 // the process has actually exited.
 export const STOP_POLL_TIMEOUT = 3000;
 export const STOP_POLL_INTERVAL = 500;
+
+// Spinner animation: degrees rotated per second. The JS animation loop uses
+// delta-time to advance by exactly this many degrees each second regardless of
+// actual frame timing.
+export const SPINNER_DEG_PER_SEC = 450;
+
+// Spinner animation: target frame rate for the setInterval loop. Actual FPS
+// may vary but delta-time keeps rotation speed consistent.
+export const SPINNER_FPS = 30;

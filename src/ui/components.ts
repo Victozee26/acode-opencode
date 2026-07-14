@@ -1,4 +1,5 @@
 import { StateContext } from '../types';
+import { SPINNER_DEG_PER_SEC, SPINNER_FPS } from '../config';
 
 /**
  * Build a centered, full-size flex container used as the root wrapper for the
@@ -22,38 +23,49 @@ export function createContainer(id: string): HTMLElement {
 }
 
 /**
- * Build the loading view: a CSS-animated spinner plus a status line.
+ * Build the loading view: a JS-animated spinner plus a status line.
  *
- * The spinner's visuals and its `@keyframes` are injected per-call because the
- * component is pure and has no access to a global stylesheet. Colors come from
- * Acode CSS custom properties (`var(--x, fallback)`) so it adapts to Acode's
- * active theme; the fallback is used when the variable is undefined. `innerHTML`
- * is used for the static spinner markup, but the dynamic `statusText` is passed
- * through `escapeHtml` first to avoid HTML injection of external strings.
+ * The spinner rotates via `setInterval` at `SPINNER_FPS` and advances by
+ * `SPINNER_DEG_PER_SEC * dt` each tick using wall-clock delta time, so the
+ * visual speed stays constant even when frames are late or inconsistent.
+ * Colors come from Acode CSS custom properties (`var(--x, fallback)`) so it
+ * adapts to the active theme. The returned element carries a `.stop()` method
+ * that clears the interval; callers MUST invoke it when tearing down the view.
  */
-export function createSpinner(statusText: string): HTMLElement {
+export function createSpinner(statusText: string): HTMLElement & { stop: () => void } {
   const wrapper = createContainer('opencode-loading');
-  wrapper.innerHTML = `
-    <div style="
-      width: 40px;
-      height: 40px;
-      border: 4px solid var(--border-color, #333);
-      border-top-color: var(--primary-color, #06f);
-      border-radius: 50%;
-      animation: opencode-spin 0.8s linear infinite;
-    "></div>
-    <p style="margin-top: 16px; color: var(--text-color, #ccc);">${escapeHtml(statusText)}</p>
-  `;
 
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes opencode-spin {
-      to { transform: rotate(360deg); }
-    }
+  const spinner = document.createElement('div');
+  spinner.style.cssText = `
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--border-color, #333);
+    border-top-color: var(--primary-color, #06f);
+    border-radius: 50%;
   `;
-  wrapper.appendChild(style);
+  wrapper.appendChild(spinner);
 
-  return wrapper;
+  const label = document.createElement('p');
+  label.style.cssText = `margin-top: 16px; color: var(--text-color, #ccc);`;
+  label.textContent = statusText;
+  wrapper.appendChild(label);
+
+  let angle = 0;
+  let lastTime = performance.now();
+  const intervalMs = 1000 / SPINNER_FPS;
+
+  const intervalId = setInterval(() => {
+    const now = performance.now();
+    const dt = (now - lastTime) / 1000;
+    lastTime = now;
+    angle = (angle + SPINNER_DEG_PER_SEC * dt) % 360;
+    spinner.style.transform = `rotate(${angle}deg)`;
+  }, intervalMs);
+
+  const stop = () => clearInterval(intervalId);
+  (wrapper as any).stop = stop;
+
+  return wrapper as HTMLElement & { stop: () => void };
 }
 
 /**
