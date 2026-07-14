@@ -137,9 +137,7 @@ export class AcodePlugin {
       transition(AppState.Ready);
       log.info('startFlow: ready');
     } catch (err) {
-      log.error('startFlow: failed', err);
-      const { summary, logTail } = extractErrorInfo(err);
-      setError(summary, logTail);
+      this.handleError('startFlow', err);
     }
   }
 
@@ -158,10 +156,19 @@ export class AcodePlugin {
       transition(AppState.Ready);
       log.info('handleRestart: ready');
     } catch (err) {
-      log.error('handleRestart: failed', err);
-      const { summary, logTail } = extractErrorInfo(err);
-      setError(summary, logTail);
+      this.handleError('handleRestart', err);
     }
+  }
+
+  /**
+   * Shared error path for the flow drivers. Normalizes the thrown value via
+   * extractErrorInfo and routes it through setError() so the state machine
+   * enters Error and the UI renders diagnostics.
+   */
+  private handleError(stage: string, err: unknown): void {
+    log.error(`${stage}: failed`, err);
+    const { summary, logTail } = extractErrorInfo(err);
+    setError(summary, logTail);
   }
 }
 

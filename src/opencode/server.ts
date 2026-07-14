@@ -7,16 +7,41 @@ import {
   READY_POLL_INTERVAL,
   READY_TIMEOUT,
   STARTUP_CHECK_DELAY,
+  PORT,
+  HOSTNAME,
   KILL_COMMAND,
   HARD_KILL_COMMAND,
   PROCESS_CHECK_COMMAND,
   STOP_POLL_TIMEOUT,
   STOP_POLL_INTERVAL,
-  buildStartCommand,
 } from '../config';
 import { createLogger } from '../logger';
 
 const log = createLogger('server');
+
+/**
+ * Builds the command that launches OpenCode as a detached background server.
+ *
+ * CRITICAL CONSTRAINT (discovered empirically): Acode's `Executor.execute`
+ * treats the command as finished the moment its stdout pipe reaches EOF. If we
+ * redirect the server's output to a FILE (`> LOG_PATH 2>&1`), the backgrounded
+ * process writes to the file, the executor's pipe closes immediately, execute()
+ * resolves, and Acode tears down the shell session — reaping the server (it
+ * never shows in the inspector and the health probe misses it). The server must
+ * therefore KEEP THE EXECUTOR'S STDOUT PIPE OPEN so the session survives.
+ *
+ * We achieve both survival AND a log file with `2>&1 | tee LOG_PATH`: tee holds
+ * the pipe open (so the session isn't torn down) while also mirroring output to
+ * the log file for diagnostics. `nohup ... &` lets execute() return at once and
+ * ignores SIGHUP. `--print-logs` makes OpenCode echo its logs (line-buffered) so
+ * the log file holds the real startup sequence.
+ *
+ * `setsid` was also tried but, combined with a file redirect, still got reaped;
+ * keeping the executor pipe open via tee is the validated approach.
+ */
+export function buildStartCommand(): string {
+  return `nohup opencode serve --port ${PORT} --hostname ${HOSTNAME} --print-logs 2>&1 | tee ${LOG_PATH} &`;
+}
 
 /**
  * Pings the OpenCode health endpoint and reports whether the server is up.

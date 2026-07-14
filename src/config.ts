@@ -15,7 +15,8 @@ export const HOSTNAME = '127.0.0.1';
 // Convenience base URL for the embedded iframe and health checks.
 export const BASE_URL = `http://${HOSTNAME}:${PORT}`;
 
-// Where the server's stdout/stderr are redirected (see buildStartCommand).
+// Where the server's stdout/stderr are redirected by buildStartCommand()
+// (see opencode/server.ts).
 export const LOG_PATH = '/tmp/opencode.log';
 
 // Grace period after issuing the start command before we begin polling, giving
@@ -65,40 +66,3 @@ export const PROCESS_CHECK_COMMAND = 'pgrep -f "opencode serve" || true';
 // the process has actually exited.
 export const STOP_POLL_TIMEOUT = 3000;
 export const STOP_POLL_INTERVAL = 500;
-
-// Builds the command that launches OpenCode as a detached background server.
-//
-// CRITICAL CONSTRAINT (discovered empirically): Acode's `Executor.execute`
-// treats the command as finished the moment its stdout pipe reaches EOF. If we
-// redirect the server's output to a FILE (`> LOG_PATH 2>&1`), the backgrounded
-// process writes to the file, the executor's pipe closes immediately, execute()
-// resolves, and Acode tears down the shell session — reaping the server (it
-// never shows in the inspector and the health probe misses it). The server must
-// therefore KEEP THE EXECUTOR'S STDOUT PIPE OPEN so the session survives.
-//
-// We achieve both survival AND a log file with `2>&1 | tee LOG_PATH`: tee holds
-// the pipe open (so the session isn't torn down) while also mirroring output to
-// the log file for diagnostics. `nohup ... &` lets execute() return at once and
-// ignores SIGHUP. `--print-logs` makes OpenCode echo its logs (line-buffered) so
-// the log file holds the real startup sequence.
-//
-// `setsid` was also tried but, combined with a file redirect, still got reaped;
-// keeping the executor pipe open via tee is the validated approach.
-export function buildStartCommand(): string {
-  return `nohup opencode serve --port ${PORT} --hostname ${HOSTNAME} --print-logs 2>&1 | tee ${LOG_PATH} &`;
-}
-
-// Human-readable status line shown in the UI per state. Keys are AppState
-// values so the render layer can index directly by the current state enum.
-export const STATUS_MESSAGES: Record<string, string> = {
-  [AppState.CheckingInstall]: 'Checking OpenCode installation…',
-  [AppState.Installing]: 'Installing OpenCode…',
-  [AppState.CheckingServer]: 'Checking server status…',
-  [AppState.StartingServer]: 'Starting OpenCode server…',
-};
-
-// Import kept at the bottom on purpose: config.ts is loaded very early and
-// only needs AppState for the STATUS_MESSAGES keys above. Putting it last
-// avoids circular-eval surprises and matches the established repo pattern
-// (see AGENTS.md). Do not move this import to the top.
-import { AppState } from './types';

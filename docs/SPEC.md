@@ -100,7 +100,7 @@ and a retry action. `restart` (user-triggered) re-enters at
 | Module | Responsibility |
 |---|---|
 | `main.ts` | Plugin entrypoint (`AcodePlugin` class), registers icon, orchestrates flow |
-| `config.ts` | All named constants (port, URLs, commands, timeouts, status messages) |
+| `config.ts` | All named constants (port, URLs, commands, timeouts) |
 | `types.ts` | `AppState` enum, `StateContext`, `ErrorInfo`, `StateListener` |
 | `state.ts` | State machine: `transition()`, `onStateChange()`, `setError()`, `reset()` |
 | `logger.ts` | Leveled logging: `createLogger()`, `setLogEnabled()`, `setLogLevel()`, `getLogLevel()` |

@@ -1,5 +1,5 @@
 import { AppState, StateContext } from '../types';
-import { BASE_URL, STATUS_MESSAGES } from '../config';
+import { BASE_URL } from '../config';
 import {
   createSpinner,
   createIframe,
@@ -9,6 +9,16 @@ import {
 import { createLogger } from '../logger';
 
 const log = createLogger('ui');
+
+// Human-readable status line per state. Keys are AppState values so the render
+// layer can index directly by the current state enum. These are presentation
+// strings and live with the UI layer rather than in config.ts.
+const STATUS_MESSAGES: Record<string, string> = {
+  [AppState.CheckingInstall]: 'Checking OpenCode installation…',
+  [AppState.Installing]: 'Installing OpenCode…',
+  [AppState.CheckingServer]: 'Checking server status…',
+  [AppState.StartingServer]: 'Starting OpenCode server…',
+};
 
 /**
  * Reactive UI orchestrator. The plugin renders purely from state: each call

@@ -8,7 +8,7 @@ OpenCode lifecycle management: install detection, installation, server start/sto
 
 Owned by the root AGENTS.md. Two export modules:
 - `install.ts` — `checkInstalled()`, `installOpenCode()`
-- `server.ts` — `isServerUp()`, `startServer()`, `waitForReady()`, `stopServer()`, `restartServer()`
+- `server.ts` — `buildStartCommand()`, `isServerUp()`, `startServer()`, `waitForReady()`, `stopServer()`, `restartServer()`
 
 ## Local Contracts
 
@@ -20,7 +20,7 @@ Owned by the root AGENTS.md. Two export modules:
 - `waitForReady()` polls `isServerUp()` every `READY_POLL_INTERVAL` ms until `READY_TIMEOUT`. On timeout, reads the last `LOG_TAIL_LINES` from `LOG_PATH` via `readLogTail()`, checks process state via `PROCESS_CHECK_COMMAND`, and throws an `Error` that includes process state (alive/dead/unknown), log tail (or `(no log output)` if empty/unreadable).
 - `stopServer()` runs SIGTERM via `pkill -f "opencode serve"`, polls `isServerUp()` for up to `STOP_POLL_TIMEOUT`, escalates to SIGKILL (`pkill -9`) if needed, and polls again. Throws `Error` if port is still occupied after SIGKILL.
 - `restartServer()` is stop → start sequential, no concurrent semantics.
-- All commands are defined in `src/config.ts` — never inline shell commands here.
+- All command **string constants** are defined in `src/config.ts`. The `buildStartCommand()` builder (server-launch assembly) lives in `server.ts` because it is server-start logic and the sole consumer; `startServer()` calls it rather than inlining the raw shell command. Never inline raw shell strings in `server.ts`.
 
 ## Work Guidance
 

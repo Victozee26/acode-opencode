@@ -21,7 +21,7 @@ src/
   main.ts               # plugin init/destroy, flow orchestration
   types.ts              # AppState enum, StateContext, ErrorInfo
   state.ts              # state machine (transition, onStateChange, reset)
-  config.ts             # all named constants (port, URLs, commands, status messages)
+  config.ts             # all named constants (port, URLs, commands, timeouts)
   logger.ts             # leveled logging (createLogger, setLogEnabled, setLogLevel)
   error.ts              # extractErrorInfo() — normalizes unknown errors to summary/logTail
   terminal/executor.ts  # thin wrapper over global Executor
@@ -46,7 +46,7 @@ src/
 - **Prettier** (when installed): single quotes, trailing commas, 100 char width, 2-space tabs.
 - **Untyped Acode modules** use `acode.require('...') as any` — this is the established pattern (acode-plugin-types doesn't cover all runtime modules).
 - **State handling** uses the `AppState` enum and `transition()` instead of nested conditionals. Never add a state check without adding it to the enum.
-- **Imports:** `config.ts` imports `AppState` from `types.ts` at the bottom of the file — be mindful of import order; keep this pattern to avoid issues.
+- **Imports:** `config.ts` is a leaf module of pure constants — it imports nothing.
 
 ## Gotchas
 
