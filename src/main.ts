@@ -152,8 +152,11 @@ export class AcodePlugin {
     transition(AppState.StartingServer);
 
     try {
+      log.info('handleRestart: calling restartServer');
       await restartServer();
+      log.info('handleRestart: restartServer done, waiting for ready');
       await waitForReady();
+      log.info('handleRestart: server ready, transitioning to Ready');
       transition(AppState.Ready);
       log.info('handleRestart: ready');
     } catch (err) {

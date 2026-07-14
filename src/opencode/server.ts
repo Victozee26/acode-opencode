@@ -53,9 +53,11 @@ export function buildStartCommand(): string {
 async function readLogTail(): Promise<string> {
   try {
     const output = await execute(`tail -n ${LOG_TAIL_LINES} ${LOG_PATH} || true`);
-    return String(output).trim();
+    const trimmed = String(output).trim();
+    log.info(`readLogTail: ${trimmed.length} chars`);
+    return trimmed;
   } catch {
-    // Defensive: never let log-reading break the surrounding error path.
+    log.warn('readLogTail: failed, returning empty');
     return '';
   }
 }
@@ -111,6 +113,7 @@ export async function waitForReady(): Promise<void> {
 
   while (Date.now() - startedAt < READY_TIMEOUT) {
     const up = await isServerUp();
+    log.info(`waitForReady: poll attempt -> isServerUp=${up} (${Date.now() - startedAt}ms)`);
     if (up) {
       log.info('waitForReady: server ready');
       return;
@@ -145,14 +148,20 @@ export async function waitForReady(): Promise<void> {
  */
 async function pollUntilDown(timeout: number): Promise<boolean> {
   const startedAt = Date.now();
+  log.info(`pollUntilDown: polling for ${timeout}ms`);
 
   while (Date.now() - startedAt < timeout) {
     const up = await isServerUp();
-    if (!up) return true;
+    log.info(`pollUntilDown: isServerUp=${up}`);
+    if (!up) {
+      log.info(`pollUntilDown: server down after ${Date.now() - startedAt}ms`);
+      return true;
+    }
 
     await new Promise((resolve) => setTimeout(resolve, STOP_POLL_INTERVAL));
   }
 
+  log.warn(`pollUntilDown: still up after ${timeout}ms`);
   return false;
 }
 
@@ -181,7 +190,9 @@ export async function stopServer(): Promise<void> {
   }
 
   log.warn('stopServer: SIGTERM failed, escalating to SIGKILL');
+  log.warn('stopServer: executing pkill -9');
   await execute(HARD_KILL_COMMAND);
+  log.info('stopServer: hard kill command done');
 
   const hardDown = await pollUntilDown(STOP_POLL_TIMEOUT);
   if (hardDown) {
