@@ -41,7 +41,7 @@ export function createSpinner(statusText: string): HTMLElement & { stop: () => v
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    background: conic-gradient(from 0deg, #fff 0% 22%, transparent 22% 100%);
+    background: conic-gradient(from 0deg, #fff 0% 75%, transparent 75% 100%);
     -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #fff calc(100% - 5px));
     mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #fff calc(100% - 5px));
   `;
