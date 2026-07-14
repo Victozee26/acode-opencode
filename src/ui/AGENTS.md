@@ -16,9 +16,12 @@ Owned by the root AGENTS.md. Two export modules:
 - Every state variant has its own render function. Never add inline DOM construction in `render()`.
 - All DOM is vanilla `document.createElement` — no framework, no `html-tag-js`.
 - `createIframe()` accepts a string URL; `renderReady` passes `BASE_URL` from `config.ts`.
-- `escapeHtml()` is a module-private helper in `components.ts` — all user/external strings rendered as HTML must pass through it.
 - Styles use CSS custom properties (`var(--primary-color, fallback)`) for Acode theming compatibility.
-- `createErrorDisplay()` unconditionally renders a retry button when error exists; the log tail `<pre>` block is conditional on `logTail` being truthy.
+- Global keyframe/utility styles are injected once via `injectBaseStyles()` (`index.ts`) as a `<style#opencode-styles>` element. Provides `.opencode-fade-in` (state transition), `.opencode-btn` (hover/active button effects).
+- State transitions fade in: `$page.body` gets `.opencode-fade-in` after every render, triggered with a forced reflow for reliable animation restart.
+- `createSpinner()` uses `requestAnimationFrame` (not `setInterval`) for GPU-friendly rotation. The spinner is a conic-gradient arc ring cut with a CSS `mask`.
+- `createHeaderBar()` renders a green status dot (`.opencode-btn` glow) to indicate the server is running.
+- `createErrorDisplay()` unconditionally renders a warning icon and retry button; the log tail `<pre>` block is conditional on `logTail` being truthy. All dynamic strings use `textContent` (safe from injection, no `escapeHtml` needed).
 - The error heading `<h3>` has `white-space: pre-wrap` for legible multi-line summaries. `message` is a short summary (first line of the error); `logTail` is the diagnostic detail (remaining lines).
 - Event handlers (`onRestart`, `onRetry`) are attached via `addEventListener`, never inline `onclick` attributes.
 

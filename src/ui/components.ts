@@ -1,5 +1,5 @@
 import { StateContext } from '../types';
-import { SPINNER_DEG_PER_SEC, SPINNER_FPS } from '../config';
+import { SPINNER_DEG_PER_SEC } from '../config';
 
 /**
  * Build a centered, full-size flex container used as the root wrapper for the
@@ -25,44 +25,52 @@ export function createContainer(id: string): HTMLElement {
 /**
  * Build the loading view: a JS-animated spinner plus a status line.
  *
- * The spinner rotates via `setInterval` at `SPINNER_FPS` and advances by
+ * The spinner rotates via `requestAnimationFrame` and advances by
  * `SPINNER_DEG_PER_SEC * dt` each tick using wall-clock delta time, so the
- * visual speed stays constant even when frames are late or inconsistent.
+ * visual speed stays constant and animation is GPU-friendly. Uses a
+ * conic-gradient arc ring cut with a CSS mask for a modern borderless look.
  * Colors come from Acode CSS custom properties (`var(--x, fallback)`) so it
  * adapts to the active theme. The returned element carries a `.stop()` method
- * that clears the interval; callers MUST invoke it when tearing down the view.
+ * that cancels the animation frame; callers MUST invoke it when tearing down.
  */
 export function createSpinner(statusText: string): HTMLElement & { stop: () => void } {
   const wrapper = createContainer('opencode-loading');
 
-  const spinner = document.createElement('div');
-  spinner.style.cssText = `
-    width: 40px;
-    height: 40px;
-    border: 4px solid var(--border-color, #333);
-    border-top-color: var(--primary-color, #06f);
+  const ring = document.createElement('div');
+  ring.style.cssText = `
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
+    background: conic-gradient(from 0deg, #fff 0% 22%, transparent 22% 100%);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #fff calc(100% - 5px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #fff calc(100% - 5px));
   `;
-  wrapper.appendChild(spinner);
+  wrapper.appendChild(ring);
 
   const label = document.createElement('p');
-  label.style.cssText = `margin-top: 16px; color: var(--text-color, #ccc);`;
+  label.style.cssText = `
+    margin-top: 20px;
+    color: var(--text-color, #ccc);
+    font-size: 14px;
+    opacity: 0.9;
+  `;
   label.textContent = statusText;
   wrapper.appendChild(label);
 
   let angle = 0;
   let lastTime = performance.now();
-  const intervalMs = 1000 / SPINNER_FPS;
+  let rafId: number;
 
-  const intervalId = setInterval(() => {
-    const now = performance.now();
+  function tick(now: number) {
     const dt = (now - lastTime) / 1000;
     lastTime = now;
     angle = (angle + SPINNER_DEG_PER_SEC * dt) % 360;
-    spinner.style.transform = `rotate(${angle}deg)`;
-  }, intervalMs);
+    ring.style.transform = `rotate(${angle}deg)`;
+    rafId = requestAnimationFrame(tick);
+  }
+  rafId = requestAnimationFrame(tick);
 
-  const stop = () => clearInterval(intervalId);
+  const stop = () => cancelAnimationFrame(rafId);
   (wrapper as any).stop = stop;
 
   return wrapper as HTMLElement & { stop: () => void };
@@ -100,23 +108,46 @@ export function createHeaderBar(onRestart: () => void): HTMLElement {
     flex-shrink: 0;
   `;
 
+  const leftGroup = document.createElement('div');
+  leftGroup.style.cssText = `
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  `;
+
+  const statusDot = document.createElement('span');
+  statusDot.style.cssText = `
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success-color, #4caf50);
+    box-shadow: 0 0 6px var(--success-color, #4caf50);
+  `;
+  leftGroup.appendChild(statusDot);
+
   const projectLabel = document.createElement('span');
   projectLabel.textContent = 'OpenCode';
   projectLabel.style.cssText = `
     font-size: 14px;
+    font-weight: 600;
     color: var(--text-color, #ccc);
+    letter-spacing: 0.3px;
   `;
-  header.appendChild(projectLabel);
+  leftGroup.appendChild(projectLabel);
+  header.appendChild(leftGroup);
 
   const restartBtn = document.createElement('button');
   restartBtn.textContent = 'Restart';
+  restartBtn.className = 'opencode-btn';
   restartBtn.style.cssText = `
-    padding: 4px 12px;
+    padding: 5px 14px;
     background: var(--primary-color, #06f);
     color: #fff;
     border: none;
-    border-radius: 4px;
+    border-radius: 5px;
     cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
   `;
   restartBtn.addEventListener('click', onRestart);
   header.appendChild(restartBtn);
@@ -125,21 +156,37 @@ export function createHeaderBar(onRestart: () => void): HTMLElement {
 }
 
 /**
- * Build the error view from the current `StateContext`. Always renders a Retry
- * button (so the user can recover from any error) and conditionally renders a
- * scrollable diagnostics `<pre>` log tail when `context.error.logTail` exists.
- * The `message` heading uses `white-space: pre-wrap` so multi-line summaries
- * stay legible; both dynamic strings pass through `escapeHtml`.
+ * Build the error view from the current `StateContext`. Always renders a
+ * warning icon and Retry button (so the user can recover from any error) and
+ * conditionally renders a scrollable diagnostics `<pre>` log tail when
+ * `context.error.logTail` exists. The `message` heading uses `white-space:
+ * pre-wrap` so multi-line summaries stay legible; dynamic strings use
+ * `textContent` (safe from injection).
  */
 export function createErrorDisplay(context: StateContext, onRetry: () => void): HTMLElement {
   const wrapper = createContainer('opencode-error');
   const errorInfo = context.error;
 
-  wrapper.innerHTML = `
-    <h3 style="color: var(--error-color, #f44); margin-bottom: 12px; white-space: pre-wrap;">
-      ${escapeHtml(errorInfo?.message ?? 'An unknown error occurred')}
-    </h3>
+  const icon = document.createElement('div');
+  icon.textContent = '\u26A0\uFE0F';
+  icon.style.cssText = `
+    font-size: 32px;
+    margin-bottom: 8px;
+    opacity: 0.8;
   `;
+  wrapper.appendChild(icon);
+
+  const heading = document.createElement('h3');
+  heading.style.cssText = `
+    color: var(--error-color, #f44);
+    margin: 0 0 12px 0;
+    font-size: 15px;
+    font-weight: 600;
+    white-space: pre-wrap;
+    text-align: center;
+  `;
+  heading.textContent = errorInfo?.message ?? 'An unknown error occurred';
+  wrapper.appendChild(heading);
 
   if (errorInfo?.logTail) {
     const pre = document.createElement('pre');
@@ -154,7 +201,10 @@ export function createErrorDisplay(context: StateContext, onRetry: () => void): 
       font-size: 12px;
       white-space: pre-wrap;
       word-break: break-all;
-      margin: 0 0 16px 0;
+      margin: 0 0 20px 0;
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid var(--border-color, #333);
     `;
     pre.textContent = errorInfo.logTail;
     wrapper.appendChild(pre);
@@ -162,15 +212,17 @@ export function createErrorDisplay(context: StateContext, onRetry: () => void): 
 
   const retryBtn = document.createElement('button');
   retryBtn.textContent = 'Retry';
+  retryBtn.className = 'opencode-btn';
   retryBtn.style.cssText = `
-    margin-top: 16px;
-    padding: 8px 24px;
+    margin-top: 8px;
+    padding: 10px 32px;
     background: var(--primary-color, #06f);
     color: #fff;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
+    font-weight: 500;
   `;
   retryBtn.addEventListener('click', onRetry);
   wrapper.appendChild(retryBtn);
@@ -178,19 +230,4 @@ export function createErrorDisplay(context: StateContext, onRetry: () => void): 
   return wrapper;
 }
 
-/**
- * Escape a string for safe interpolation into `innerHTML`. Prevents HTML
- * injection of external/error strings (which may contain `<`, `&`, quotes,
- * etc.) by replacing them with entity references. Use this before any string
- * is placed inside markup.
- */
-function escapeHtml(text: string): string {
-  const map: Record<string, string> = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#039;',
-  };
-  return text.replace(/[&<>"']/g, (ch) => map[ch] ?? ch);
-}
+

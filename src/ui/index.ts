@@ -22,6 +22,35 @@ const STATUS_MESSAGES: Record<string, string> = {
   [AppState.StartingServer]: 'Starting OpenCode server…',
 };
 
+let stylesInjected = false;
+
+function injectBaseStyles(): void {
+  if (stylesInjected) return;
+  stylesInjected = true;
+  const style = document.createElement('style');
+  style.id = 'opencode-styles';
+  style.textContent = `
+    @keyframes opencode-fade-in {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .opencode-fade-in {
+      animation: opencode-fade-in 0.35s ease-out !important;
+    }
+    .opencode-btn {
+      transition: opacity 0.2s, transform 0.1s !important;
+      cursor: pointer !important;
+    }
+    .opencode-btn:hover {
+      opacity: 0.85 !important;
+    }
+    .opencode-btn:active {
+      transform: scale(0.96) !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 /**
  * Reactive UI orchestrator. The plugin renders purely from state: each call
  * wipes `$page.body` and `$page.header` (full re-render, no diffing) and
@@ -49,6 +78,8 @@ export function render(
   $page.body.innerHTML = '';
   $page.header.innerHTML = '';
 
+  injectBaseStyles();
+
   switch (state) {
     case AppState.Idle:
       renderIdle($page);
@@ -58,8 +89,6 @@ export function render(
     case AppState.Installing:
     case AppState.CheckingServer:
     case AppState.StartingServer:
-      // Multiple intermediate states all share the same loading view; only the
-      // status message differs (looked up from STATUS_MESSAGES by state).
       renderLoading($page, state);
       break;
 
@@ -71,18 +100,41 @@ export function render(
       renderError($page, context, onRestart);
       break;
   }
+
+  $page.body.style.animation = 'none';
+  void $page.body.offsetHeight;
+  $page.body.style.animation = '';
+  $page.body.classList.add('opencode-fade-in');
 }
 
 function renderIdle($page: Acode.WCPage): void {
   const el = document.createElement('div');
   el.style.cssText = `
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     height: 100%;
+    gap: 12px;
     color: var(--text-color, #ccc);
   `;
-  el.textContent = 'Tap the OpenCode icon to start';
+
+  const icon = document.createElement('div');
+  icon.textContent = '\u25B8';
+  icon.style.cssText = `
+    font-size: 40px;
+    opacity: 0.35;
+    margin-bottom: 4px;
+  `;
+  el.appendChild(icon);
+
+  const text = document.createElement('span');
+  text.textContent = 'Tap the OpenCode icon to start';
+  text.style.cssText = `
+    font-size: 14px;
+    opacity: 0.7;
+  `;
+  el.appendChild(text);
   $page.body.appendChild(el);
 }
 

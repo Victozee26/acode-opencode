@@ -67,11 +67,11 @@ export const PROCESS_CHECK_COMMAND = 'pgrep -f "opencode serve" || true';
 export const STOP_POLL_TIMEOUT = 3000;
 export const STOP_POLL_INTERVAL = 500;
 
-// Spinner animation: degrees rotated per second. The JS animation loop uses
-// delta-time to advance by exactly this many degrees each second regardless of
-// actual frame timing.
+// Spinner animation: degrees rotated per second. The rAF loop advances by
+// exactly this many degrees per second using wall-clock delta time, so the
+// visual speed stays constant regardless of actual frame timing.
 export const SPINNER_DEG_PER_SEC = 450;
 
-// Spinner animation: target frame rate for the setInterval loop. Actual FPS
-// may vary but delta-time keeps rotation speed consistent.
+// Spinner animation: reference frame rate (unused since switching to rAF).
+// Kept as documentation of the intended target rate.
 export const SPINNER_FPS = 30;
