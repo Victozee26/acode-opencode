@@ -1,5 +1,12 @@
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
+const LEVEL_ORDER: Record<LogLevel, number> = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
+};
+
 export interface Logger {
   debug(message: string, ...args: unknown[]): void;
   info(message: string, ...args: unknown[]): void;
@@ -11,10 +18,10 @@ export interface Logger {
 // so a single toggle (setLogEnabled) controls the whole plugin.
 let enabled = false;
 
-// Reserved — future per-level filtering hook. Not yet wired into shouldLog;
-// the `void` statements silence the unused-variable check until it is used.
-let _minLevel: LogLevel = 'debug';
-void _minLevel;
+// Minimum level that actually reaches the console. Calls below this threshold
+// are dropped by shouldLog(). Defaults to 'debug' so every level is emitted
+// whenever logging is enabled, matching the historical behaviour.
+let minLevel: LogLevel = 'debug';
 
 export function setLogEnabled(value: boolean): void {
   enabled = value;
@@ -24,12 +31,19 @@ export function isLogEnabled(): boolean {
   return enabled;
 }
 
-// Central log gate. Kept as a function (rather than inlining `enabled`) so the
-// reserved per-level filter can later be added in exactly one place without
-// touching every call site. The `_level` param is currently ignored because
-// the only active rule is the global enable flag.
-function shouldLog(_level: LogLevel): boolean {
-  return enabled;
+export function setLogLevel(level: LogLevel): void {
+  minLevel = level;
+}
+
+export function getLogLevel(): LogLevel {
+  return minLevel;
+}
+
+// Central log gate in one place: honour both the global enable flag and the
+// configured minimum level, so level filtering can be tuned without touching
+// every call site.
+function shouldLog(level: LogLevel): boolean {
+  return enabled && LEVEL_ORDER[level] >= LEVEL_ORDER[minLevel];
 }
 
 export function createLogger(tag: string): Logger {
@@ -48,5 +62,3 @@ export function createLogger(tag: string): Logger {
     },
   };
 }
-
-void _minLevel;

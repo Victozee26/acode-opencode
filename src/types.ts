@@ -34,10 +34,3 @@ export interface StateContext {
 // Subscriber signature for state changes (see onStateChange in state.ts).
 // Receives the new state plus the full context snapshot.
 export type StateListener = (state: AppState, context: StateContext) => void;
-
-// Describes a command exposed through Acode's command registry (menu/keybind).
-export interface CommandBinding {
-  id: string;
-  description: string;
-  callback: () => void;
-}

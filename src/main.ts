@@ -5,9 +5,9 @@ import { onStateChange, transition, setError, reset } from './state';
 import { render } from './ui/index';
 import { checkInstalled, installOpenCode } from './opencode/install';
 import { isServerUp, startServer, waitForReady, restartServer } from './opencode/server';
-import { ERROR_FALLBACK_MESSAGE } from './config';
 import { createLogger, setLogEnabled } from './logger';
 import { DEBUG } from './config';
+import { extractErrorInfo } from './error';
 
 const log = createLogger('main');
 
@@ -138,7 +138,7 @@ export class AcodePlugin {
       log.info('startFlow: ready');
     } catch (err) {
       log.error('startFlow: failed', err);
-      const { summary, logTail } = this.extractErrorInfo(err);
+      const { summary, logTail } = extractErrorInfo(err);
       setError(summary, logTail);
     }
   }
@@ -159,26 +159,9 @@ export class AcodePlugin {
       log.info('handleRestart: ready');
     } catch (err) {
       log.error('handleRestart: failed', err);
-      const { summary, logTail } = this.extractErrorInfo(err);
+      const { summary, logTail } = extractErrorInfo(err);
       setError(summary, logTail);
     }
-  }
-
-  /**
-   * Normalizes an unknown error into a short headline plus a diagnostic tail.
-   *
-   * The error text is split on newlines because server.ts formats multi-line
-   * error messages (details on subsequent lines). The first line becomes the
-   * concise `summary` shown prominently; the remainder becomes `logTail`, the
-   * collapsible diagnostic detail.
-   */
-  private extractErrorInfo(err: unknown): { summary: string; logTail: string } {
-    const rawMessage = err instanceof Error ? err.message : String(err);
-    const text = rawMessage || ERROR_FALLBACK_MESSAGE;
-    const lines = text.split('\n');
-    const summary = lines[0];
-    const logTail = lines.slice(1).join('\n');
-    return { summary, logTail };
   }
 }
 

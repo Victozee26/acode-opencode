@@ -22,7 +22,9 @@ src/
   types.ts              # AppState enum, StateContext, ErrorInfo
   state.ts              # state machine (transition, onStateChange, reset)
   config.ts             # all named constants (port, URLs, commands, status messages)
-  project.ts            # resolveProjectPath()
+  logger.ts             # leveled logging (createLogger, setLogEnabled, setLogLevel)
+  error.ts              # extractErrorInfo() — normalizes unknown errors to summary/logTail
+  project.ts            # placeholder stub for future SAF path bridging (no exports)
   terminal/executor.ts  # thin wrapper over global Executor
   opencode/install.ts   # checkInstalled, installOpenCode
   opencode/server.ts    # isServerUp, startServer, stopServer, restartServer
@@ -39,6 +41,7 @@ src/
 
 ## Code conventions
 
+- **SOC** SEPERATION OF CONCERN (u MUST follow that rule)
 - **No magic numbers/strings.** All constants live in `src/config.ts`. Import them — never inline literals.
 - **ESLint rules** (enforced when eslint is installed): `max-depth: 3`, `max-lines-per-function: 40` (warn), `no-magic-numbers` (warn, except 0,1,-1), `prefer-const`, `no-var`.
 - **Prettier** (when installed): single quotes, trailing commas, 100 char width, 2-space tabs.
@@ -52,7 +55,7 @@ src/
 - Tests use Vitest with jsdom (`npm test`). Test files live alongside source as `*.test.ts`.
 - `plugin.json` has placeholder values (`id`, `name`, `author`) that need real values before publishing.
 - `html-tag-js` is listed as a dependency but currently unused — all DOM is vanilla `document.createElement`.
-- Health-check uses `cordova.plugin.http` (Cordova Advanced HTTP) as primary — it runs on the native network stack so WebView CORS does NOT apply and a loopback probe to `127.0.0.1:4096` actually resolves (a plain `fetch` to loopback hangs forever in this WebView). Falls back to `fetch(..., { mode: 'no-cors' })` + `AbortController` only when the plugin is absent (tests/dev). Do not reintroduce a plain cross-origin `fetch` as the primary probe. See `src/opencode/AGENTS.md`.
+- Health-check uses `cordova.plugin.http` (Cordova Advanced HTTP) only — it runs on the native network stack so WebView CORS does NOT apply and a loopback probe to `127.0.0.1:4096` actually resolves (a plain `fetch` to loopback hangs forever in this WebView). There is NO `fetch` fallback: `isServerUp()` returns `false` immediately when `cordova.plugin.http` is absent, so tests stub `window.cordova.plugin.http` rather than relying on a browser `fetch`. Do not reintroduce a `fetch` probe. See `src/opencode/AGENTS.md`.
 
 # DOX framework
 
@@ -139,7 +142,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - `src/opencode/AGENTS.md` — OpenCode lifecycle: install checks, installation, server start/stop/restart, health polling.
 - `src/ui/AGENTS.md` — DOM rendering layer: render orchestrator per state, vanilla DOM component factories.
 - `src/terminal/AGENTS.md` — Terminal abstraction wrapping global `Executor`.
-- `src/main.ts`, `src/types.ts`, `src/state.ts`, `src/config.ts` — Cross-cutting infrastructure owned directly by root AGENTS.md.
+- `src/main.ts`, `src/types.ts`, `src/state.ts`, `src/config.ts`, `src/logger.ts`, `src/error.ts` — Cross-cutting infrastructure owned directly by root AGENTS.md.
 - `docs/SPEC.md` — Technical specification and architecture documentation.
 - `docs/BUILD_PLAN.md` — Phased build/implementation plan.
 - `docs/plans/` — Phase-level implementation plans (phases 2–4).
