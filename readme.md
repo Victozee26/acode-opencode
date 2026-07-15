@@ -1,46 +1,54 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Victozee26/acode-opencode/main/asset/opencode-wordmark-dark.png" alt="OpenCode wordmark" />
-</p>
+<div align="center">
 
-# Acode-OpenCode Plugin
+# Acode Plugin OpenCode
 
-An Acode plugin that runs [OpenCode](https://github.com/anomalyco/opencode) (AI coding agent) as a background HTTP server inside Acode's built-in Alpine Linux terminal, and displays OpenCode's web UI in a full-page iframe.
+![Version](https://img.shields.io/badge/version-0.1.1-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Acode](https://img.shields.io/badge/Acode-Compatible-orange.svg)
 
-## How It Works
+**Run the OpenCode AI coding agent inside Acode Editor**
 
-1. Tap the toolbar icon to open the plugin page.
-2. The plugin checks if OpenCode is installed in Alpine — installs it if needed (`apk add --no-cache nodejs npm && npm install -g opencode-ai`).
-3. Starts `opencode serve --port 4096 --hostname 127.0.0.1 --print-logs` in the background (wrapped in `nohup ... | tee /tmp/opencode.log &` so the server survives the terminal session).
-4. Embeds the OpenCode web UI at `http://127.0.0.1:4096` in an iframe.
-5. Open any folder from within the web UI — no server restart needed.
+[Features](#features) • [Installation](#installation) • [Requirements](#requirements) • [Build](#build) • [Contributing](#contributing)
 
-## State Machine
+</div>
 
-`Idle → CheckingInstall → Installing → CheckingServer → StartingServer → Ready`. `Error` can be entered from any state. The UI is purely reactive: a single `onStateChange` listener re-renders the page for the current state.
+**Acode-OpenCode** is an Acode plugin that launches [OpenCode](https://github.com/anomalyco/opencode) — an AI coding agent — as a background HTTP server inside Acode's built-in Alpine Linux terminal, then embeds its web UI in a full-page iframe. Instead of running OpenCode on a separate machine, this plugin runs it locally on your device and talks to it over loopback, giving you a fully self-contained AI coding workflow inside Acode.
 
-## Constraints
+<div align="center" style="display: flex; width: 100%; align-item: center">
+  <img src="https://raw.githubusercontent.com/Victozee26/acode-opencode/main/asset/opencode-wordmark-dark.png" alt="OpenCode wordmark" width="100%"/>
+</div>
 
-- **Fixed port 4096, loopback only.** Server binds `127.0.0.1`, never `0.0.0.0` (hard constraint — no external exposure without auth).
-- **Single server instance.** The "Restart" button recovers from crashes, but folder switching is handled entirely within the web UI.
-- **Terminal session reaping.** Acode's `Executor` reaps the shell session at stdout EOF, which would kill a plain backgrounded server. The start command keeps the stdout pipe open via `tee`, holding the session alive while still writing a log file.
-- **Health probe uses `cordova.plugin.http`.** A plain `fetch` to loopback hangs in this WebView; the native HTTP plugin resolves it. There is no `fetch` fallback.
+## Requirements
 
-## Build
+**Node.js and npm** must be available in Acode's built-in Alpine Linux terminal, and OpenCode is installed automatically on first launch. Acode must be a recent version with Terminal and Executor API support:
 
-```
-npm run build      # typecheck (tsc --noEmit) → esbuild bundle + zip
-npm run dev        # typecheck → esbuild watch + serve on port 3000
+```bash
+apk add --no-cache nodejs npm
 ```
 
-Output: `dist/main.js` → zipped to `dist.zip` (the plugin artifact).
+## Features
 
-## Tests
+- **Local OpenCode server.** Runs OpenCode as a background HTTP server inside Acode's Alpine terminal — no external machine required.
+- **Automatic install.** Detects whether OpenCode is present and installs it on demand (`npm install -g opencode-ai`).
 
-```
-npm test            # vitest run (jsdom environment)
-```
+## Installation
 
-Test files live under `test/`, mirroring the `src/` tree (e.g. `test/opencode/server.test.ts`). Tests import from `../src/...` / `../../src/...`. Health probe tests stub `window.cordova.plugin.http` — there is no `fetch` fallback.
+1. Open **Settings**
+2. Select **Plugins**
+3. Search for **"OpenCode"**
+4. Tap **Install**
+5. Restart
+
+### How It Works
+
+The plugin follows a **Check → Install → Serve → Render** workflow:
+
+| Stage               | Responsibility                                                            |
+| ------------------- | ------------------------------------------------------------------------- |
+| **Check**           | Verify OpenCode is installed and whether the server is already running    |
+| **Install**         | Install OpenCode via `npm install -g opencode-ai` if missing              |
+| **Serve**           | Start `opencode serve --port 4096 --hostname 127.0.0.1` in the background |
+| **Render**          | Embed the web UI in an iframe and reactively reflect the current state    |
 
 ## Project Structure
 
@@ -51,7 +59,7 @@ src/
   state.ts              # state machine (transition, onStateChange, reset)
   logger.ts             # leveled logging (createLogger, setLogEnabled, setLogLevel)
   error.ts              # extractErrorInfo() — normalizes unknown errors
-  config/               # named constants, split by domain (see below)
+  config/               # named constants, split by domain
   terminal/executor.ts  # thin wrapper over global Executor
   opencode/
     install.ts          # checkInstalled, installOpenCode
@@ -60,26 +68,28 @@ src/
   ui/
     index.ts            # render orchestrator, one render func per state
     components/         # DOM factory functions, one file per component
-      container.ts
-      headerBar.ts
-      spinner.ts
-      iframe.ts
-      errorDisplay.ts
-      floatingActionButton.ts
-      index.ts
 ```
 
-### `config/` layout
+## Contributing
 
-All named constants live here (no magic numbers/strings anywhere else):
+Contributions are welcome! Please feel free to submit a Pull Request and leave a ⭐
 
-- `server.ts` — `PORT`, `HOSTNAME`, `BASE_URL`, `LOG_PATH`
-- `opencode.ts` — install/start/stop/readiness commands and timeouts
-- `health.ts` — `HEALTH_CHECK_URL`, `HEALTH_CHECK_TIMEOUT`, `LOG_TAIL_LINES`, `ERROR_FALLBACK_MESSAGE`
-- `ui.ts` — spinner + FAB rendering constants
-- `app.ts` — `DEBUG` master switch
-- `index.ts` — barrel (for tests; source imports the specific sub-module)
+## Credits & Attribution
 
-## Publish
+This project (the Acode OpenCode integration) is licensed under the MIT License. See the `LICENSE` file.
 
-`plugin.json` is configured for publishing (`id` `com.victozee26.opencode`, `name` `OpenCode`, `version` `0.1.0`, `main` `dist/main.js`). Bump `version` and `changelogs.md` for each release, then run `npm run build` to regenerate `dist.zip`.
+- OpenCode — https://github.com/anomalyco/opencode  
+  Licensed under the MIT License.
+
+## Support & Contact
+
+- **Issues**: [GitHub Issues](https://github.com/Victozee26/acode-opencode/issues)
+- **Email**: victorelijha@gmail.com
+
+---
+
+<div align="center">
+
+_Happy coding ✨_
+
+</div>
