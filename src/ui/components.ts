@@ -265,7 +265,6 @@ export function createFloatingActionButton(
     pointer-events: auto;
   `;
   scrim.setAttribute('aria-hidden', 'true');
-  scrim.addEventListener('click', () => closeMenu());
 
   fab.appendChild(scrim);
   fab.appendChild(menu);
@@ -398,14 +397,14 @@ export function createFloatingActionButton(
     }
   });
 
-  function onDocumentPointerDown(e: PointerEvent): void {
+  function onDocumentClick(e: MouseEvent): void {
     if (!menuOpen) return;
     if (!menu.contains(e.target as Node) && e.target !== fab) {
       closeMenu();
     }
   }
 
-  document.addEventListener('pointerdown', onDocumentPointerDown, { passive: true });
+  document.addEventListener('click', onDocumentClick);
 
   // Pointer events inside the embedded iframe (a separate document) never reach
   // the parent document, so the menu must also close when the iframe steals focus.
@@ -427,7 +426,7 @@ export function createFloatingActionButton(
     cancelIdleTimer();
     window.removeEventListener('resize', handleResize);
     window.removeEventListener('blur', onWindowBlur);
-    document.removeEventListener('pointerdown', onDocumentPointerDown);
+    document.removeEventListener('click', onDocumentClick);
     scrim.remove();
   };
 
