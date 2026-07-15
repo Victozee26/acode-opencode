@@ -72,6 +72,10 @@ export const STOP_POLL_INTERVAL = 500;
 // visual speed stays constant regardless of actual frame timing.
 export const SPINNER_DEG_PER_SEC = 450;
 
+// Floating action button: milliseconds of pointer inactivity before the button
+// fades to a reduced opacity (so it stays out of the way during reading).
+export const FLOATING_BUTTON_IDLE_OPACITY_TIMEOUT = 5000;
+
 // Spinner animation: reference frame rate (unused since switching to rAF).
 // Kept as documentation of the intended target rate.
 export const SPINNER_FPS = 30;

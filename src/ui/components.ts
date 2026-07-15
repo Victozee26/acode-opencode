@@ -1,5 +1,11 @@
 import { StateContext } from '../types';
-import { SPINNER_DEG_PER_SEC } from '../config';
+import { SPINNER_DEG_PER_SEC, FLOATING_BUTTON_IDLE_OPACITY_TIMEOUT } from '../config';
+
+export interface FabAction {
+  id: string;
+  label: string;
+  onClick: () => void;
+}
 
 /**
  * Build a centered, full-size flex container used as the root wrapper for the
@@ -95,7 +101,7 @@ export function createIframe(src: string): HTMLIFrameElement {
  * Build the header bar shown in the Ready state. Status display only — it must
  * NOT carry interactive controls. Acode owns/re-paints the `$page.header`
  * region and drops dynamically-appended event listeners, so the Restart action
- * lives in the body as a floating button (see `createRestartButton`) where our
+ * lives in the body as a floating action button (see `createFloatingActionButton`) where our
  * DOM is fully under our control and reliably receives clicks.
  */
 export function createHeaderBar(): HTMLElement {
@@ -141,43 +147,219 @@ export function createHeaderBar(): HTMLElement {
   return header;
 }
 
-/**
- * Build the floating "Restart" button rendered in the body, overlaid on top of
- * the embedded OpenCode iframe. The body region is fully under our control (the
- * iframe there receives pointer events normally), so this button reliably
- * receives clicks — unlike `$page.header`, which Acode re-paints and strips of
- * our listeners. The overlay wrapper uses `pointer-events: none` so the iframe
- * underneath stays interactive everywhere except the button itself.
- */
-export function createRestartButton(onRestart: () => void): HTMLElement {
-  const overlay = document.createElement('div');
-  overlay.style.cssText = `
+const FAB_SIZE = 44;
+const FAB_MARGIN = 16;
+const DRAG_THRESHOLD = 5;
+const FAB_IDLE_OPACITY = 0.3;
+const FAB_ACTIVE_OPACITY = 1;
+
+export function createFloatingActionButton(
+  actions: FabAction[],
+  idleTimeout: number = FLOATING_BUTTON_IDLE_OPACITY_TIMEOUT,
+): HTMLElement & { destroy: () => void } {
+  const fab = document.createElement('div');
+  let posX = window.innerWidth - FAB_SIZE - FAB_MARGIN;
+  let posY = window.innerHeight - FAB_SIZE - FAB_MARGIN;
+  let isDragging = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let originX = 0;
+  let originY = 0;
+  let menuOpen = false;
+  let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const menu = document.createElement('div');
+  menu.style.cssText = `
     position: absolute;
-    top: 8px;
-    right: 8px;
-    z-index: 10;
-    pointer-events: none;
+    bottom: ${FAB_SIZE + 12}px;
+    right: 0;
+    background: var(--menu-bg, #1e1e2e);
+    border: 1px solid var(--border-color, #333);
+    border-radius: 8px;
+    padding: 6px 0;
+    min-width: 180px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    display: none;
+    pointer-events: auto;
+    z-index: 1;
   `;
 
-  const restartBtn = document.createElement('button');
-  restartBtn.textContent = 'Restart';
-  restartBtn.className = 'opencode-btn';
-  restartBtn.style.cssText = `
-    pointer-events: auto;
-    padding: 6px 16px;
+  for (const action of actions) {
+    const item = document.createElement('button');
+    item.textContent = action.label;
+    item.style.cssText = `
+      display: block;
+      width: 100%;
+      padding: 10px 16px;
+      background: transparent;
+      color: var(--text-color, #ccc);
+      border: none;
+      font-size: 13px;
+      text-align: left;
+      cursor: pointer;
+      white-space: nowrap;
+    `;
+    item.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+    });
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeMenu();
+      action.onClick();
+    });
+    item.addEventListener('pointerenter', () => {
+      item.style.background = 'var(--hover-bg, rgba(255,255,255,0.08))';
+    });
+    item.addEventListener('pointerleave', () => {
+      item.style.background = 'transparent';
+    });
+    menu.appendChild(item);
+  }
+
+  fab.style.cssText = `
+    position: fixed;
+    left: ${posX}px;
+    top: ${posY}px;
+    width: ${FAB_SIZE}px;
+    height: ${FAB_SIZE}px;
+    border-radius: 50%;
     background: var(--primary-color, #06f);
     color: #fff;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 500;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 700;
+    cursor: grab;
+    z-index: 1000;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+    transition: opacity 0.4s ease;
+    opacity: ${FAB_ACTIVE_OPACITY};
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+    pointer-events: auto;
   `;
-  restartBtn.addEventListener('click', onRestart);
-  overlay.appendChild(restartBtn);
+  fab.textContent = '\u2699';
+  fab.setAttribute('aria-label', 'OpenCode actions');
 
-  return overlay;
+  fab.appendChild(menu);
+
+  function clampX(x: number): number {
+    return Math.max(0, Math.min(x, window.innerWidth - FAB_SIZE));
+  }
+
+  function clampY(y: number): number {
+    return Math.max(0, Math.min(y, window.innerHeight - FAB_SIZE));
+  }
+
+  function setPosition(x: number, y: number): void {
+    posX = x;
+    posY = y;
+    fab.style.left = `${posX}px`;
+    fab.style.top = `${posY}px`;
+  }
+
+  function openMenu(): void {
+    menuOpen = true;
+    menu.style.display = 'block';
+  }
+
+  function closeMenu(): void {
+    menuOpen = false;
+    menu.style.display = 'none';
+  }
+
+  function toggleMenu(): void {
+    if (menuOpen) {
+      closeMenu();
+    } else {
+      openMenu();
+    }
+  }
+
+  function resetIdleTimer(): void {
+    if (idleTimer) {
+      clearTimeout(idleTimer);
+      idleTimer = null;
+    }
+    fab.style.opacity = String(FAB_ACTIVE_OPACITY);
+    idleTimer = setTimeout(() => {
+      fab.style.opacity = String(FAB_IDLE_OPACITY);
+    }, idleTimeout);
+  }
+
+  function cancelIdleTimer(): void {
+    if (idleTimer) {
+      clearTimeout(idleTimer);
+      idleTimer = null;
+    }
+  }
+
+  fab.addEventListener('pointerdown', (e: PointerEvent) => {
+    resetIdleTimer();
+    fab.setPointerCapture(e.pointerId);
+    isDragging = true;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    originX = posX;
+    originY = posY;
+    fab.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+
+  fab.addEventListener('pointermove', (e: PointerEvent) => {
+    if (!isDragging) return;
+    resetIdleTimer();
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+    setPosition(clampX(originX + dx), clampY(originY + dy));
+  });
+
+  fab.addEventListener('pointerup', (e: PointerEvent) => {
+    if (!isDragging) return;
+    fab.releasePointerCapture(e.pointerId);
+    isDragging = false;
+    fab.style.cursor = 'grab';
+    const dx = Math.abs(e.clientX - dragStartX);
+    const dy = Math.abs(e.clientY - dragStartY);
+    if (dx < DRAG_THRESHOLD && dy < DRAG_THRESHOLD) {
+      toggleMenu();
+    }
+    resetIdleTimer();
+  });
+
+  fab.addEventListener('pointercancel', () => {
+    if (isDragging) {
+      isDragging = false;
+      fab.style.cursor = 'grab';
+    }
+  });
+
+  function onDocumentPointerDown(e: PointerEvent): void {
+    if (!menuOpen) return;
+    if (!menu.contains(e.target as Node) && e.target !== fab) {
+      closeMenu();
+    }
+  }
+
+  document.addEventListener('pointerdown', onDocumentPointerDown, { passive: true });
+
+  function handleResize(): void {
+    setPosition(clampX(posX), clampY(posY));
+  }
+
+  window.addEventListener('resize', handleResize);
+
+  resetIdleTimer();
+
+  const destroy = (): void => {
+    cancelIdleTimer();
+    window.removeEventListener('resize', handleResize);
+    document.removeEventListener('pointerdown', onDocumentPointerDown);
+  };
+
+  return Object.assign(fab, { destroy });
 }
 
 /**

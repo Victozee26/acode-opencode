@@ -3,8 +3,9 @@ import plugin from '../plugin.json';
 import { AppState } from './types';
 import { onStateChange, transition, setError, reset } from './state';
 import { render } from './ui/index';
+import type { RenderActions } from './ui/index';
 import { checkInstalled, installOpenCode } from './opencode/install';
-import { startServer, waitForReady, restartServer } from './opencode/server';
+import { startServer, waitForReady, restartServer, stopServer } from './opencode/server';
 import { isServerUp } from './opencode/health';
 import { createLogger, setLogEnabled } from './logger';
 import { DEBUG } from './config';
@@ -80,7 +81,11 @@ export class AcodePlugin {
 
     onStateChange((state, context) => {
       if (this.$page) {
-        render(this.$page, state, context, () => this.handleRestart());
+        const actions: RenderActions = {
+          restart: () => this.handleRestart(),
+          stop: () => this.handleStop(),
+        };
+        render(this.$page, state, context, actions);
       }
     });
 
@@ -186,6 +191,21 @@ export class AcodePlugin {
       log.info('handleRestart: ready');
     } catch (err) {
       this.handleError('handleRestart', err);
+    }
+  }
+
+  /**
+   * Stops the OpenCode server and returns to Idle so the user can start again.
+   */
+  private async handleStop(): Promise<void> {
+    log.info('handleStop: stopping server');
+    try {
+      await stopServer();
+      log.info('handleStop: server stopped');
+      this.isRunning = false;
+      transition(AppState.Idle);
+    } catch (err) {
+      this.handleError('handleStop', err);
     }
   }
 

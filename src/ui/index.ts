@@ -4,14 +4,21 @@ import {
   createSpinner,
   createIframe,
   createHeaderBar,
-  createRestartButton,
+  createFloatingActionButton,
   createErrorDisplay,
+  FabAction,
 } from './components';
 import { createLogger } from '../logger';
+
+export interface RenderActions {
+  restart: () => void;
+  stop: () => void;
+}
 
 const log = createLogger('ui');
 
 let activeSpinner: (HTMLElement & { stop: () => void }) | null = null;
+let activeFab: (HTMLElement & { destroy: () => void }) | null = null;
 
 // Human-readable status line per state. Keys are AppState values so the render
 // layer can index directly by the current state enum. These are presentation
@@ -61,21 +68,23 @@ function injectBaseStyles(): void {
  * @param $page - Acode's web component page (its `body`/`header` are DOM roots).
  * @param state - Current `AppState` driving which view is built.
  * @param context - State context (error info, etc.) needed by some views.
- * @param onRestart - Callback wired into the Ready floating Restart button.
+ * @param actions - Callbacks wired into the Ready floating button and Error retry.
  */
 export function render(
   $page: Acode.WCPage,
   state: AppState,
   context: StateContext,
-  onRestart: () => void,
+  actions: RenderActions,
 ): void {
   log.debug(`render: ${state}`);
-  // Stop any running spinner animation before tearing down the DOM.
   if (activeSpinner) {
     activeSpinner.stop();
     activeSpinner = null;
   }
-  // Clear both regions first so every render starts from a clean slate.
+  if (activeFab) {
+    activeFab.destroy();
+    activeFab = null;
+  }
   $page.body.innerHTML = '';
   $page.header.innerHTML = '';
 
@@ -94,11 +103,11 @@ export function render(
       break;
 
     case AppState.Ready:
-      renderReady($page, onRestart);
+      renderReady($page, actions);
       break;
 
     case AppState.Error:
-      renderError($page, context, onRestart);
+      renderError($page, context, actions);
       break;
   }
 
@@ -147,23 +156,27 @@ function renderLoading($page: Acode.WCPage, state: AppState): void {
 
 function renderReady(
   $page: Acode.WCPage,
-  onRestart: () => void,
+  actions: RenderActions,
 ): void {
-  // Header is status-only (Acode re-paints it and drops our listeners), so the
-  // Restart control lives as a floating button overlaid on the iframe in the
-  // body, where our DOM reliably receives clicks.
   $page.header.appendChild(createHeaderBar());
   const wrapper = document.createElement('div');
   wrapper.style.cssText = 'position: relative; width: 100%; height: 100%;';
   wrapper.appendChild(createIframe(BASE_URL));
-  wrapper.appendChild(createRestartButton(onRestart));
+
+  const fabActions: FabAction[] = [
+    { id: 'restart', label: 'Restart Server', onClick: actions.restart },
+    { id: 'stop', label: 'Stop Server', onClick: actions.stop },
+  ];
+  activeFab = createFloatingActionButton(fabActions);
+  wrapper.appendChild(activeFab);
+
   $page.body.appendChild(wrapper);
 }
 
 function renderError(
   $page: Acode.WCPage,
   context: StateContext,
-  onRestart: () => void,
+  actions: RenderActions,
 ): void {
-  $page.body.appendChild(createErrorDisplay(context, onRestart));
+  $page.body.appendChild(createErrorDisplay(context, actions.restart));
 }
