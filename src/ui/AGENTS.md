@@ -8,7 +8,16 @@ DOM rendering layer. Pure functions that build DOM subtrees — no side effects,
 
 Owned by the root AGENTS.md. Two export modules:
 - `index.ts` — `render()` orchestrator dispatching to one render function per `AppState`
-- `components.ts` — DOM factory functions: `createContainer`, `createSpinner`, `createIframe`, `createHeaderBar`, `createFloatingActionButton`, `createErrorDisplay`; plus `FabAction` interface
+- `components/` — one file per DOM factory function, re-exported through `components/index.ts` (barrel)
+
+  - `container.ts` — `createContainer` (shared root wrapper used by `spinner` and `errorDisplay`)
+  - `spinner.ts` — `createSpinner`
+  - `iframe.ts` — `createIframe`
+  - `headerBar.ts` — `createHeaderBar`
+  - `floatingActionButton.ts` — `createFloatingActionButton` plus the `FabAction` interface
+  - `errorDisplay.ts` — `createErrorDisplay`
+
+  Consumers (e.g. `main.ts`, `ui/index.ts`, `ui/components.test.ts`) import from `./ui/components` (resolves to the barrel), never from an individual component file.
 
 ## Local Contracts
 
@@ -29,7 +38,7 @@ Owned by the root AGENTS.md. Two export modules:
 ## Work Guidance
 
 - New UI states: add a case to the switch in `render()` and a corresponding render function.
-- New reusable components: export from `components.ts`.
+- New reusable components: each lives in its own file under `components/` and is re-exported from `components/index.ts`. Keep the file scoped to a single component.
 - Keep components pure — no side effects, no state access beyond props.
 
 ## Verification

@@ -134,6 +134,8 @@ Default section order:
 
 ## User Preferences
 
+- UI components are split by concern: one file per component under `src/ui/components/`, re-exported via `components/index.ts`. Never collapse them back into a single `components.ts`. (Requested 2026-07-15.)
+
 When the user requests a durable behavior change, record it here or in the relevant child AGENTS.md
 
 ## Child DOX Index
