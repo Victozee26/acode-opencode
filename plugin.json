@@ -4,16 +4,17 @@
   "name": "OpenCode",
   "main": "dist/main.js",
   "version": "0.1.0",
-  "repository": "https://github.com/Victozee26/acode-opencode.git",
+  "repository": "https://github.com/Victozee26/acode-opencode",
   "icon": "icon.png",
   "minVersionCode": 290,
   "license": "MIT",
   "changelogs": "changelogs.md",
-  "keywords": [],
+  "keywords": ["ai", "coding", "agent", "opencode", "llm", "assistant", "terminal"],
   "price": 0,
   "author": {
-    "name": "victor",
+    "name": "Victor",
     "email": "victorelisha26@gmail.com",
-    "github": "Victozee26"
+    "github": "Victozee26",
+    "url": "https://github.com/Victozee26"
   }
 }
