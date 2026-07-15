@@ -55,7 +55,6 @@ src/
       errorDisplay.ts
       floatingActionButton.ts
       index.ts
-    styles/             # theme + component styles
 ```
 
 ### `config/` layout
