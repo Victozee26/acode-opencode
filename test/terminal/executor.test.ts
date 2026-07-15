@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { execute } from './executor';
+import { execute } from '../../src/terminal/executor';
 
 const mockExecute = vi.fn();
 

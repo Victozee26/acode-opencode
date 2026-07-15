@@ -22,7 +22,7 @@ Owned by the root AGENTS.md. Single file: `executor.ts`.
 
 ## Verification
 
-`npm test` runs Vitest with jsdom. Test file: `src/terminal/executor.test.ts`. Covers success, failure without output, failure with output, and non-Error rejections.
+`npm test` runs Vitest with jsdom. Test file: `test/terminal/executor.test.ts`. Covers success, failure without output, failure with output, and non-Error rejections.
 
 ## Child DOX Index
 

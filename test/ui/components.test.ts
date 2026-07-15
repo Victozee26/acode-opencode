@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createErrorDisplay } from './components';
-import { AppState, StateContext } from '../types';
+import { createErrorDisplay } from '../../src/ui/components';
+import { AppState, StateContext } from '../../src/types';
 
 function makeContext(error: StateContext['error']): StateContext {
   return {

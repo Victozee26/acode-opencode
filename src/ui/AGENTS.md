@@ -17,7 +17,7 @@ Owned by the root AGENTS.md. Two export modules:
   - `floatingActionButton.ts` — `createFloatingActionButton` plus the `FabAction` interface
   - `errorDisplay.ts` — `createErrorDisplay`
 
-  Consumers (e.g. `main.ts`, `ui/index.ts`, `ui/components.test.ts`) import from `./ui/components` (resolves to the barrel), never from an individual component file.
+  Consumers (e.g. `main.ts`, `ui/index.ts`) import from `./ui/components` (resolves to the barrel), never from an individual component file. Tests live in `test/ui/components.test.ts`.
 
 ## Local Contracts
 
@@ -43,7 +43,7 @@ Owned by the root AGENTS.md. Two export modules:
 
 ## Verification
 
-`npm test` runs Vitest with jsdom. Test file: `src/ui/components.test.ts`. Covers `createErrorDisplay` retry button and log tail rendering.
+`npm test` runs Vitest with jsdom. Test file: `test/ui/components.test.ts`. Covers `createErrorDisplay` retry button and log tail rendering.
 
 ## Child DOX Index
 

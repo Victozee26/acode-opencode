@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { checkInstalled, installOpenCode } from './install';
-import * as executorModule from '../terminal/executor';
+import { checkInstalled, installOpenCode } from '../../src/opencode/install';
+import * as executorModule from '../../src/terminal/executor';
 
-vi.mock('../terminal/executor');
+vi.mock('../../src/terminal/executor');
 
 const mockExecute = vi.mocked(executorModule.execute);
 

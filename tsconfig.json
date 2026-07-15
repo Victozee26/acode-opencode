@@ -14,5 +14,5 @@
     "types": ["acode-plugin-types"]
   },
   "include": ["src/**/*"],
-  "exclude": ["./dist/**/*", "src/**/*.test.ts"]
+  "exclude": ["./dist/**/*", "test/**/*"]
 }

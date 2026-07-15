@@ -30,7 +30,7 @@ Owned by the root AGENTS.md. Two export modules:
 
 ## Verification
 
-`npm test` runs Vitest with jsdom. Test files:
+`npm test` runs Vitest with jsdom. Test files (under `test/opencode/`):
 - `install.test.ts` — `checkInstalled()` (true on success, false on rejection) and `installOpenCode()` (success, deps failure, opencode failure, non-Error rejections).
 - `health.test.ts` — `isServerUp()` success→up, failure-with-positive-status→up, failure-with-zero-status→down, plugin-absent→false, synchronous throw→false, and watchdog-timeout→false when no callback fires.
 - `server.test.ts` — `stopServer()` SIGTERM success, SIGTERM→SIGKILL escalation, both-fail throw, execute-throwing resilience, and `pollUntilDown` timeout/instant-down scenarios. `startServer()` pgrep-alive resolve, process-dead throw with log output, process-dead throw with "(no log output)", `readLogTail` trimming, and `readLogTail` failure fallback to empty string. `waitForReady()` resolve-immediate on first poll, timeout-with-log-and-process-state, timeout-with-"(no log output)"-and-process-dead.

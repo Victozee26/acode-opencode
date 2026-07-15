@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { startServer, stopServer, waitForReady } from './server';
-import * as executorModule from '../terminal/executor';
+import { startServer, stopServer, waitForReady } from '../../src/opencode/server';
+import * as executorModule from '../../src/terminal/executor';
 import {
   STARTUP_CHECK_DELAY,
   STOP_POLL_INTERVAL,
@@ -9,9 +9,9 @@ import {
   HARD_KILL_COMMAND,
   READY_POLL_INTERVAL,
   READY_TIMEOUT,
-} from '../config';
+} from '../../src/config';
 
-vi.mock('../terminal/executor');
+vi.mock('../../src/terminal/executor');
 
 const mockExecute = vi.mocked(executorModule.execute);
 

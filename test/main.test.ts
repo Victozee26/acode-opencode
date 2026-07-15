@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AppState } from './types';
-import * as stateModule from './state';
-import * as installModule from './opencode/install';
-import * as serverModule from './opencode/server';
-import * as healthModule from './opencode/health';
+import { AppState } from '../src/types';
+import * as stateModule from '../src/state';
+import * as installModule from '../src/opencode/install';
+import * as serverModule from '../src/opencode/server';
+import * as healthModule from '../src/opencode/health';
 
-vi.mock('./state');
-vi.mock('./opencode/install');
-vi.mock('./opencode/server');
-vi.mock('./opencode/health');
-vi.mock('./ui/index');
+vi.mock('../src/state');
+vi.mock('../src/opencode/install');
+vi.mock('../src/opencode/server');
+vi.mock('../src/opencode/health');
+vi.mock('../src/ui/index');
 vi.mock('../plugin.json', () => ({
   default: { id: 'acode.plugin', name: 'Plugin', main: 'main.js', version: '1.0.0' },
 }));
@@ -23,7 +23,7 @@ const mockStartServer = vi.mocked(serverModule.startServer);
 const mockWaitForReady = vi.mocked(serverModule.waitForReady);
 const mockRestartServer = vi.mocked(serverModule.restartServer);
 
-import { AcodePlugin } from './main';
+import { AcodePlugin } from '../src/main';
 
 beforeEach(() => {
   vi.clearAllMocks();
