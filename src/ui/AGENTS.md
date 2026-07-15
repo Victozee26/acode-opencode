@@ -24,7 +24,7 @@ Owned by the root AGENTS.md. Two export modules:
 - `render($page, state, context, actions)` clears `$page.body` and `$page.header`, then rebuilds based on state. `actions` is `RenderActions` with `restart` and `stop` callbacks.
 - Every state variant has its own render function. Never add inline DOM construction in `render()`.
 - All DOM is vanilla `document.createElement` — no framework, no `html-tag-js`.
-- `createIframe()` accepts a string URL; `renderReady` passes `BASE_URL` from `../config/server`.
+- `createIframe(src, scale?)` accepts a string URL and optional numeric scale factor (1 = 100%); `renderReady` passes `BASE_URL` from `../config/server` and `getIframeScale()` from `../settings`.
 - Styles use CSS custom properties (`var(--primary-color, fallback)`) for Acode theming compatibility.
 - Global keyframe/utility styles are injected once via `injectBaseStyles()` (`index.ts`) as a `<style#opencode-styles>` element. Provides `.opencode-fade-in` (state transition), `.opencode-btn` (hover/active button effects).
 - State transitions fade in: `$page.body` gets `.opencode-fade-in` after every render, triggered with a forced reflow for reliable animation restart.

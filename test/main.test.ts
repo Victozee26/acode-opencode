@@ -4,11 +4,13 @@ import * as stateModule from '../src/state';
 import * as installModule from '../src/opencode/install';
 import * as serverModule from '../src/opencode/server';
 import * as healthModule from '../src/opencode/health';
+import * as settingsModule from '../src/settings';
 
 vi.mock('../src/state');
 vi.mock('../src/opencode/install');
 vi.mock('../src/opencode/server');
 vi.mock('../src/opencode/health');
+vi.mock('../src/settings');
 vi.mock('../src/ui/index');
 vi.mock('../plugin.json', () => ({
   default: { id: 'acode.plugin', name: 'Plugin', main: 'main.js', version: '1.0.0' },
@@ -22,11 +24,13 @@ const mockIsServerUp = vi.mocked(healthModule.isServerUp);
 const mockStartServer = vi.mocked(serverModule.startServer);
 const mockWaitForReady = vi.mocked(serverModule.waitForReady);
 const mockRestartServer = vi.mocked(serverModule.restartServer);
+const mockGetSettingsSchema = vi.mocked(settingsModule.getSettingsSchema);
 
 import { AcodePlugin } from '../src/main';
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockGetSettingsSchema.mockReturnValue({ list: [] });
 });
 
 function makePlugin(): AcodePlugin {

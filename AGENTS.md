@@ -121,7 +121,7 @@ Default section order:
 ## User Preferences
 
 - UI components are split by concern: one file per component under `src/ui/components/`, re-exported via `components/index.ts`. Never collapse them back into a single `components.ts`. (Requested 2026-07-15.)
-- Config constants are split by domain under `src/config/` (one file per concern: `server`, `opencode`, `health`, `ui`, `app`) plus a barrel `index.ts`. Consumers import from the specific sub-module, never the barrel (tests may use the barrel). Never collapse them back into a single `config.ts`. (Requested 2026-07-15.)
+- Config constants are split by domain under `src/config/` (one file per concern: `server`, `opencode`, `health`, `ui`, `app`, `settings`) plus a barrel `index.ts`. Consumers import from the specific sub-module, never the barrel (tests may use the barrel). Never collapse them back into a single `config.ts`. (Requested 2026-07-15.)
 
 When the user requests a durable behavior change, record it here or in the relevant child AGENTS.md
 
@@ -130,8 +130,8 @@ When the user requests a durable behavior change, record it here or in the relev
 - `src/opencode/AGENTS.md` — OpenCode lifecycle: install checks, installation, server start/stop/restart, health polling.
 - `src/ui/AGENTS.md` — DOM rendering layer: render orchestrator per state, vanilla DOM component factories.
 - `src/terminal/AGENTS.md` — Terminal abstraction wrapping global `Executor`.
-- `src/config/AGENTS.md` — Named constants: domain split (server, opencode, health, ui, app), barrel, leaf-import rule.
-- `src/main.ts`, `src/types.ts`, `src/state.ts`, `src/logger.ts`, `src/error.ts` — Cross-cutting infrastructure owned directly by root AGENTS.md.
+- `src/config/AGENTS.md` — Named constants: domain split (server, opencode, health, ui, app, settings), barrel, leaf-import rule.
+- `src/main.ts`, `src/types.ts`, `src/state.ts`, `src/logger.ts`, `src/error.ts`, `src/settings.ts` — Cross-cutting infrastructure owned directly by root AGENTS.md.
 - `docs/SPEC.md` — Technical specification and architecture documentation.
 - `docs/BUILD_PLAN.md` — Phased build/implementation plan.
 - `docs/plans/` — Phase-level implementation plans (phases 2–4).

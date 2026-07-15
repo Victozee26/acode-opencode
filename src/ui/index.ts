@@ -6,6 +6,7 @@ import {
   createHeaderBar,
   createErrorDisplay,
 } from './components';
+import { getIframeScale } from '../settings';
 import { createLogger } from '../logger';
 
 export interface RenderActions {
@@ -155,9 +156,11 @@ function renderReady(
 ): void {
   $page.header.appendChild(createHeaderBar());
   const wrapper = document.createElement('div');
-  wrapper.style.cssText = 'position: relative; width: 100%; height: 100%;';
-  wrapper.appendChild(createIframe(BASE_URL));
+  wrapper.style.cssText =
+    'position: relative; width: 100%; height: 100%; overflow: hidden;';
+  wrapper.appendChild(createIframe(BASE_URL, getIframeScale()));
 
+  $page.body.style.overflow = 'hidden';
   $page.body.appendChild(wrapper);
 }
 

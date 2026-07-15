@@ -11,6 +11,7 @@ import { isServerUp } from './opencode/health';
 import { createLogger, setLogEnabled } from './logger';
 import { DEBUG } from './config/app';
 import { extractErrorInfo } from './error';
+import { getSettingsSchema } from './settings';
 
 const log = createLogger('main');
 
@@ -286,6 +287,7 @@ if (window.acode) {
       }
       await acodePlugin.init(baseUrl, $page, cacheFile, cacheFileUrl);
     },
+    getSettingsSchema(),
   );
 
   // setPluginUnmount registers teardown; Acode calls this when the plugin is

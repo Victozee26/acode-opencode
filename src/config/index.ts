@@ -3,3 +3,4 @@ export * from './opencode';
 export * from './health';
 export * from './ui';
 export * from './app';
+export * from './settings';
