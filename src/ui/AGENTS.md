@@ -25,6 +25,7 @@ Owned by the root AGENTS.md. Two export modules:
 - Every state variant has its own render function. Never add inline DOM construction in `render()`.
 - All DOM is vanilla `document.createElement` — no framework, no `html-tag-js`.
 - `createIframe(src, scale?)` accepts a string URL and optional numeric scale factor (1 = 100%); `renderReady` passes `BASE_URL` from `../config/server` and `getIframeScale()` from `../settings`.
+- The Ready wrapper and `$page.body` both use `overflow: hidden`. The iframe is CSS-scaled (layout box `100/scale%`, then `transform: scale()`), which overflows the wrapper box; clipping prevents the parent body from becoming scrollable (the ~50% scroll-offset bug). The embedded web UI scrolls internally. Do NOT remove this clipping.
 - Styles use CSS custom properties (`var(--primary-color, fallback)`) for Acode theming compatibility.
 - Global keyframe/utility styles are injected once via `injectBaseStyles()` (`index.ts`) as a `<style#opencode-styles>` element. Provides `.opencode-fade-in` (state transition), `.opencode-btn` (hover/active button effects).
 - State transitions fade in: `$page.body` gets `.opencode-fade-in` after every render, triggered with a forced reflow for reliable animation restart.
