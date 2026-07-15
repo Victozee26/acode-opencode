@@ -15,27 +15,7 @@ Acode plugin (Android WebView) that launches OpenCode as a background HTTP serve
 
 **Entrypoint:** `src/main.ts` → `AcodePlugin` class.
 
-**Directory layout** (feature-based):
-```
-src/
-  main.ts               # plugin init/destroy, flow orchestration
-  types.ts              # AppState enum, StateContext, ErrorInfo
-  state.ts              # state machine (transition, onStateChange, reset)
-  config/               # all named constants, split by domain (see Child DOX Index)
-    server.ts            # network/server: PORT, HOSTNAME, BASE_URL, LOG_PATH
-    opencode.ts          # opencode lifecycle: install/start/stop/readiness commands + timeouts
-    health.ts            # health probe + diagnostics: HEALTH_CHECK_*, LOG_TAIL_LINES, ERROR_FALLBACK_MESSAGE
-    ui.ts                # spinner + FAB constants
-    app.ts               # DEBUG master switch
-    index.ts             # barrel re-exporting every sub-module
-  logger.ts             # leveled logging (createLogger, setLogEnabled, setLogLevel)
-  error.ts              # extractErrorInfo() — normalizes unknown errors to summary/logTail
-  terminal/executor.ts  # thin wrapper over global Executor
-  opencode/install.ts   # checkInstalled, installOpenCode
-  opencode/server.ts    # isServerUp, startServer, stopServer, restartServer
-  ui/index.ts           # render() orchestrator, one render func per state
-  ui/components.ts      # DOM factory functions (spinner, iframe, header, error)
-```
+**Directory layout** - feature-based
 
 **State machine** (`src/types.ts` — `AppState` enum): `Idle → CheckingInstall → Installing → CheckingServer → StartingServer → Ready`. Error can be entered from any state. UI is purely reactive via `onStateChange` listener.
 
@@ -155,3 +135,6 @@ When the user requests a durable behavior change, record it here or in the relev
 - `docs/SPEC.md` — Technical specification and architecture documentation.
 - `docs/BUILD_PLAN.md` — Phased build/implementation plan.
 - `docs/plans/` — Phase-level implementation plans (phases 2–4).
+- `test/` — Vitest + jsdom suite mirroring `src/` (e.g. `test/opencode/server.test.ts`), imports from `../src/...` / `../../src/...`; stubs `window.cordova.plugin.http` for health probes (no `fetch` fallback). No `test/AGENTS.md`.
+- `docs/acode-plugin-api-reference.md` — Acode plugin API reference relevant to this project.
+- `docs/acode-plugin-development-guide.md` — Practical Acode plugin development guidance for this project.
