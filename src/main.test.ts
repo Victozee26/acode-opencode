@@ -137,6 +137,7 @@ describe('destroy', () => {
     settitle: vi.fn(),
     body: { innerHTML: '' },
     header: { innerHTML: '' },
+    style: {},
   };
 
   const mockSideButton = {
@@ -149,6 +150,8 @@ describe('destroy', () => {
       addIcon: vi.fn(),
       require: vi.fn().mockReturnValue(vi.fn().mockReturnValue(mockSideButton)),
     };
+    mockPage.hide = vi.fn();
+    mockPage.show = vi.fn();
   });
 
   it('calls $page.off with the stored show handler', async () => {
@@ -165,7 +168,7 @@ describe('destroy', () => {
     await plugin.init('https://base/', mockPage as any, {} as any, '');
     await plugin.destroy();
 
-    expect(mockPage.hide).toHaveBeenCalledTimes(1);
+    expect(mockPage.style.display).toBe('none');
   });
 
   it('does not call $page.off when handleShow was never set', async () => {

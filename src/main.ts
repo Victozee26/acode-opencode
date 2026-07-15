@@ -53,6 +53,31 @@ export class AcodePlugin {
     this.$page = $page;
     $page.settitle('OpenCode');
 
+    const STACK_ID = 'opencode-plugin';
+    const builtinShow = $page.show.bind($page);
+    let pageShown = false;
+
+    $page.show = () => {
+      if (!pageShown) {
+        pageShown = true;
+        builtinShow();
+      } else {
+        const actionStack = acode.require('actionStack');
+        if (!actionStack.has(STACK_ID)) {
+          actionStack.push({
+            id: STACK_ID,
+            action: () => $page.hide(),
+          });
+        }
+      }
+      $page.style.display = '';
+    };
+
+    $page.hide = (): string => {
+      $page.style.display = 'none';
+      return '';
+    };
+
     onStateChange((state, context) => {
       if (this.$page) {
         render(this.$page, state, context, () => this.handleRestart());
