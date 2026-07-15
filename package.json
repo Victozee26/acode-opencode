@@ -1,9 +1,9 @@
 {
   "name": "acode-plugin",
-  "version": "1.0.0",
-  "description": "Template for Acode plugin(Typescript)",
+  "version": "0.1.0",
+  "description": "Launch OpenCode as a background server inside Acode and embed its web UI.",
   "main": "dist/main.js",
-  "repository": "https://github.com/Acode-Foundation/AcodeTSTemplate.git",
+  "repository": "https://github.com/Victozee26/acode-opencode.git",
   "author": "Acode Foundation",
   "license": "MIT",
   "dependencies": {

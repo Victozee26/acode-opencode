@@ -58,7 +58,7 @@ src/
 
 - `eslint` and `prettier` packages are **not installed** (configs exist but are inert). Install them before running lint/format.
 - Tests use Vitest with jsdom (`npm test`). Test files live under `test/`, mirroring the `src/` tree (e.g. `test/opencode/server.test.ts`), and import from `../src/...` / `../../src/...`. `vitest.config.ts` `include` is `test/**/*.test.ts`; tsconfig excludes `test/**/*`.
-- `plugin.json` has placeholder values (`id`, `name`, `author`) that need real values before publishing.
+- `plugin.json` is configured for publishing: `id` `com.victozee26.opencode`, `name` `OpenCode`, `version` `0.1.0`, `main` `dist/main.js`, author set from git identity. Bump `version` + `changelogs.md` for each release.
 - `html-tag-js` is listed as a dependency but currently unused — all DOM is vanilla `document.createElement`.
 - Health-check uses `cordova.plugin.http` (Cordova Advanced HTTP) only — it runs on the native network stack so WebView CORS does NOT apply and a loopback probe to `127.0.0.1:4096` actually resolves (a plain `fetch` to loopback hangs forever in this WebView). There is NO `fetch` fallback: `isServerUp()` returns `false` immediately when `cordova.plugin.http` is absent, so tests stub `window.cordova.plugin.http` rather than relying on a browser `fetch`. Do not reintroduce a `fetch` probe. See `src/opencode/AGENTS.md`.
 
