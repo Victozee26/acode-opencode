@@ -1,5 +1,5 @@
 import { AppState, StateContext } from '../types';
-import { BASE_URL } from '../config';
+import { BASE_URL } from '../config/server';
 import {
   createSpinner,
   createIframe,

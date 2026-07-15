@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { isServerUp } from '../../src/opencode/health';
-import { HEALTH_CHECK_TIMEOUT } from '../../src/config';
+import { HEALTH_CHECK_TIMEOUT } from '../../src/config/health';
 
 const mockSendRequest = vi.fn();
 

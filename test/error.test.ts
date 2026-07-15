@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { extractErrorInfo } from '../src/error';
-import { ERROR_FALLBACK_MESSAGE } from '../src/config';
+import { ERROR_FALLBACK_MESSAGE } from '../src/config/health';
 
 describe('extractErrorInfo', () => {
   it('uses the first line as summary and the rest as logTail', () => {

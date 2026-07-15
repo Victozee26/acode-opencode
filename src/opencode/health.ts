@@ -1,4 +1,4 @@
-import { HEALTH_CHECK_URL, HEALTH_CHECK_TIMEOUT } from '../config';
+import { HEALTH_CHECK_URL, HEALTH_CHECK_TIMEOUT } from '../config/health';
 import { createLogger } from '../logger';
 
 const log = createLogger('health');

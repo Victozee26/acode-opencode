@@ -4,7 +4,7 @@ import {
   FAB_SCRIM_BLUR,
   FAB_SCRIM_Z_INDEX,
   FAB_Z_INDEX,
-} from '../../config';
+} from '../../config/ui';
 
 export interface FabAction {
   id: string;

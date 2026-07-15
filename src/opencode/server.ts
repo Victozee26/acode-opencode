@@ -1,18 +1,17 @@
 import { execute } from '../terminal/executor';
 import {
-  LOG_PATH,
-  LOG_TAIL_LINES,
   READY_POLL_INTERVAL,
   READY_TIMEOUT,
   STARTUP_CHECK_DELAY,
-  PORT,
-  HOSTNAME,
   KILL_COMMAND,
   HARD_KILL_COMMAND,
   PROCESS_CHECK_COMMAND,
   STOP_POLL_TIMEOUT,
   STOP_POLL_INTERVAL,
-} from '../config';
+} from '../config/opencode';
+import { LOG_PATH } from '../config/server';
+import { LOG_TAIL_LINES } from '../config/health';
+import { PORT, HOSTNAME } from '../config/server';
 import { createLogger } from '../logger';
 import { isServerUp } from './health';
 

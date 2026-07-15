@@ -1,5 +1,5 @@
 import { execute } from '../terminal/executor';
-import { CHECK_COMMAND, INSTALL_DEPS_COMMAND, INSTALL_OPENCODE_COMMAND } from '../config';
+import { CHECK_COMMAND, INSTALL_DEPS_COMMAND, INSTALL_OPENCODE_COMMAND } from '../config/opencode';
 import { createLogger } from '../logger';
 
 const log = createLogger('install');

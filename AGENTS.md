@@ -21,7 +21,13 @@ src/
   main.ts               # plugin init/destroy, flow orchestration
   types.ts              # AppState enum, StateContext, ErrorInfo
   state.ts              # state machine (transition, onStateChange, reset)
-  config.ts             # all named constants (port, URLs, commands, timeouts)
+  config/               # all named constants, split by domain (see Child DOX Index)
+    server.ts            # network/server: PORT, HOSTNAME, BASE_URL, LOG_PATH
+    opencode.ts          # opencode lifecycle: install/start/stop/readiness commands + timeouts
+    health.ts            # health probe + diagnostics: HEALTH_CHECK_*, LOG_TAIL_LINES, ERROR_FALLBACK_MESSAGE
+    ui.ts                # spinner + FAB constants
+    app.ts               # DEBUG master switch
+    index.ts             # barrel re-exporting every sub-module
   logger.ts             # leveled logging (createLogger, setLogEnabled, setLogLevel)
   error.ts              # extractErrorInfo() — normalizes unknown errors to summary/logTail
   terminal/executor.ts  # thin wrapper over global Executor
@@ -41,12 +47,12 @@ src/
 ## Code conventions
 
 - **SOC** SEPERATION OF CONCERN (u MUST follow that rule)
-- **No magic numbers/strings.** All constants live in `src/config.ts`. Import them — never inline literals.
+- **No magic numbers/strings.** All constants live in `src/config/`. Import them — never inline literals. Consumers import from the specific sub-module (e.g. `./config/server`), not the barrel, except tests.
 - **ESLint rules** (enforced when eslint is installed): `max-depth: 3`, `max-lines-per-function: 40` (warn), `no-magic-numbers` (warn, except 0,1,-1), `prefer-const`, `no-var`.
 - **Prettier** (when installed): single quotes, trailing commas, 100 char width, 2-space tabs.
 - **Untyped Acode modules** use `acode.require('...') as any` — this is the established pattern (acode-plugin-types doesn't cover all runtime modules).
 - **State handling** uses the `AppState` enum and `transition()` instead of nested conditionals. Never add a state check without adding it to the enum.
-- **Imports:** `config.ts` is a leaf module of pure constants — it imports nothing.
+- **Imports:** `config/` is a leaf package of pure constants — sub-modules import nothing outside `config/` (cross-config imports like `health.ts` ← `server.ts` are allowed; no imports from `../opencode`, `../ui`, etc.).
 
 ## Gotchas
 
@@ -135,6 +141,7 @@ Default section order:
 ## User Preferences
 
 - UI components are split by concern: one file per component under `src/ui/components/`, re-exported via `components/index.ts`. Never collapse them back into a single `components.ts`. (Requested 2026-07-15.)
+- Config constants are split by domain under `src/config/` (one file per concern: `server`, `opencode`, `health`, `ui`, `app`) plus a barrel `index.ts`. Consumers import from the specific sub-module, never the barrel (tests may use the barrel). Never collapse them back into a single `config.ts`. (Requested 2026-07-15.)
 
 When the user requests a durable behavior change, record it here or in the relevant child AGENTS.md
 
@@ -143,7 +150,8 @@ When the user requests a durable behavior change, record it here or in the relev
 - `src/opencode/AGENTS.md` — OpenCode lifecycle: install checks, installation, server start/stop/restart, health polling.
 - `src/ui/AGENTS.md` — DOM rendering layer: render orchestrator per state, vanilla DOM component factories.
 - `src/terminal/AGENTS.md` — Terminal abstraction wrapping global `Executor`.
-- `src/main.ts`, `src/types.ts`, `src/state.ts`, `src/config.ts`, `src/logger.ts`, `src/error.ts` — Cross-cutting infrastructure owned directly by root AGENTS.md.
+- `src/config/AGENTS.md` — Named constants: domain split (server, opencode, health, ui, app), barrel, leaf-import rule.
+- `src/main.ts`, `src/types.ts`, `src/state.ts`, `src/logger.ts`, `src/error.ts` — Cross-cutting infrastructure owned directly by root AGENTS.md.
 - `docs/SPEC.md` — Technical specification and architecture documentation.
 - `docs/BUILD_PLAN.md` — Phased build/implementation plan.
 - `docs/plans/` — Phase-level implementation plans (phases 2–4).

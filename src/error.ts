@@ -1,4 +1,4 @@
-import { ERROR_FALLBACK_MESSAGE } from './config';
+import { ERROR_FALLBACK_MESSAGE } from './config/health';
 
 // Normalized error shape produced by extractErrorInfo: a short headline plus
 // the remaining diagnostic lines.

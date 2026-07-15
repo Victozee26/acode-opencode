@@ -1,4 +1,4 @@
-import { SPINNER_DEG_PER_SEC } from '../../config';
+import { SPINNER_DEG_PER_SEC } from '../../config/ui';
 import { createContainer } from './container';
 
 /**

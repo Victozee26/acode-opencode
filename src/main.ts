@@ -9,7 +9,7 @@ import { checkInstalled, installOpenCode } from './opencode/install';
 import { startServer, waitForReady, restartServer, stopServer } from './opencode/server';
 import { isServerUp } from './opencode/health';
 import { createLogger, setLogEnabled } from './logger';
-import { DEBUG } from './config';
+import { DEBUG } from './config/app';
 import { extractErrorInfo } from './error';
 
 const log = createLogger('main');

@@ -9,7 +9,7 @@ import {
   HARD_KILL_COMMAND,
   READY_POLL_INTERVAL,
   READY_TIMEOUT,
-} from '../../src/config';
+} from '../../src/config/opencode';
 
 vi.mock('../../src/terminal/executor');
 
