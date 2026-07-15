@@ -30,6 +30,14 @@ npm run dev        # typecheck → esbuild watch + serve on port 3000
 
 Output: `dist/main.js` → zipped to `dist.zip` (the plugin artifact).
 
+## Tests
+
+```
+npm test            # vitest run (jsdom environment)
+```
+
+Test files live under `test/`, mirroring the `src/` tree (e.g. `test/opencode/server.test.ts`). Tests import from `../src/...` / `../../src/...`. Health probe tests stub `window.cordova.plugin.http` — there is no `fetch` fallback.
+
 ## Project Structure
 
 ```
