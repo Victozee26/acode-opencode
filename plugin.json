@@ -1,9 +1,9 @@
 {
   "$schema": "https://acode.app/schema/plugin/v0.1.0.json",
-  "id": "com.victozee26.opencode",
+  "id": "com.victozee.opencode",
   "name": "OpenCode",
   "main": "dist/main.js",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "repository": "https://github.com/Victozee26/acode-opencode",
   "icon": "icon.png",
   "minVersionCode": 290,

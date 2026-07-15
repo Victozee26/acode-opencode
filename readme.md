@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Victozee26/acode-opencode/main/asset/opencode-wordmark-dark.png" alt="OpenCode wordmark" />
+</p>
+
 # Acode-OpenCode Plugin
 
 An Acode plugin that runs [OpenCode](https://github.com/anomalyco/opencode) (AI coding agent) as a background HTTP server inside Acode's built-in Alpine Linux terminal, and displays OpenCode's web UI in a full-page iframe.
