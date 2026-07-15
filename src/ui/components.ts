@@ -1,5 +1,12 @@
 import { StateContext } from '../types';
-import { SPINNER_DEG_PER_SEC, FLOATING_BUTTON_IDLE_OPACITY_TIMEOUT } from '../config';
+import {
+  SPINNER_DEG_PER_SEC,
+  FLOATING_BUTTON_IDLE_OPACITY_TIMEOUT,
+  FAB_SCRIM_BACKGROUND,
+  FAB_SCRIM_BLUR,
+  FAB_SCRIM_Z_INDEX,
+  FAB_Z_INDEX,
+} from '../config';
 
 export interface FabAction {
   id: string;
@@ -156,7 +163,7 @@ const FAB_ACTIVE_OPACITY = 1;
 export function createFloatingActionButton(
   actions: FabAction[],
   idleTimeout: number = FLOATING_BUTTON_IDLE_OPACITY_TIMEOUT,
-): HTMLElement & { destroy: () => void } {
+): HTMLElement & { destroy: () => void; setActionVisible: (id: string, visible: boolean) => void } {
   const fab = document.createElement('div');
   let posX = window.innerWidth - FAB_SIZE - FAB_MARGIN;
   let posY = window.innerHeight - FAB_SIZE - FAB_MARGIN;
@@ -183,6 +190,8 @@ export function createFloatingActionButton(
     pointer-events: auto;
     z-index: 1;
   `;
+
+  const actionItems = new Map<string, HTMLElement>();
 
   for (const action of actions) {
     const item = document.createElement('button');
@@ -214,6 +223,7 @@ export function createFloatingActionButton(
       item.style.background = 'transparent';
     });
     menu.appendChild(item);
+    actionItems.set(action.id, item);
   }
 
   fab.style.cssText = `
@@ -231,7 +241,7 @@ export function createFloatingActionButton(
     font-size: 20px;
     font-weight: 700;
     cursor: grab;
-    z-index: 1000;
+    z-index: ${FAB_Z_INDEX};
     box-shadow: 0 2px 12px rgba(0,0,0,0.5);
     transition: opacity 0.4s ease;
     opacity: ${FAB_ACTIVE_OPACITY};
@@ -243,6 +253,21 @@ export function createFloatingActionButton(
   fab.textContent = '\u2699';
   fab.setAttribute('aria-label', 'OpenCode actions');
 
+  const scrim = document.createElement('div');
+  scrim.style.cssText = `
+    position: fixed;
+    inset: 0;
+    background: ${FAB_SCRIM_BACKGROUND};
+    backdrop-filter: blur(${FAB_SCRIM_BLUR});
+    -webkit-backdrop-filter: blur(${FAB_SCRIM_BLUR});
+    z-index: ${FAB_SCRIM_Z_INDEX};
+    display: none;
+    pointer-events: auto;
+  `;
+  scrim.setAttribute('aria-hidden', 'true');
+  scrim.addEventListener('click', () => closeMenu());
+
+  fab.appendChild(scrim);
   fab.appendChild(menu);
 
   function clampX(x: number): number {
@@ -260,14 +285,43 @@ export function createFloatingActionButton(
     fab.style.top = `${posY}px`;
   }
 
+  function positionMenu(): void {
+    const margin = 8;
+    const fabRect = fab.getBoundingClientRect();
+    const menuW = menu.offsetWidth;
+    const menuH = menu.offsetHeight;
+
+    if (fabRect.right - menuW < margin) {
+      menu.style.right = 'auto';
+      menu.style.left = '0px';
+    } else {
+      menu.style.left = 'auto';
+      menu.style.right = '0px';
+    }
+
+    if (fabRect.top - menuH - margin < 0) {
+      menu.style.bottom = 'auto';
+      menu.style.top = `${FAB_SIZE + 12}px`;
+    } else {
+      menu.style.top = 'auto';
+      menu.style.bottom = `${FAB_SIZE + 12}px`;
+    }
+  }
+
   function openMenu(): void {
     menuOpen = true;
     menu.style.display = 'block';
+    scrim.style.display = 'block';
+    positionMenu();
+    setActiveOpacity();
+    cancelIdleTimer();
   }
 
   function closeMenu(): void {
     menuOpen = false;
     menu.style.display = 'none';
+    scrim.style.display = 'none';
+    resetIdleTimer();
   }
 
   function toggleMenu(): void {
@@ -278,12 +332,17 @@ export function createFloatingActionButton(
     }
   }
 
+  function setActiveOpacity(): void {
+    fab.style.opacity = String(FAB_ACTIVE_OPACITY);
+  }
+
   function resetIdleTimer(): void {
     if (idleTimer) {
       clearTimeout(idleTimer);
       idleTimer = null;
     }
-    fab.style.opacity = String(FAB_ACTIVE_OPACITY);
+    if (menuOpen) return;
+    setActiveOpacity();
     idleTimer = setTimeout(() => {
       fab.style.opacity = String(FAB_IDLE_OPACITY);
     }, idleTimeout);
@@ -329,10 +388,13 @@ export function createFloatingActionButton(
     resetIdleTimer();
   });
 
-  fab.addEventListener('pointercancel', () => {
+  fab.addEventListener('pointercancel', (e: PointerEvent) => {
     if (isDragging) {
       isDragging = false;
       fab.style.cursor = 'grab';
+    }
+    if (fab.hasPointerCapture(e.pointerId)) {
+      fab.releasePointerCapture(e.pointerId);
     }
   });
 
@@ -345,6 +407,14 @@ export function createFloatingActionButton(
 
   document.addEventListener('pointerdown', onDocumentPointerDown, { passive: true });
 
+  // Pointer events inside the embedded iframe (a separate document) never reach
+  // the parent document, so the menu must also close when the iframe steals focus.
+  function onWindowBlur(): void {
+    if (menuOpen) closeMenu();
+  }
+
+  window.addEventListener('blur', onWindowBlur);
+
   function handleResize(): void {
     setPosition(clampX(posX), clampY(posY));
   }
@@ -356,10 +426,19 @@ export function createFloatingActionButton(
   const destroy = (): void => {
     cancelIdleTimer();
     window.removeEventListener('resize', handleResize);
+    window.removeEventListener('blur', onWindowBlur);
     document.removeEventListener('pointerdown', onDocumentPointerDown);
+    scrim.remove();
   };
 
-  return Object.assign(fab, { destroy });
+  function setActionVisible(id: string, visible: boolean): void {
+    const item = actionItems.get(id);
+    if (item) {
+      item.style.display = visible ? 'block' : 'none';
+    }
+  }
+
+  return Object.assign(fab, { destroy, setActionVisible });
 }
 
 /**

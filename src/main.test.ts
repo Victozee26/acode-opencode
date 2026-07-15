@@ -135,6 +135,7 @@ describe('destroy', () => {
     hide: vi.fn(),
     show: vi.fn(),
     settitle: vi.fn(),
+    appendChild: vi.fn(),
     body: { innerHTML: '' },
     header: { innerHTML: '' },
     style: {},

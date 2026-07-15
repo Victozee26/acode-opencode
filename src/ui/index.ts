@@ -4,9 +4,7 @@ import {
   createSpinner,
   createIframe,
   createHeaderBar,
-  createFloatingActionButton,
   createErrorDisplay,
-  FabAction,
 } from './components';
 import { createLogger } from '../logger';
 
@@ -18,7 +16,6 @@ export interface RenderActions {
 const log = createLogger('ui');
 
 let activeSpinner: (HTMLElement & { stop: () => void }) | null = null;
-let activeFab: (HTMLElement & { destroy: () => void }) | null = null;
 
 // Human-readable status line per state. Keys are AppState values so the render
 // layer can index directly by the current state enum. These are presentation
@@ -68,7 +65,9 @@ function injectBaseStyles(): void {
  * @param $page - Acode's web component page (its `body`/`header` are DOM roots).
  * @param state - Current `AppState` driving which view is built.
  * @param context - State context (error info, etc.) needed by some views.
- * @param actions - Callbacks wired into the Ready floating button and Error retry.
+ * @param actions - Callbacks wired into the Error retry path. The floating
+ * action button is created once at the plugin level (see `AcodePlugin`), not
+ * here, so it persists across every state re-render.
  */
 export function render(
   $page: Acode.WCPage,
@@ -80,10 +79,6 @@ export function render(
   if (activeSpinner) {
     activeSpinner.stop();
     activeSpinner = null;
-  }
-  if (activeFab) {
-    activeFab.destroy();
-    activeFab = null;
   }
   $page.body.innerHTML = '';
   $page.header.innerHTML = '';
@@ -156,19 +151,12 @@ function renderLoading($page: Acode.WCPage, state: AppState): void {
 
 function renderReady(
   $page: Acode.WCPage,
-  actions: RenderActions,
+  _actions: RenderActions,
 ): void {
   $page.header.appendChild(createHeaderBar());
   const wrapper = document.createElement('div');
   wrapper.style.cssText = 'position: relative; width: 100%; height: 100%;';
   wrapper.appendChild(createIframe(BASE_URL));
-
-  const fabActions: FabAction[] = [
-    { id: 'restart', label: 'Restart Server', onClick: actions.restart },
-    { id: 'stop', label: 'Stop Server', onClick: actions.stop },
-  ];
-  activeFab = createFloatingActionButton(fabActions);
-  wrapper.appendChild(activeFab);
 
   $page.body.appendChild(wrapper);
 }
