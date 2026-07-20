@@ -34,38 +34,16 @@ export function createFloatingActionButton(
   let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
   const menu = document.createElement('div');
-  menu.style.cssText = `
-    position: absolute;
-    bottom: ${FAB_SIZE + 12}px;
-    right: 0;
-    background: var(--menu-bg, #1e1e2e);
-    border: 1px solid var(--border-color, #333);
-    border-radius: 8px;
-    padding: 6px 0;
-    min-width: 180px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-    display: none;
-    pointer-events: auto;
-    z-index: 1;
-  `;
+  menu.className = 'opencode-fab-menu';
+  menu.style.bottom = `${FAB_SIZE + 12}px`;
+  menu.style.right = '0';
 
   const actionItems = new Map<string, HTMLElement>();
 
   for (const action of actions) {
     const item = document.createElement('button');
     item.textContent = action.label;
-    item.style.cssText = `
-      display: block;
-      width: 100%;
-      padding: 10px 16px;
-      background: transparent;
-      color: var(--text-color, #ccc);
-      border: none;
-      font-size: 13px;
-      text-align: left;
-      cursor: pointer;
-      white-space: nowrap;
-    `;
+    item.className = 'opencode-fab-item';
     item.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
     });
@@ -84,44 +62,20 @@ export function createFloatingActionButton(
     actionItems.set(action.id, item);
   }
 
-  fab.style.cssText = `
-    position: fixed;
-    left: ${posX}px;
-    top: ${posY}px;
-    width: ${FAB_SIZE}px;
-    height: ${FAB_SIZE}px;
-    border-radius: 50%;
-    background: var(--primary-color, #06f);
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    font-weight: 700;
-    cursor: grab;
-    z-index: ${FAB_Z_INDEX};
-    box-shadow: 0 2px 12px rgba(0,0,0,0.5);
-    transition: opacity 0.4s ease;
-    opacity: ${FAB_ACTIVE_OPACITY};
-    user-select: none;
-    -webkit-user-select: none;
-    touch-action: none;
-    pointer-events: auto;
-  `;
+  fab.className = 'opencode-fab';
+  fab.style.left = `${posX}px`;
+  fab.style.top = `${posY}px`;
+  fab.style.zIndex = String(FAB_Z_INDEX);
+  fab.style.opacity = String(FAB_ACTIVE_OPACITY);
   fab.textContent = '⚙';
   fab.setAttribute('aria-label', 'OpenCode actions');
 
   const scrim = document.createElement('div');
-  scrim.style.cssText = `
-    position: fixed;
-    inset: 0;
-    background: ${FAB_SCRIM_BACKGROUND};
-    backdrop-filter: blur(${FAB_SCRIM_BLUR});
-    -webkit-backdrop-filter: blur(${FAB_SCRIM_BLUR});
-    z-index: ${FAB_SCRIM_Z_INDEX};
-    display: none;
-    pointer-events: auto;
-  `;
+  scrim.className = 'opencode-fab-scrim';
+  scrim.style.background = FAB_SCRIM_BACKGROUND;
+  scrim.style.backdropFilter = `blur(${FAB_SCRIM_BLUR})`;
+  (scrim.style as any).webkitBackdropFilter = `blur(${FAB_SCRIM_BLUR})`;
+  scrim.style.zIndex = String(FAB_SCRIM_Z_INDEX);
   scrim.setAttribute('aria-hidden', 'true');
 
   fab.appendChild(scrim);

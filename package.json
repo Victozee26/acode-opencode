@@ -28,5 +28,8 @@
   "resolutions": {
     "terser": ">=5.14.2 ",
     "glob-parent": ">=5.1.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true
   }
 }

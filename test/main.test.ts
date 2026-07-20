@@ -141,7 +141,7 @@ describe('destroy', () => {
     settitle: vi.fn(),
     appendChild: vi.fn(),
     body: { innerHTML: '' },
-    header: { innerHTML: '' },
+    header: { innerHTML: '', style: {} },
     style: {},
   };
 

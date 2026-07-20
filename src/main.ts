@@ -2,9 +2,8 @@ import plugin from '../plugin.json';
 
 import { AppState } from './types';
 import { onStateChange, transition, getState, setError, reset } from './state';
-import { render } from './ui/index';
+import { render, initUiStyles } from './ui/index';
 import type { RenderActions } from './ui/index';
-import { createFloatingActionButton, FabAction } from './ui/components';
 import { checkInstalled, installOpenCode } from './opencode/install';
 import { startServer, waitForReady, restartServer, stopServer } from './opencode/server';
 import { isServerUp } from './opencode/health';
@@ -34,7 +33,6 @@ export class AcodePlugin {
   // install/start sequence more than once concurrently.
   private isRunning = false;
   private sideButton: Acode.SideButton | null = null;
-  private fab: (HTMLElement & { destroy: () => void; setActionVisible: (id: string, visible: boolean) => void }) | null = null;
   private handleShow!: () => void;
 
   /**
@@ -54,8 +52,12 @@ export class AcodePlugin {
   ): Promise<void> {
     setLogEnabled(DEBUG);
     log.info('init: plugin initializing');
+    initUiStyles(baseUrl);
     this.$page = $page;
-    $page.settitle('OpenCode');
+    if ($page.header) {
+      $page.header.innerHTML = '';
+      $page.header.style.display = 'none';
+    }
 
     const STACK_ID = 'opencode-plugin';
     const builtinShow = $page.show.bind($page);
@@ -83,13 +85,12 @@ export class AcodePlugin {
     };
 
     onStateChange((state, context) => {
-      if (this.fab) {
-        this.fab.setActionVisible('start', state !== AppState.Ready);
-      }
       if (this.$page) {
         const actions: RenderActions = {
+          start: () => this.handleStart(),
           restart: () => this.handleRestart(),
           stop: () => this.handleStop(),
+          back: () => this.$page?.hide(),
         };
         render(this.$page, state, context, actions);
       }
@@ -115,40 +116,16 @@ export class AcodePlugin {
       },
     });
     this.sideButton.show();
-
-    this.mountFab();
-  }
-
-  /**
-   * Creates the floating action button once at the plugin level and appends it
-   * to the page so it persists across every state re-render (the render layer
-   * only wipes `$page.body`/`$page.header`). Its menu exposes Start/Restart/Stop
-   * server actions wired directly to the plugin's flow drivers.
-   */
-  private mountFab(): void {
-    if (this.fab || !this.$page) return;
-    const fabActions: FabAction[] = [
-      { id: 'start', label: 'Start Server', onClick: () => this.handleStart() },
-      { id: 'restart', label: 'Restart Server', onClick: () => this.handleRestart() },
-      { id: 'stop', label: 'Stop Server', onClick: () => this.handleStop() },
-    ];
-    this.fab = createFloatingActionButton(fabActions);
-    this.$page.appendChild(this.fab);
   }
 
   /**
    * Tears down the plugin: hides/removes the side-button, unsubscribes the
-   * `show` handler, hides the page, and resets the state machine back to Idle.
+   * `show` handler, hides the page, and resets the state machine to Idle.
    */
   async destroy(): Promise<void> {
     log.info('destroy: tearing down');
     this.sideButton?.hide();
     this.sideButton = null;
-    if (this.fab) {
-      this.fab.destroy();
-      this.fab.remove();
-      this.fab = null;
-    }
     if (this.handleShow) {
       this.$page?.off('show', this.handleShow);
     }

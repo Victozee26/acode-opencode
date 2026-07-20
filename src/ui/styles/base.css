@@ -1,0 +1,21 @@
+@keyframes opencode-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.opencode-fade-in {
+  animation: opencode-fade-in 0.35s ease-out !important;
+}
+
+.opencode-btn {
+  transition: opacity 0.2s, transform 0.1s !important;
+  cursor: pointer !important;
+}
+
+.opencode-btn:hover {
+  opacity: 0.85 !important;
+}
+
+.opencode-btn:active {
+  transform: scale(0.96) !important;
+}

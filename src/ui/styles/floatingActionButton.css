@@ -1,0 +1,53 @@
+.opencode-fab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--primary-color, #06f);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: grab;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  transition: opacity 0.4s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  pointer-events: auto;
+}
+
+.opencode-fab-menu {
+  position: absolute;
+  background: var(--menu-bg, #1e1e2e);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 8px;
+  padding: 6px 0;
+  min-width: 180px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  display: none;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+.opencode-fab-item {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  background: transparent;
+  color: var(--text-color, #ccc);
+  border: none;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.opencode-fab-scrim {
+  position: fixed;
+  inset: 0;
+  display: none;
+  pointer-events: auto;
+}

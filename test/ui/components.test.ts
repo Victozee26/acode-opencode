@@ -36,7 +36,7 @@ describe('createErrorDisplay', () => {
     expect(el.querySelector('pre')).toBeNull();
   });
 
-  it('<h3> has white-space: pre-wrap', () => {
+  it('<h3> uses opencode-error-heading class', () => {
     const ctx = makeContext({ message: 'Error', logTail: '' });
     const onRetry = vi.fn();
 
@@ -44,7 +44,7 @@ describe('createErrorDisplay', () => {
     const h3 = el.querySelector('h3') as HTMLHeadingElement;
 
     expect(h3).not.toBeNull();
-    expect(h3.style.whiteSpace).toBe('pre-wrap');
+    expect(h3.className).toBe('opencode-error-heading');
   });
 
   it('renders both <pre> block and retry button when logTail is non-empty', () => {

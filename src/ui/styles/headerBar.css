@@ -1,0 +1,98 @@
+.opencode-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--header-bg, var(--background-color));
+  border-bottom: 1px solid var(--border-color, #333);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.opencode-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.opencode-header-back {
+  background: none;
+  border: none;
+  color: var(--text-color, #ccc);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: -2px;
+}
+
+.opencode-header-back:hover {
+  background: var(--hover-bg, rgba(255,255,255,0.08));
+}
+
+.opencode-header-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success-text-color, #4caf50);
+  box-shadow: 0 0 6px var(--success-text-color, #4caf50);
+}
+
+.opencode-header-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-color, #ccc);
+  letter-spacing: 0.3px;
+}
+
+.opencode-header-hamburger {
+  background: none;
+  border: none;
+  color: var(--text-color, #ccc);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.opencode-header-menu {
+  position: absolute;
+  top: 100%;
+  right: 8px;
+  background: var(--menu-bg, var(--popup-background-color, #1e1e2e));
+  border: 1px solid var(--border-color, #333);
+  border-radius: 8px;
+  padding: 6px 0;
+  min-width: 180px;
+  box-shadow: 0 4px 16px var(--box-shadow-color, rgba(0,0,0,0.5));
+  z-index: 1000;
+}
+
+.opencode-header-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  pointer-events: auto;
+}
+
+.opencode-fab-item {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  background: transparent;
+  color: var(--text-color, #ccc);
+  border: none;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}

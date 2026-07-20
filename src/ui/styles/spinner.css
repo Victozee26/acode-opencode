@@ -1,0 +1,15 @@
+.opencode-spinner-ring {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, var(--primary-text-color, #fff) 0% 75%, transparent 75% 100%);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), var(--primary-text-color, #fff) calc(100% - 5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 5px), var(--primary-text-color, #fff) calc(100% - 5px));
+}
+
+.opencode-spinner-label {
+  margin-top: 20px;
+  color: var(--text-color, #ccc);
+  font-size: 14px;
+  opacity: 0.9;
+}

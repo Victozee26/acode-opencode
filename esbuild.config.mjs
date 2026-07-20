@@ -1,7 +1,25 @@
 import * as esbuild from "esbuild";
 import { exec } from "child_process";
+import { cpSync, existsSync, mkdirSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const isServe = process.argv.includes("--serve");
+
+// Copy CSS files from src/ui/styles/ to dist/styles/
+function copyStyles() {
+  const src = join(__dirname, "src", "ui", "styles");
+  const dest = join(__dirname, "dist", "styles");
+  if (existsSync(src)) {
+    if (!existsSync(dest)) {
+      mkdirSync(dest, { recursive: true });
+    }
+    cpSync(src, dest, { recursive: true });
+    console.log("Styles copied to dist/styles/");
+  }
+}
 
 // Function to pack the ZIP file
 function packZip() {
@@ -14,11 +32,12 @@ function packZip() {
   });
 }
 
-// Custom plugin to pack ZIP after build or rebuild
-const zipPlugin = {
-  name: "zip-plugin",
+// Custom plugin to copy styles and pack ZIP after build
+const buildPlugin = {
+  name: "build-plugin",
   setup(build) {
     build.onEnd(() => {
+      copyStyles();
       packZip();
     });
   },
@@ -32,7 +51,7 @@ let buildConfig = {
   logLevel: "info",
   color: true,
   outdir: "dist",
-  plugins: [zipPlugin],
+  plugins: [buildPlugin],
 };
 
 // Main function to handle both serve and production builds

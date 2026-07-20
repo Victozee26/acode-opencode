@@ -16,23 +16,11 @@ export function createSpinner(statusText: string): HTMLElement & { stop: () => v
   const wrapper = createContainer('opencode-loading');
 
   const ring = document.createElement('div');
-  ring.style.cssText = `
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: conic-gradient(from 0deg, #fff 0% 75%, transparent 75% 100%);
-    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #fff calc(100% - 5px));
-    mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #fff calc(100% - 5px));
-  `;
+  ring.className = 'opencode-spinner-ring';
   wrapper.appendChild(ring);
 
   const label = document.createElement('p');
-  label.style.cssText = `
-    margin-top: 20px;
-    color: var(--text-color, #ccc);
-    font-size: 14px;
-    opacity: 0.9;
-  `;
+  label.className = 'opencode-spinner-label';
   label.textContent = statusText;
   wrapper.appendChild(label);
 

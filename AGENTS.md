@@ -121,6 +121,7 @@ Default section order:
 ## User Preferences
 
 - UI components are split by concern: one file per component under `src/ui/components/`, re-exported via `components/index.ts`. Never collapse them back into a single `components.ts`. (Requested 2026-07-15.)
+- CSS is in external `.css` files under `src/ui/styles/` (one per component/domain), loaded via `<link>` in `initUiStyles()`. Components use `className` for static layout; dynamic values (position, transforms, config-dependent) stay as inline `element.style.*`. Never use `cssText` for static styles, and never add `<style>` elements in JS. (Established 2026-07-20.)
 - Config constants are split by domain under `src/config/` (one file per concern: `server`, `opencode`, `health`, `ui`, `app`, `settings`) plus a barrel `index.ts`. Consumers import from the specific sub-module, never the barrel (tests may use the barrel). Never collapse them back into a single `config.ts`. (Requested 2026-07-15.)
 
 When the user requests a durable behavior change, record it here or in the relevant child AGENTS.md
@@ -128,7 +129,7 @@ When the user requests a durable behavior change, record it here or in the relev
 ## Child DOX Index
 
 - `src/opencode/AGENTS.md` — OpenCode lifecycle: install checks, installation, server start/stop/restart, health polling.
-- `src/ui/AGENTS.md` — DOM rendering layer: render orchestrator per state, vanilla DOM component factories.
+- `src/ui/AGENTS.md` — DOM rendering layer: render orchestrator per state, vanilla DOM component factories, external CSS styles loaded via `<link>`.
 - `src/terminal/AGENTS.md` — Terminal abstraction wrapping global `Executor`.
 - `src/config/AGENTS.md` — Named constants: domain split (server, opencode, health, ui, app, settings), barrel, leaf-import rule.
 - `src/main.ts`, `src/types.ts`, `src/state.ts`, `src/logger.ts`, `src/error.ts`, `src/settings.ts` — Cross-cutting infrastructure owned directly by root AGENTS.md.
