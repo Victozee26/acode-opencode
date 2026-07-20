@@ -12,6 +12,7 @@ const BACK_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" st
 export function createCustomHeader(
   actions: FabAction[],
   isReady: boolean,
+  baseUrl: string,
   onBack?: () => void,
   updateBanner?: UpdateBannerConfig | null,
 ): HTMLElement {
@@ -30,18 +31,13 @@ export function createCustomHeader(
     leftGroup.appendChild(backBtn);
   }
 
-  const statusDot = document.createElement('span');
-  statusDot.className = 'opencode-header-dot';
-  if (!isReady) {
-    statusDot.style.background = 'var(--text-color, #888)';
-    statusDot.style.boxShadow = 'none';
-  }
-  leftGroup.appendChild(statusDot);
+  const wordmark = document.createElement('img');
+  wordmark.className = 'opencode-header-wordmark';
+  wordmark.src = baseUrl + 'asset/opencode-wordmark-dark.png';
+  wordmark.alt = 'OpenCode';
+  wordmark.setAttribute('aria-label', 'OpenCode');
+  leftGroup.appendChild(wordmark);
 
-  const projectLabel = document.createElement('span');
-  projectLabel.textContent = 'OpenCode';
-  projectLabel.className = 'opencode-header-label';
-  leftGroup.appendChild(projectLabel);
   header.appendChild(leftGroup);
 
   const hamburger = document.createElement('button');

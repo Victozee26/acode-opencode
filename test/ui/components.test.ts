@@ -97,7 +97,9 @@ describe('createErrorDisplay', () => {
 
 async function loadFreshUi() {
   vi.resetModules();
-  return import('../../src/ui/index');
+  const mod = await import('../../src/ui/index');
+  mod.initUiStyles('http://test/');
+  return mod;
 }
 
 function makeActions(): RenderActions {
@@ -200,8 +202,10 @@ describe('render with persistent containers', () => {
 
     const header = document.getElementById('opencode-header')!;
     expect(header.querySelector('.opencode-header')).not.toBeNull();
-    expect(header.querySelector('.opencode-header-dot')).not.toBeNull();
-    expect(header.querySelector('.opencode-header-label')?.textContent).toBe('OpenCode');
+    const wordmark = header.querySelector('.opencode-header-wordmark') as HTMLImageElement;
+    expect(wordmark).not.toBeNull();
+    expect(wordmark.tagName).toBe('IMG');
+    expect(wordmark.alt).toBe('OpenCode');
   });
 
   it('content changes between Ready and Idle but header persists', async () => {
@@ -257,22 +261,6 @@ describe('updateHeader behavior via render', () => {
     document.body.innerHTML = '';
   });
 
-  it('status dot is green when Ready, gray otherwise', async () => {
-    const { initUiPage, render } = await loadFreshUi();
-    initUiPage({ body: document.body } as any);
-
-    render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
-
-    const dot = document.querySelector('.opencode-header-dot') as HTMLElement;
-    expect(dot.style.background).toBe('var(--text-color, #888)');
-
-    render(AppState.Ready, { currentState: AppState.Ready, error: null }, makeActions());
-    expect(dot.style.background).toBe('var(--primary-color, #4caf50)');
-
-    render(AppState.Error, { currentState: AppState.Error, error: { message: 'err', logTail: '' } }, makeActions());
-    expect(dot.style.background).toBe('var(--text-color, #888)');
-  });
-
   it('Start Server menu item hidden when Ready, visible otherwise', async () => {
     const { initUiPage, render } = await loadFreshUi();
     initUiPage({ body: document.body } as any);
@@ -313,21 +301,6 @@ describe('updateHeader directly (Phase 2)', () => {
     expect(() => {
       updateHeader(AppState.Ready, {});
     }).not.toThrow();
-  });
-
-  it('changes status dot independently via updateHeader', async () => {
-    const { initUiPage, render, updateHeader } = await loadFreshUi();
-    initUiPage({ body: document.body } as any);
-    render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
-
-    const dot = document.querySelector('.opencode-header-dot') as HTMLElement;
-    expect(dot.style.background).toBe('var(--text-color, #888)');
-
-    updateHeader(AppState.Ready, {});
-    expect(dot.style.background).toBe('var(--primary-color, #4caf50)');
-
-    updateHeader(AppState.Idle, {});
-    expect(dot.style.background).toBe('var(--text-color, #888)');
   });
 
   it('shows update banner when called with updateInfo', async () => {

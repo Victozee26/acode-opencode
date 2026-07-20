@@ -32,6 +32,7 @@ let pageContent: HTMLElement | null = null;
 let previousState: AppState | null = null;
 
 let stylesInitialized = false;
+let pluginBaseUrl = '';
 
 const STYLESHEETS = [
   'styles/base.css',
@@ -47,6 +48,7 @@ const STYLESHEETS = [
 export function initUiStyles(baseUrl: string): void {
   if (stylesInitialized) return;
   stylesInitialized = true;
+  pluginBaseUrl = baseUrl;
   for (const href of STYLESHEETS) {
     const link = document.createElement('link');
     link.rel = 'stylesheet';
@@ -114,7 +116,7 @@ export function render(
       { id: 'stop', label: 'Stop Server', onClick: actions.stop },
     ];
     const banner = buildUpdateBanner(actions);
-    pageHeader!.appendChild(createCustomHeader(fabActions, state === AppState.Ready, actions.back, banner));
+    pageHeader!.appendChild(createCustomHeader(fabActions, state === AppState.Ready, pluginBaseUrl, actions.back, banner));
   }
 
   pageContent!.innerHTML = '';
@@ -229,17 +231,6 @@ function buildUpdateBanner(actions: HeaderActions): UpdateBannerConfig | null {
 
 export function updateHeader(state: AppState, actions: HeaderActions): void {
   if (!pageHeader) return;
-
-  const dot = pageHeader.querySelector<HTMLElement>('.opencode-header-dot');
-  if (dot) {
-    if (state === AppState.Ready) {
-      dot.style.background = 'var(--primary-color, #4caf50)';
-      dot.style.boxShadow = '0 0 6px var(--primary-color, #4caf50)';
-    } else {
-      dot.style.background = 'var(--text-color, #888)';
-      dot.style.boxShadow = 'none';
-    }
-  }
 
   const startItem = pageHeader.querySelector<HTMLElement>('[data-action-id="start"]');
   if (startItem) {

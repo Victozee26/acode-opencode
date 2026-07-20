@@ -21,6 +21,19 @@ function copyStyles() {
   }
 }
 
+// Copy static assets from project root asset/ to dist/asset/
+function copyAssets() {
+  const src = join(__dirname, "asset");
+  const dest = join(__dirname, "dist", "asset");
+  if (existsSync(src)) {
+    if (!existsSync(dest)) {
+      mkdirSync(dest, { recursive: true });
+    }
+    cpSync(src, dest, { recursive: true });
+    console.log("Assets copied to dist/asset/");
+  }
+}
+
 // Function to pack the ZIP file
 function packZip() {
   exec("node .vscode/pack-zip.js", (err, stdout, stderr) => {
@@ -38,6 +51,7 @@ const buildPlugin = {
   setup(build) {
     build.onEnd(() => {
       copyStyles();
+      copyAssets();
       packZip();
     });
   },
