@@ -2,7 +2,7 @@ import plugin from '../plugin.json';
 
 import { AppState, UpdateInfo, UpdateStatus } from './types';
 import { onStateChange, transition, getState, setError, reset } from './state';
-import { render, initUiStyles } from './ui/index';
+import { render, initUiStyles, initUiPage } from './ui/index';
 import type { RenderActions } from './ui/index';
 import { checkInstalled, installOpenCode } from './opencode/install';
 import { startServer, waitForReady, restartServer, stopServer } from './opencode/server';
@@ -57,6 +57,7 @@ export class AcodePlugin {
     log.info('init: plugin initializing');
     initUiStyles(baseUrl);
     this.$page = $page;
+    initUiPage($page);
     if ($page.header) {
       $page.header.innerHTML = '';
       $page.header.style.display = 'none';
@@ -99,7 +100,7 @@ export class AcodePlugin {
           onUpdateClick: () => this.handleUpdateClick(),
           onCancelUpdate: () => this.handleCancelUpdate(),
         };
-        render(this.$page, state, context, actions);
+        render(state, context, actions);
       }
     });
 

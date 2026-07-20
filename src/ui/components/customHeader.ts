@@ -102,6 +102,7 @@ export function createCustomHeader(
     const item = document.createElement('button');
     item.textContent = action.label;
     item.className = 'opencode-fab-item';
+    item.setAttribute('data-action-id', action.id);
     if (action.id === 'start' && isReady) {
       item.style.display = 'none';
     }

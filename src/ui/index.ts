@@ -1,5 +1,6 @@
 import { AppState, StateContext, UpdateInfo, UpdateStatus } from '../types';
 import { BASE_URL } from '../config/server';
+import { HEADER_CONTAINER_ID, CONTENT_CONTAINER_ID } from '../config/ui';
 import {
   createSpinner,
   createIframe,
@@ -26,6 +27,10 @@ const log = createLogger('ui');
 
 let activeSpinner: (HTMLElement & { stop: () => void }) | null = null;
 
+let pageHeader: HTMLElement | null = null;
+let pageContent: HTMLElement | null = null;
+let previousState: AppState | null = null;
+
 let stylesInitialized = false;
 
 const STYLESHEETS = [
@@ -50,6 +55,27 @@ export function initUiStyles(baseUrl: string): void {
   }
 }
 
+export function initUiPage($page: Acode.WCPage): void {
+  $page.body.innerHTML = '';
+  $page.body.style.display = 'flex';
+  $page.body.style.flexDirection = 'column';
+  $page.body.style.height = '100%';
+  $page.body.style.overflow = '';
+
+  const header = document.createElement('div');
+  header.id = HEADER_CONTAINER_ID;
+  pageHeader = header;
+  $page.body.appendChild(header);
+
+  const content = document.createElement('div');
+  content.id = CONTENT_CONTAINER_ID;
+  content.style.flex = '1';
+  content.style.display = 'flex';
+  content.style.flexDirection = 'column';
+  pageContent = content;
+  $page.body.appendChild(content);
+}
+
 const STATUS_MESSAGES: Record<string, string> = {
   [AppState.CheckingInstall]: 'Checking OpenCode installation\u2026',
   [AppState.Installing]: 'Installing OpenCode\u2026',
@@ -58,70 +84,70 @@ const STATUS_MESSAGES: Record<string, string> = {
 };
 
 /**
- * Reactive UI orchestrator. The plugin renders purely from state: each call
- * wipes `$page.body` (full re-render, no diffing) and rebuilds the DOM for the
- * given `AppState`. A custom header with hamburger menu (anchored to `$page.body`
- * top) replaces the FAB and appears in every state.
+ * Reactive UI orchestrator. The plugin renders purely from state: the first
+ * call creates the persistent header inside `pageHeader` (id=`HEADER_CONTAINER_ID`),
+ * and subsequent calls only swap the content area (`pageContent`, id=`CONTENT_CONTAINER_ID`).
+ * Same-state transitions short-circuit to only update the header in-place.
  */
 export function render(
-  $page: Acode.WCPage,
   state: AppState,
   context: StateContext,
   actions: RenderActions,
 ): void {
   log.debug(`render: ${state}`);
+
   if (activeSpinner) {
     activeSpinner.stop();
     activeSpinner = null;
   }
-  $page.body.innerHTML = '';
-  $page.body.style.display = 'flex';
-  $page.body.style.flexDirection = 'column';
-  $page.body.style.height = '100%';
-  $page.body.style.overflow = '';
 
-  const isReady = state === AppState.Ready;
-  const fabActions: FabAction[] = [
-    { id: 'start', label: 'Start Server', onClick: actions.start },
-    { id: 'restart', label: 'Restart Server', onClick: actions.restart },
-    { id: 'stop', label: 'Stop Server', onClick: actions.stop },
-  ];
+  if (state === previousState) {
+    updateHeader(state, actions);
+    return;
+  }
 
-  const updateBanner = buildUpdateBanner(actions);
+  const headerEl = pageHeader!.querySelector('.opencode-header');
+  if (!headerEl) {
+    const fabActions: FabAction[] = [
+      { id: 'start', label: 'Start Server', onClick: actions.start },
+      { id: 'restart', label: 'Restart Server', onClick: actions.restart },
+      { id: 'stop', label: 'Stop Server', onClick: actions.stop },
+    ];
+    const banner = buildUpdateBanner(actions);
+    pageHeader!.appendChild(createCustomHeader(fabActions, state === AppState.Ready, actions.back, banner));
+  }
 
-  $page.body.appendChild(createCustomHeader(fabActions, isReady, actions.back, updateBanner));
-
-  const container = document.createElement('div');
-  container.style.flex = '1';
-  container.style.display = 'flex';
-  container.style.flexDirection = 'column';
-  $page.body.appendChild(container);
+  pageContent!.innerHTML = '';
+  pageContent!.style.overflow = '';
 
   switch (state) {
     case AppState.Idle:
-      renderIdle(container);
+      renderIdle(pageContent!);
       break;
 
     case AppState.CheckingInstall:
     case AppState.Installing:
     case AppState.CheckingServer:
     case AppState.StartingServer:
-      renderLoading(container, state);
+      renderLoading(pageContent!, state);
       break;
 
     case AppState.Ready:
-      renderReady(container);
+      renderReady(pageContent!);
       break;
 
     case AppState.Error:
-      renderError(container, context, actions);
+      renderError(pageContent!, context, actions);
       break;
   }
 
-  container.style.animation = 'none';
-  void container.offsetHeight;
-  container.style.animation = '';
-  container.classList.add('opencode-fade-in');
+  pageContent!.style.animation = 'none';
+  void pageContent!.offsetHeight;
+  pageContent!.style.animation = '';
+  pageContent!.classList.add('opencode-fade-in');
+
+  updateHeader(state, actions);
+  previousState = state;
 }
 
 function renderIdle(container: HTMLElement): void {
@@ -199,4 +225,90 @@ function buildUpdateBanner(actions: RenderActions): UpdateBannerConfig | null {
     status: null,
     onClick: onClick ?? (() => {}),
   };
+}
+
+function updateHeader(state: AppState, actions: RenderActions): void {
+  if (!pageHeader) return;
+
+  const dot = pageHeader.querySelector<HTMLElement>('.opencode-header-dot');
+  if (dot) {
+    if (state === AppState.Ready) {
+      dot.style.background = 'var(--primary-color, #4caf50)';
+      dot.style.boxShadow = '0 0 6px var(--primary-color, #4caf50)';
+    } else {
+      dot.style.background = 'var(--text-color, #888)';
+      dot.style.boxShadow = 'none';
+    }
+  }
+
+  const startItem = pageHeader.querySelector<HTMLElement>('[data-action-id="start"]');
+  if (startItem) {
+    startItem.style.display = state === AppState.Ready ? 'none' : '';
+  }
+
+  const existingBanner = pageHeader.querySelector('.opencode-header-update');
+  const bannerConfig = buildUpdateBanner(actions);
+
+  if (!bannerConfig && existingBanner) {
+    existingBanner.remove();
+  } else if (bannerConfig && !existingBanner) {
+    const menu = pageHeader.querySelector('.opencode-header-menu');
+    if (menu) {
+      const firstItem = menu.querySelector('.opencode-fab-item');
+      const newBanner = createUpdateBannerElement(bannerConfig);
+      if (firstItem) {
+        menu.insertBefore(newBanner, firstItem);
+      } else {
+        menu.appendChild(newBanner);
+      }
+    }
+  } else if (bannerConfig && existingBanner) {
+    const parent = existingBanner.parentNode;
+    const ref = existingBanner.nextSibling;
+    existingBanner.remove();
+    const newBanner = createUpdateBannerElement(bannerConfig);
+    if (parent) {
+      if (ref) {
+        parent.insertBefore(newBanner, ref);
+      } else {
+        parent.appendChild(newBanner);
+      }
+    }
+  }
+}
+
+function createUpdateBannerElement(config: UpdateBannerConfig): HTMLElement {
+  if (config.status === 'updated') {
+    const banner = document.createElement('div');
+    banner.className = 'opencode-header-update opencode-header-update--updated';
+    banner.textContent = config.label;
+    return banner;
+  }
+
+  const banner = document.createElement('button');
+  banner.className = 'opencode-header-update';
+  banner.textContent = config.label;
+
+  if (config.status === 'installing') {
+    banner.classList.add('opencode-header-update--installing');
+    const closeBtn = document.createElement('span');
+    closeBtn.textContent = '\u2715';
+    closeBtn.className = 'opencode-header-update-close';
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      config.onCancel?.();
+    });
+    banner.appendChild(closeBtn);
+  } else if (config.status === 'error') {
+    banner.classList.add('opencode-header-update--error');
+  }
+
+  if (config.status !== 'installing') {
+    banner.addEventListener('click', (e) => {
+      e.stopPropagation();
+      config.onClick();
+    });
+  }
+
+  return banner;
 }

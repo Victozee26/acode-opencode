@@ -21,3 +21,6 @@ export const FAB_SCRIM_BLUR = '4px';
 // subtree (because $page forms its own stacking context), stealing the click.
 export const FAB_SCRIM_Z_INDEX = -1;
 export const FAB_Z_INDEX = 1001;
+
+export const HEADER_CONTAINER_ID = 'opencode-header';
+export const CONTENT_CONTAINER_ID = 'opencode-content';
