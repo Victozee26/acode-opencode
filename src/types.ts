@@ -46,3 +46,13 @@ export interface UpdateInfo {
 // green success banner; 'error' shows a clickable failure state; null (or
 // absent) means idle or the pre-update banner.
 export type UpdateStatus = 'installing' | 'error' | 'updated';
+
+// Header-only actions for update banner and status dot updates.
+// Used by updateHeader() to avoid triggering full state transitions
+// for header-only visual changes.
+export interface HeaderActions {
+  updateInfo?: UpdateInfo | null;
+  updateStatus?: UpdateStatus | null;
+  onUpdateClick?: () => void;
+  onCancelUpdate?: () => void;
+}

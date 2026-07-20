@@ -1,4 +1,4 @@
-import { AppState, StateContext, UpdateInfo, UpdateStatus } from '../types';
+import { AppState, StateContext, UpdateInfo, UpdateStatus, HeaderActions } from '../types';
 import { BASE_URL } from '../config/server';
 import { HEADER_CONTAINER_ID, CONTENT_CONTAINER_ID } from '../config/ui';
 import {
@@ -192,7 +192,7 @@ function renderError(
   container.appendChild(createErrorDisplay(context, actions.restart));
 }
 
-function buildUpdateBanner(actions: RenderActions): UpdateBannerConfig | null {
+function buildUpdateBanner(actions: HeaderActions): UpdateBannerConfig | null {
   const info = actions.updateInfo;
   const status = actions.updateStatus;
   const onClick = actions.onUpdateClick;
@@ -227,7 +227,7 @@ function buildUpdateBanner(actions: RenderActions): UpdateBannerConfig | null {
   };
 }
 
-function updateHeader(state: AppState, actions: RenderActions): void {
+export function updateHeader(state: AppState, actions: HeaderActions): void {
   if (!pageHeader) return;
 
   const dot = pageHeader.querySelector<HTMLElement>('.opencode-header-dot');

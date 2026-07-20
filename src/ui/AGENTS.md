@@ -7,7 +7,7 @@ DOM rendering layer. Pure functions that build DOM subtrees — no side effects,
 ## Ownership
 
 Owned by the root AGENTS.md. Three subdirectories:
-- `index.ts` — `render(state, context, actions)` orchestrator dispatching to one render function per `AppState`; `initUiStyles(baseUrl)` loads CSS via `<link>` elements; `initUiPage($page)` sets up persistent header and content containers; `updateHeader(state, actions)` updates header in-place on every render
+- `index.ts` — `render(state, context, actions)` orchestrator dispatching to one render function per `AppState`; `initUiStyles(baseUrl)` loads CSS via `<link>` elements; `initUiPage($page)` sets up persistent header and content containers; `updateHeader(state, actions)` (exported) updates header in-place on every render
 - `components/` — one file per DOM factory function, re-exported through `components/index.ts` (barrel)
 - `styles/` — one CSS file per component/domain, loaded via `<link>` in `initUiStyles()`
 
@@ -37,7 +37,7 @@ Owned by the root AGENTS.md. Three subdirectories:
 
 - `initUiPage($page)` is called once during `AcodePlugin.init()` to set up persistent DOM: it clears `$page.body`, sets it to a flex column, then appends two containers — `#opencode-header` (stored in `pageHeader`) and `#opencode-content` (stored in `pageContent`). These containers persist across all subsequent renders.
 - `render(state, context, actions)` no longer takes `$page`. On first call, it creates the custom header inside `pageHeader`; on subsequent calls it only swaps the content area (`pageContent.innerHTML`). Same-state transitions short-circuit — only `updateHeader()` runs, no content swap. `actions` is `RenderActions` with `start`, `restart`, `stop`, `back`, optional `updateInfo`, optional `updateStatus`, optional `onUpdateClick`, and optional `onCancelUpdate` fields.
-- `updateHeader(state, actions)` updates the header in-place: sets the status dot color based on Ready state, shows/hides the Start Server menu item, and creates/replaces/removes the update banner. It calls `buildUpdateBanner(actions)` to get the banner config and uses `createUpdateBannerElement()` to build the DOM.
+- `updateHeader(state, actions)` (exported) updates the header in-place: sets the status dot color based on Ready state, shows/hides the Start Server menu item, and creates/replaces/removes the update banner. It calls `buildUpdateBanner(actions)` to get the banner config and uses `createUpdateBannerElement()` to build the DOM. `actions` is `HeaderActions` (defined in `src/types.ts`), a structural subset of `RenderActions` with only `updateInfo`, `updateStatus`, `onUpdateClick`, and `onCancelUpdate`. `main.ts` calls `updateHeader()` directly for header-only visual changes (e.g. update banner status), bypassing the state machine entirely.
 - The custom header (via `createCustomHeader`) is created once and persists across state transitions. It includes a status dot (green when `Ready`, gray otherwise), "OpenCode" label, and a hamburger button on the right. Clicking the hamburger opens a dropdown menu with Start/Restart/Stop Server actions, with a scrim backdrop to close on outside tap. The "Start Server" item is hidden when the server is already `Ready`. An optional update banner (`.opencode-header-update`) is prepended to the menu, built from `actions` via `buildUpdateBanner()`.
 - Every state variant has its own render function. Never add inline DOM construction in `render()`.
 - All DOM is vanilla `document.createElement` — no framework, no `html-tag-js`.

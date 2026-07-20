@@ -2,8 +2,9 @@ import plugin from '../plugin.json';
 
 import { AppState, UpdateInfo, UpdateStatus } from './types';
 import { onStateChange, transition, getState, setError, reset } from './state';
-import { render, initUiStyles, initUiPage } from './ui/index';
+import { render, initUiStyles, initUiPage, updateHeader } from './ui/index';
 import type { RenderActions } from './ui/index';
+import type { HeaderActions } from './types';
 import { checkInstalled, installOpenCode } from './opencode/install';
 import { startServer, waitForReady, restartServer, stopServer } from './opencode/server';
 import { isServerUp } from './opencode/health';
@@ -118,7 +119,7 @@ export class AcodePlugin {
     this.runUpdateCheck().then((info) => {
       if (info) {
         this.updateInfo = info;
-        transition(getState().currentState);
+        updateHeader(getState().currentState, this.getHeaderActions());
       }
     });
 
@@ -260,6 +261,15 @@ export class AcodePlugin {
     return checkForUpdates().catch(() => null);
   }
 
+  private getHeaderActions(): HeaderActions {
+    return {
+      updateInfo: this.updateInfo,
+      updateStatus: this.updateStatus,
+      onUpdateClick: () => this.handleUpdateClick(),
+      onCancelUpdate: () => this.handleCancelUpdate(),
+    };
+  }
+
   /**
    * Handler for the "Update" click in the hamburger menu.
    *
@@ -272,7 +282,7 @@ export class AcodePlugin {
     if (this.updateStatus === 'installing') return;
 
     this.updateStatus = 'installing';
-    transition(getState().currentState);
+    updateHeader(getState().currentState, this.getHeaderActions());
 
     try {
       await installUpdate();
@@ -283,11 +293,11 @@ export class AcodePlugin {
       if (fresh) {
         this.updateInfo = fresh;
       }
-      transition(getState().currentState);
+      updateHeader(getState().currentState, this.getHeaderActions());
     } catch (err) {
       log.error('handleUpdateClick: failed', err);
       this.updateStatus = 'error';
-      transition(getState().currentState);
+      updateHeader(getState().currentState, this.getHeaderActions());
     }
   }
 
@@ -298,7 +308,7 @@ export class AcodePlugin {
    */
   private handleCancelUpdate(): void {
     this.updateStatus = null;
-    transition(getState().currentState);
+    updateHeader(getState().currentState, this.getHeaderActions());
   }
 
   /**
