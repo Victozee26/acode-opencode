@@ -63,7 +63,7 @@ Owned by the root AGENTS.md. Three subdirectories:
 
 ## Verification
 
-`npm test` runs Vitest with jsdom. Test file: `test/ui/components.test.ts`. Covers `createErrorDisplay` retry button and log tail rendering.
+`npm test` runs Vitest with jsdom. Test file: `test/ui/components.test.ts`. Covers `createErrorDisplay` retry button and log tail rendering, `initUiPage` container creation, `render` persistent container behavior (header persists across transitions, content swaps), `updateHeader` in-place updates (status dot color, Start Server visibility, same-state short-circuit).
 
 ## Child DOX Index
 

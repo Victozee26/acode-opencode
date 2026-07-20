@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createErrorDisplay } from '../../src/ui/components';
 import { AppState, StateContext } from '../../src/types';
 
@@ -90,5 +90,212 @@ describe('createErrorDisplay', () => {
     const btn = el.querySelector('button') as HTMLButtonElement;
     btn.click();
     expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+});
+
+// --- Phase 1: UI Structural Split ---
+
+async function loadFreshUi() {
+  vi.resetModules();
+  return import('../../src/ui/index');
+}
+
+function makeActions(): RenderActions {
+  return {
+    start: vi.fn(),
+    restart: vi.fn(),
+    stop: vi.fn(),
+    back: vi.fn(),
+  };
+}
+
+interface RenderActions {
+  start: () => void;
+  restart: () => void;
+  stop: () => void;
+  back: () => void;
+  updateInfo?: UpdateInfo | null;
+  updateStatus?: UpdateStatus | null;
+  onUpdateClick?: () => void;
+  onCancelUpdate?: () => void;
+}
+
+interface UpdateInfo {
+  currentVersion: string;
+  latestVersion: string;
+}
+type UpdateStatus = 'installing' | 'error' | 'updated';
+
+describe('initUiPage', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('creates #opencode-header and #opencode-content inside $page.body', async () => {
+    const { initUiPage } = await loadFreshUi();
+    const $page = { body: document.body };
+    initUiPage($page as any);
+
+    expect(document.getElementById('opencode-header')).not.toBeNull();
+    expect(document.getElementById('opencode-content')).not.toBeNull();
+    expect(document.body.children.length).toBe(2);
+  });
+
+  it('clears $page.body before adding containers', async () => {
+    const { initUiPage } = await loadFreshUi();
+    document.body.innerHTML = '<p>stale</p>';
+    const $page = { body: document.body };
+    initUiPage($page as any);
+
+    expect(document.body.children.length).toBe(2);
+    expect(document.body.children[0].id).toBe('opencode-header');
+    expect(document.body.children[1].id).toBe('opencode-content');
+  });
+
+  it('sets $page.body to flex column with 100% height', async () => {
+    const { initUiPage } = await loadFreshUi();
+    const $page = { body: document.body };
+    initUiPage($page as any);
+
+    expect(document.body.style.display).toBe('flex');
+    expect(document.body.style.flexDirection).toBe('column');
+    expect(document.body.style.height).toBe('100%');
+  });
+
+  it('sets #opencode-content to flex grow 1', async () => {
+    const { initUiPage } = await loadFreshUi();
+    const $page = { body: document.body };
+    initUiPage($page as any);
+
+    const content = document.getElementById('opencode-content')!;
+    expect(content.style.flexGrow).toBe('1');
+    expect(content.style.display).toBe('flex');
+    expect(content.style.flexDirection).toBe('column');
+  });
+
+  it('is idempotent — clears and recreates containers on second call', async () => {
+    const { initUiPage } = await loadFreshUi();
+    const $page = { body: document.body };
+    initUiPage($page as any);
+
+    document.getElementById('opencode-content')!.textContent = 'data';
+
+    initUiPage($page as any);
+
+    expect(document.body.children.length).toBe(2);
+    expect(document.getElementById('opencode-content')!.textContent).toBe('');
+  });
+});
+
+describe('render with persistent containers', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('creates header inside #opencode-header on first render', async () => {
+    const { initUiPage, render } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+
+    render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
+
+    const header = document.getElementById('opencode-header')!;
+    expect(header.querySelector('.opencode-header')).not.toBeNull();
+    expect(header.querySelector('.opencode-header-dot')).not.toBeNull();
+    expect(header.querySelector('.opencode-header-label')?.textContent).toBe('OpenCode');
+  });
+
+  it('content changes between Ready and Idle but header persists', async () => {
+    const { initUiPage, render } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+
+    render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
+
+    const headerEl = document.querySelector('.opencode-header');
+    const idleIcon = document.querySelector('.opencode-idle-icon');
+    expect(idleIcon).not.toBeNull();
+
+    render(AppState.Ready, { currentState: AppState.Ready, error: null }, makeActions());
+
+    expect(document.querySelector('.opencode-header')).toBe(headerEl);
+    expect(document.querySelector('.opencode-idle-icon')).toBeNull();
+    expect(document.querySelector('iframe')).not.toBeNull();
+  });
+
+  it('content changes between Ready and Error states', async () => {
+    const { initUiPage, render } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+
+    render(AppState.Ready, { currentState: AppState.Ready, error: null }, makeActions());
+    expect(document.querySelector('iframe')).not.toBeNull();
+
+    render(
+      AppState.Error,
+      { currentState: AppState.Error, error: { message: 'fail', logTail: '' } },
+      makeActions(),
+    );
+    expect(document.querySelector('iframe')).toBeNull();
+    expect(document.querySelector('.opencode-error-heading')).not.toBeNull();
+  });
+
+  it('same-state short-circuit does not clear content container', async () => {
+    const { initUiPage, render } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+
+    render(AppState.Ready, { currentState: AppState.Ready, error: null }, makeActions());
+
+    const content = document.getElementById('opencode-content')!;
+    const iframe = content.querySelector('iframe');
+
+    render(AppState.Ready, { currentState: AppState.Ready, error: null }, makeActions());
+
+    expect(content.querySelector('iframe')).toBe(iframe);
+  });
+});
+
+describe('updateHeader behavior via render', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('status dot is green when Ready, gray otherwise', async () => {
+    const { initUiPage, render } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+
+    render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
+
+    const dot = document.querySelector('.opencode-header-dot') as HTMLElement;
+    expect(dot.style.background).toBe('var(--text-color, #888)');
+
+    render(AppState.Ready, { currentState: AppState.Ready, error: null }, makeActions());
+    expect(dot.style.background).toBe('var(--primary-color, #4caf50)');
+
+    render(AppState.Error, { currentState: AppState.Error, error: { message: 'err', logTail: '' } }, makeActions());
+    expect(dot.style.background).toBe('var(--text-color, #888)');
+  });
+
+  it('Start Server menu item hidden when Ready, visible otherwise', async () => {
+    const { initUiPage, render } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+
+    render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
+
+    const startItem = document.querySelector<HTMLElement>('[data-action-id="start"]')!;
+    expect(startItem.style.display).not.toBe('none');
+
+    render(AppState.Ready, { currentState: AppState.Ready, error: null }, makeActions());
+    expect(startItem.style.display).toBe('none');
+
+    render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
+    expect(startItem.style.display).not.toBe('none');
+  });
+
+  it('Start Server hidden from creation when first render is Ready', async () => {
+    const { initUiPage, render } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+
+    render(AppState.Ready, { currentState: AppState.Ready, error: null }, makeActions());
+
+    const startItem = document.querySelector<HTMLElement>('[data-action-id="start"]')!;
+    expect(startItem.style.display).toBe('none');
   });
 });
