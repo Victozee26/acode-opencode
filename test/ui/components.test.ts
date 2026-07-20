@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createErrorDisplay } from '../../src/ui/components';
-import { AppState, StateContext } from '../../src/types';
+import { AppState, StateContext, HeaderActions } from '../../src/types';
 
 function makeContext(error: StateContext['error']): StateContext {
   return {
@@ -297,5 +297,147 @@ describe('updateHeader behavior via render', () => {
 
     const startItem = document.querySelector<HTMLElement>('[data-action-id="start"]')!;
     expect(startItem.style.display).toBe('none');
+  });
+});
+
+describe('updateHeader directly (Phase 2)', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('can be called directly with HeaderActions after header creation', async () => {
+    const { initUiPage, render, updateHeader } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+    render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
+
+    expect(() => {
+      updateHeader(AppState.Ready, {});
+    }).not.toThrow();
+  });
+
+  it('changes status dot independently via updateHeader', async () => {
+    const { initUiPage, render, updateHeader } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+    render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
+
+    const dot = document.querySelector('.opencode-header-dot') as HTMLElement;
+    expect(dot.style.background).toBe('var(--text-color, #888)');
+
+    updateHeader(AppState.Ready, {});
+    expect(dot.style.background).toBe('var(--primary-color, #4caf50)');
+
+    updateHeader(AppState.Idle, {});
+    expect(dot.style.background).toBe('var(--text-color, #888)');
+  });
+
+  it('shows update banner when called with updateInfo', async () => {
+    const { initUiPage, render, updateHeader } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+    render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
+
+    expect(document.querySelector('.opencode-header-update')).toBeNull();
+
+    updateHeader(AppState.Idle, {
+      updateInfo: { currentVersion: '1.0.0', latestVersion: '2.0.0' },
+      onUpdateClick: vi.fn(),
+    });
+
+    const banner = document.querySelector('.opencode-header-update');
+    expect(banner).not.toBeNull();
+    expect(banner!.textContent).toContain('Update:');
+    expect(banner!.textContent).toContain('1.0.0');
+    expect(banner!.textContent).toContain('2.0.0');
+  });
+
+  it('removes banner when updateInfo is cleared', async () => {
+    const { initUiPage, render, updateHeader } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+    render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
+
+    updateHeader(AppState.Idle, {
+      updateInfo: { currentVersion: '1.0.0', latestVersion: '2.0.0' },
+    });
+    expect(document.querySelector('.opencode-header-update')).not.toBeNull();
+
+    updateHeader(AppState.Idle, { updateInfo: null });
+    expect(document.querySelector('.opencode-header-update')).toBeNull();
+  });
+
+  it('shows installing status on banner', async () => {
+    const { initUiPage, render, updateHeader } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+    render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
+
+    updateHeader(AppState.Idle, {
+      updateInfo: { currentVersion: '1.0.0', latestVersion: '2.0.0' },
+      updateStatus: 'installing',
+    });
+
+    const banner = document.querySelector('.opencode-header-update');
+    expect(banner).not.toBeNull();
+    expect(banner!.classList.contains('opencode-header-update--installing')).toBe(true);
+  });
+
+  it('shows updated banner when updateStatus is updated', async () => {
+    const { initUiPage, render, updateHeader } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+    render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
+
+    updateHeader(AppState.Idle, {
+      updateInfo: { currentVersion: '1.0.0', latestVersion: '2.0.0' },
+      updateStatus: 'updated',
+    });
+
+    const banner = document.querySelector('.opencode-header-update');
+    expect(banner).not.toBeNull();
+    expect(banner!.textContent).toContain('Updated to');
+  });
+
+  it('shows error banner when updateStatus is error', async () => {
+    const { initUiPage, render, updateHeader } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+    render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
+
+    updateHeader(AppState.Idle, {
+      updateStatus: 'error',
+      onUpdateClick: vi.fn(),
+    });
+
+    const banner = document.querySelector('.opencode-header-update');
+    expect(banner).not.toBeNull();
+    expect(banner!.textContent).toContain('Update failed');
+  });
+
+  it('calls onUpdateClick when update banner is clicked', async () => {
+    const { initUiPage, render, updateHeader } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+    render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
+
+    const onClick = vi.fn();
+    updateHeader(AppState.Idle, {
+      updateInfo: { currentVersion: '1.0.0', latestVersion: '2.0.0' },
+      onUpdateClick: onClick,
+    });
+
+    const banner = document.querySelector('.opencode-header-update') as HTMLElement;
+    banner.click();
+    expect(onClick).toHaveBeenCalled();
+  });
+
+  it('calls onCancelUpdate when close button is clicked on installing banner', async () => {
+    const { initUiPage, render, updateHeader } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+    render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
+
+    const onCancel = vi.fn();
+    updateHeader(AppState.Idle, {
+      updateInfo: { currentVersion: '1.0.0', latestVersion: '2.0.0' },
+      updateStatus: 'installing',
+      onCancelUpdate: onCancel,
+    });
+
+    const closeBtn = document.querySelector('.opencode-header-update-close') as HTMLElement;
+    closeBtn.click();
+    expect(onCancel).toHaveBeenCalled();
   });
 });
