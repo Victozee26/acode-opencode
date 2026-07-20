@@ -1,12 +1,13 @@
 import plugin from '../plugin.json';
 
-import { AppState } from './types';
+import { AppState, UpdateInfo, UpdateStatus } from './types';
 import { onStateChange, transition, getState, setError, reset } from './state';
 import { render, initUiStyles } from './ui/index';
 import type { RenderActions } from './ui/index';
 import { checkInstalled, installOpenCode } from './opencode/install';
 import { startServer, waitForReady, restartServer, stopServer } from './opencode/server';
 import { isServerUp } from './opencode/health';
+import { checkForUpdates, installUpdate } from './opencode/update';
 import { createLogger, setLogEnabled } from './logger';
 import { DEBUG } from './config/app';
 import { extractErrorInfo } from './error';
@@ -34,6 +35,8 @@ export class AcodePlugin {
   private isRunning = false;
   private sideButton: Acode.SideButton | null = null;
   private handleShow!: () => void;
+  private updateInfo: UpdateInfo | null = null;
+  private updateStatus: UpdateStatus | null = null;
 
   /**
    * Registers the reactive render hook and UI entry points.
@@ -91,6 +94,10 @@ export class AcodePlugin {
           restart: () => this.handleRestart(),
           stop: () => this.handleStop(),
           back: () => this.$page?.hide(),
+          updateInfo: this.updateInfo,
+          updateStatus: this.updateStatus,
+          onUpdateClick: () => this.handleUpdateClick(),
+          onCancelUpdate: () => this.handleCancelUpdate(),
         };
         render(this.$page, state, context, actions);
       }
@@ -103,6 +110,16 @@ export class AcodePlugin {
       }
     };
     $page.on('show', this.handleShow);
+
+    // Fire-and-forget update check: runs in background, never blocks startup,
+    // never throws. When a newer version is found, triggers a re-render so the
+    // hamburger menu shows the version delta.
+    this.runUpdateCheck().then((info) => {
+      if (info) {
+        this.updateInfo = info;
+        transition(getState().currentState);
+      }
+    });
 
     const iconUrl = baseUrl + 'icon.png';
     acode.addIcon(ICON_CLASS, iconUrl);
@@ -229,6 +246,58 @@ export class AcodePlugin {
     } catch (err) {
       this.handleError('handleStop', err);
     }
+  }
+
+  /**
+   * Fire-and-forget wrapper around the module-level checkForUpdates().
+   *
+   * Runs in the background (never awaited at call site) and never throws —
+   * all errors are caught and logged inside checkForUpdates(). Returns null
+   * when no update is available or the check could not be performed.
+   */
+  private runUpdateCheck(): Promise<UpdateInfo | null> {
+    return checkForUpdates().catch(() => null);
+  }
+
+  /**
+   * Handler for the "Update" click in the hamburger menu.
+   *
+   * Sets status to 'installing' (triggering a pulsing banner), installs the
+   * latest opencode-ai via npm, then re-checks versions. On success the banner
+   * disappears (currentVersion matches latest). On failure the banner shows an
+   * error state clickable for retry. Guarded against re-entrant clicks.
+   */
+  private async handleUpdateClick(): Promise<void> {
+    if (this.updateStatus === 'installing') return;
+
+    this.updateStatus = 'installing';
+    transition(getState().currentState);
+
+    try {
+      await installUpdate();
+
+      this.updateStatus = 'updated';
+
+      const fresh = await this.runUpdateCheck();
+      if (fresh) {
+        this.updateInfo = fresh;
+      }
+      transition(getState().currentState);
+    } catch (err) {
+      log.error('handleUpdateClick: failed', err);
+      this.updateStatus = 'error';
+      transition(getState().currentState);
+    }
+  }
+
+  /**
+   * Cancels an in-progress update by clearing the update status.
+   * The updateInfo is kept so the banner reverts to the pre-update
+   * "Update: X → Y" message.
+   */
+  private handleCancelUpdate(): void {
+    this.updateStatus = null;
+    transition(getState().currentState);
   }
 
   /**

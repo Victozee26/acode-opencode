@@ -1,4 +1,4 @@
-import { AppState, StateContext } from '../types';
+import { AppState, StateContext, UpdateInfo, UpdateStatus } from '../types';
 import { BASE_URL } from '../config/server';
 import {
   createSpinner,
@@ -6,6 +6,7 @@ import {
   createCustomHeader,
   createErrorDisplay,
   FabAction,
+  UpdateBannerConfig,
 } from './components';
 import { getIframeScale } from '../settings';
 import { createLogger } from '../logger';
@@ -15,6 +16,10 @@ export interface RenderActions {
   restart: () => void;
   stop: () => void;
   back: () => void;
+  updateInfo?: UpdateInfo | null;
+  updateStatus?: UpdateStatus | null;
+  onUpdateClick?: () => void;
+  onCancelUpdate?: () => void;
 }
 
 const log = createLogger('ui');
@@ -81,7 +86,10 @@ export function render(
     { id: 'restart', label: 'Restart Server', onClick: actions.restart },
     { id: 'stop', label: 'Stop Server', onClick: actions.stop },
   ];
-  $page.body.appendChild(createCustomHeader(fabActions, isReady, actions.back));
+
+  const updateBanner = buildUpdateBanner(actions);
+
+  $page.body.appendChild(createCustomHeader(fabActions, isReady, actions.back, updateBanner));
 
   const container = document.createElement('div');
   container.style.flex = '1';
@@ -156,4 +164,39 @@ function renderError(
   actions: RenderActions,
 ): void {
   container.appendChild(createErrorDisplay(context, actions.restart));
+}
+
+function buildUpdateBanner(actions: RenderActions): UpdateBannerConfig | null {
+  const info = actions.updateInfo;
+  const status = actions.updateStatus;
+  const onClick = actions.onUpdateClick;
+
+  if (status === 'updated' && info) {
+    return {
+      label: `Updated to ${info.currentVersion}`,
+      status: 'updated',
+      onClick: () => {},
+    };
+  }
+
+  if (!info && status !== 'error') return null;
+
+  if (status === 'installing') {
+    return {
+      label: `Updating: ${info?.currentVersion ?? '?'} \u2192 ${info?.latestVersion ?? '?'}`,
+      status: 'installing',
+      onClick: onClick ?? (() => {}),
+      onCancel: actions.onCancelUpdate,
+    };
+  }
+
+  if (status === 'error') {
+    return { label: 'Update failed \u2014 tap to retry', status: 'error', onClick: onClick ?? (() => {}) };
+  }
+
+  return {
+    label: `Update: ${info!.currentVersion} \u2192 ${info!.latestVersion}`,
+    status: null,
+    onClick: onClick ?? (() => {}),
+  };
 }

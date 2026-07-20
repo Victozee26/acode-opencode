@@ -6,13 +6,14 @@ Single source of truth for every named constant in the plugin: network/server va
 
 ## Ownership
 
-Owned by the root AGENTS.md. Eight files:
+Owned by the root AGENTS.md. Nine files:
 - `server.ts` — network/server core: `PORT`, `HOSTNAME`, `BASE_URL`, `LOG_PATH` (leaf, imports nothing).
 - `opencode.ts` — OpenCode lifecycle: install/start/stop/readiness commands and timeouts (`INSTALL_DEPS_COMMAND`, `INSTALL_OPENCODE_COMMAND`, `CHECK_COMMAND`, `STARTUP_CHECK_DELAY`, `READY_POLL_INTERVAL`, `READY_TIMEOUT`, `KILL_COMMAND`, `HARD_KILL_COMMAND`, `PROCESS_CHECK_COMMAND`, `STOP_POLL_TIMEOUT`, `STOP_POLL_INTERVAL`).
 - `health.ts` — health probe + diagnostics: `HEALTH_CHECK_URL` (derives from `BASE_URL` in `server.ts`), `HEALTH_CHECK_TIMEOUT`, `LOG_TAIL_LINES`, `ERROR_FALLBACK_MESSAGE`.
 - `ui.ts` — rendering constants: `SPINNER_DEG_PER_SEC`, `SPINNER_FPS`, `FLOATING_BUTTON_IDLE_OPACITY_TIMEOUT`, `FAB_SCRIM_BACKGROUND`, `FAB_SCRIM_BLUR`, `FAB_SCRIM_Z_INDEX`, `FAB_Z_INDEX`.
 - `app.ts` — global debug master switch: `DEBUG`.
 - `settings.ts` — iframe scale setting: `SETTINGS_KEY_IFRAME_SCALE`, `DEFAULT_IFRAME_SCALE`, `IFRAME_SCALE_MIN`, `IFRAME_SCALE_MAX`, `IFRAME_SCALE_STEP`.
+- `update.ts` — update commands: `VERSION_CHECK_COMMAND` (`opencode --version`), `LATEST_VERSION_COMMAND` (`npm view opencode-ai version`), `INSTALL_UPDATE_COMMAND` (`npm install -g opencode-ai`).
 - `index.ts` — barrel re-exporting every sub-module (`export *`). Convenience for tests; source consumers import the specific sub-module directly.
 
 ## Local Contracts

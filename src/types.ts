@@ -33,3 +33,16 @@ export interface StateContext {
 // Subscriber signature for state changes (see onStateChange in state.ts).
 // Receives the new state plus the full context snapshot.
 export type StateListener = (state: AppState, context: StateContext) => void;
+
+// Result of a non-blocking update check against npm, or null when the check
+// could not be performed (not installed, network down, parse failure).
+export interface UpdateInfo {
+  currentVersion: string;
+  latestVersion: string;
+}
+
+// Tracks the progress of a user-initiated opencode-ai update install.
+// 'installing' shows a pulsing animation + cancel button; 'updated' shows a
+// green success banner; 'error' shows a clickable failure state; null (or
+// absent) means idle or the pre-update banner.
+export type UpdateStatus = 'installing' | 'error' | 'updated';

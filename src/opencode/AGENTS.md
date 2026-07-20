@@ -6,10 +6,11 @@ OpenCode lifecycle management: install detection, installation, server start/sto
 
 ## Ownership
 
-Owned by the root AGENTS.md. Two export modules:
+Owned by the root AGENTS.md. Four export modules:
 - `install.ts` — `checkInstalled()`, `installOpenCode()`
 - `health.ts` — `isServerUp()` (Cordova Advanced HTTP probe)
 - `server.ts` — `buildStartCommand()`, `startServer()`, `waitForReady()`, `stopServer()`, `restartServer()`
+- `update.ts` — `checkForUpdates()`, `installUpdate()` (npm version check + install)
 
 ## Local Contracts
 
@@ -21,7 +22,9 @@ Owned by the root AGENTS.md. Two export modules:
 - `waitForReady()` polls `isServerUp()` every `READY_POLL_INTERVAL` ms until `READY_TIMEOUT`. On timeout, reads the last `LOG_TAIL_LINES` from `LOG_PATH` via `readLogTail()`, checks process state via `PROCESS_CHECK_COMMAND`, and throws an `Error` that includes process state (alive/dead/unknown), log tail (or `(no log output)` if empty/unreadable).
 - `stopServer()` runs SIGTERM via `pkill -f "opencode serve"`, polls `isServerUp()` for up to `STOP_POLL_TIMEOUT`, escalates to SIGKILL (`pkill -9`) if needed, and polls again. Throws `Error` if port is still occupied after SIGKILL.
 - `restartServer()` is stop → start sequential, no concurrent semantics.
-- All command **string constants** are defined in `src/config/` (e.g. `opencode.ts`, `server.ts`, `health.ts`). The `buildStartCommand()` builder (server-launch assembly) lives in `server.ts` because it is server-start logic and the sole consumer; `startServer()` calls it rather than inlining the raw shell command. Never inline raw shell strings in `server.ts`.
+- `checkForUpdates()` (in `update.ts`) runs `opencode --version` and `npm view opencode-ai version` in parallel, parses both outputs for semver-like patterns, and returns `{ currentVersion, latestVersion }` when latest > current. The promise never rejects: all errors (binary not found, npm unreachable, parse failure) are caught, logged, and return null. Designed as fire-and-forget from `AcodePlugin.init()`.
+- `installUpdate()` (in `update.ts`) runs `npm install -g opencode-ai` via the Alpine terminal. Unlike `checkForUpdates()`, this function **throws** on failure so the caller (`AcodePlugin.handleUpdateClick()`) can transition to an error state in the UI.
+- All command **string constants** are defined in `src/config/` (e.g. `opencode.ts`, `server.ts`, `health.ts`, `update.ts`). The `buildStartCommand()` builder (server-launch assembly) lives in `server.ts` because it is server-start logic and the sole consumer; `startServer()` calls it rather than inlining the raw shell command. Never inline raw shell strings in `server.ts`.
 
 ## Work Guidance
 

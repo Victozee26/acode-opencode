@@ -1,11 +1,19 @@
 import { FabAction } from './floatingActionButton';
 
+export interface UpdateBannerConfig {
+  label: string;
+  status: 'installing' | 'error' | 'updated' | null;
+  onClick: () => void;
+  onCancel?: () => void;
+}
+
 const BACK_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>';
 
 export function createCustomHeader(
   actions: FabAction[],
   isReady: boolean,
   onBack?: () => void,
+  updateBanner?: UpdateBannerConfig | null,
 ): HTMLElement {
   const header = document.createElement('div');
   header.className = 'opencode-header';
@@ -50,6 +58,45 @@ export function createCustomHeader(
   scrim.className = 'opencode-header-scrim';
   scrim.style.display = 'none';
   scrim.setAttribute('aria-hidden', 'true');
+
+  if (updateBanner) {
+    if (updateBanner.status === 'updated') {
+      const banner = document.createElement('div');
+      banner.className = 'opencode-header-update opencode-header-update--updated';
+      banner.textContent = updateBanner.label;
+      menu.appendChild(banner);
+    } else {
+      const banner = document.createElement('button');
+      banner.className = 'opencode-header-update';
+      banner.textContent = updateBanner.label;
+
+      if (updateBanner.status === 'installing') {
+        banner.classList.add('opencode-header-update--installing');
+
+        const closeBtn = document.createElement('span');
+        closeBtn.textContent = '\u2715';
+        closeBtn.className = 'opencode-header-update-close';
+        closeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          closeMenu();
+          updateBanner.onCancel?.();
+        });
+        banner.appendChild(closeBtn);
+      } else if (updateBanner.status === 'error') {
+        banner.classList.add('opencode-header-update--error');
+      }
+
+      if (updateBanner.status !== 'installing') {
+        banner.addEventListener('click', (e) => {
+          e.stopPropagation();
+          closeMenu();
+          updateBanner.onClick();
+        });
+      }
+
+      menu.appendChild(banner);
+    }
+  }
 
   for (const action of actions) {
     const item = document.createElement('button');

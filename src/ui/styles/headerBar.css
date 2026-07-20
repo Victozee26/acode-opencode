@@ -96,3 +96,49 @@
   cursor: pointer;
   white-space: nowrap;
 }
+
+.opencode-header-update {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  font-size: 11px;
+  color: var(--warning-color, #f0ad4e);
+  border-bottom: 1px solid var(--border-color, #333);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  background: transparent;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  text-align: left;
+}
+
+.opencode-header-update--installing {
+  cursor: default;
+  opacity: 0.7;
+  animation: opencode-update-pulse 1s ease-in-out infinite;
+}
+
+.opencode-header-update--error {
+  color: var(--error-text-color, #e57373);
+}
+
+.opencode-header-update--updated {
+  color: var(--success-text-color, #4caf50);
+  cursor: default;
+}
+
+.opencode-header-update-close {
+  float: right;
+  margin-left: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+@keyframes opencode-update-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
