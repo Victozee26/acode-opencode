@@ -1,0 +1,1 @@
+npm run sync-version && git add readme.md

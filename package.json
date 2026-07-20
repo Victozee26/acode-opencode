@@ -12,6 +12,7 @@
   },
   "devDependencies": {
     "esbuild": "^0.28.1",
+    "husky": "^9.1.7",
     "jsdom": "^29.1.1",
     "jszip": "^3.10.1",
     "typescript": "^7.0.2",
@@ -20,7 +21,9 @@
   "scripts": {
     "dev": "node esbuild.config.mjs --serve",
     "build": "tsc --noEmit && node esbuild.config.mjs",
-    "test": "vitest run"
+    "sync-version": "node scripts/sync-version.js",
+    "test": "vitest run",
+    "prepare": "husky"
   },
   "browserslist": [
     "> 0.25%, not dead"

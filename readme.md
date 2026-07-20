@@ -2,7 +2,7 @@
 
 # Acode Plugin OpenCode
 
-![Version](https://img.shields.io/badge/version-0.1.1-blue.svg)
+![Version](https://img.shields.io/badge/version-0.1.3-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Acode](https://img.shields.io/badge/Acode-Compatible-orange.svg)
 
