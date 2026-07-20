@@ -11,3 +11,8 @@ const updated = readme.replace(
 
 writeFileSync('readme.md', updated);
 console.log(`README version badge synced to ${version}`);
+
+const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+pkg.version = version;
+writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+console.log(`package.json version synced to ${version}`);
