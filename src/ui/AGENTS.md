@@ -7,14 +7,14 @@ DOM rendering layer. Pure functions that build DOM subtrees — no side effects,
 ## Ownership
 
 Owned by the root AGENTS.md. Three subdirectories:
-- `index.ts` — `render(state, context, actions)` orchestrator dispatching to one render function per `AppState`; `initUiStyles(baseUrl)` loads CSS via `<link>` elements; `initUiPage($page)` sets up persistent header and content containers; `updateHeader(state, actions)` (exported) updates header in-place on every render
+- `index.ts` — `render(state, context, actions)` orchestrator dispatching to one render function per `AppState`; `initUiStyles(baseUrl)` loads CSS via `<link>` elements; `initUiPage($page)` sets up persistent header and content containers; `updateHeader(state, actions)` updates header in-place on every render; `updateIframeScale(scale)` live-updates the active iframe's CSS transform
 - `components/` — one file per DOM factory function, re-exported through `components/index.ts` (barrel)
 - `styles/` — one CSS file per component/domain, loaded via `<link>` in `initUiStyles()`
 
   Components:
   - `container.ts` — `createContainer` (shared root wrapper used by `spinner` and `errorDisplay`)
   - `spinner.ts` — `createSpinner`
-  - `iframe.ts` — `createIframe`
+  - `iframe.ts` — `createIframe`, `setIframeScale`
   - `headerBar.ts` — `createHeaderBar` (legacy — unused)
   - `customHeader.ts` — `createCustomHeader` (replaces FAB, hamburger menu with Start/Restart/Stop)
   - `floatingActionButton.ts` — `createFloatingActionButton` plus the `FabAction` interface (legacy — unused)
@@ -44,6 +44,8 @@ Owned by the root AGENTS.md. Three subdirectories:
 - All static CSS is in external `.css` files under `styles/`, loaded once by `initUiStyles(baseUrl)` via `<link>` elements (called from `AcodePlugin.init()`). Dynamic styles (position, opacity toggles, transform, config-dependent values) remain as inline `element.style.*` assignments.
 - Components use `className` or `classList` instead of `cssText` for static layout. Never add static CSS as inline styles.
 - `createIframe(src, scale?)` accepts a string URL and optional numeric scale factor (1 = 100%); `renderReady` passes `BASE_URL` from `../config/server` and `getIframeScale()` from `../settings`.
+- `setIframeScale(iframe, scale)` applies the same CSS-scaling logic as `createIframe` to an existing iframe element — updates `width`, `height`, `transform`, and `transformOrigin` inline styles.
+- `updateIframeScale(scale)` is an impure export from `index.ts` that calls `setIframeScale` on a module-level `activeIframe` reference, stored and cleared by `render()` / `renderReady()`. Use this for live scale updates without destroying the iframe (e.g. on settings change). No-op when not in Ready state (`activeIframe` is null).
 - The content container (not `$page.body`) uses `overflow: hidden` in Ready state. The iframe is CSS-scaled (layout box `100/scale%`, then `transform: scale()`), which overflows the wrapper box; clipping prevents the parent body from becoming scrollable. The embedded web UI scrolls internally. Do NOT remove this clipping.
 - Styles use CSS custom properties (`var(--primary-color, fallback)`) for Acode theming compatibility.
 - Global keyframe/utility styles are in `styles/base.css`, loaded via `<link>` by `initUiStyles()`. Provides `.opencode-fade-in` (state transition), `.opencode-btn` (hover/active button effects).

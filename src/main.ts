@@ -2,7 +2,7 @@ import plugin from '../plugin.json';
 
 import { AppState, UpdateInfo, UpdateStatus } from './types';
 import { onStateChange, transition, getState, setError, reset } from './state';
-import { render, initUiStyles, initUiPage, updateHeader } from './ui/index';
+import { render, initUiStyles, initUiPage, updateHeader, updateIframeScale } from './ui/index';
 import type { RenderActions } from './ui/index';
 import type { HeaderActions } from './types';
 import { checkInstalled, installOpenCode } from './opencode/install';
@@ -12,7 +12,7 @@ import { checkForUpdates, installUpdate } from './opencode/update';
 import { createLogger, setLogEnabled } from './logger';
 import { DEBUG } from './config/app';
 import { extractErrorInfo } from './error';
-import { getSettingsSchema } from './settings';
+import { getSettingsSchema, setOnScaleChange } from './settings';
 
 const log = createLogger('main');
 
@@ -57,6 +57,7 @@ export class AcodePlugin {
     setLogEnabled(DEBUG);
     log.info('init: plugin initializing');
     initUiStyles(baseUrl);
+    setOnScaleChange((scale) => updateIframeScale(scale));
     this.$page = $page;
     initUiPage($page);
     if ($page.header) {

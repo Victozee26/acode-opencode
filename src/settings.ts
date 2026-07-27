@@ -10,6 +10,8 @@ const log = createLogger('settings');
 
 let cachedScale = DEFAULT_IFRAME_SCALE;
 
+let onScaleChange: ((scale: number) => void) | null = null;
+
 function clampScale(value: number): number {
   return Math.min(IFRAME_SCALE_MAX, Math.max(IFRAME_SCALE_MIN, value));
 }
@@ -36,6 +38,7 @@ export function getSettingsSchema(): Acode.PluginSettings {
         if (!Number.isNaN(num)) {
           cachedScale = clampScale(num / 100);
           log.info(`iframe scale changed to ${cachedScale}`);
+          onScaleChange?.(cachedScale);
         }
       }
     },
@@ -46,6 +49,10 @@ export function getSettingsSchema(): Acode.PluginSettings {
  * Read the iframe scale from Acode's settings module. Falls back to the
  * default if the setting hasn't been stored yet.
  */
+export function setOnScaleChange(handler: (scale: number) => void): void {
+  onScaleChange = handler;
+}
+
 export function getIframeScale(): number {
   try {
     const settings = acode.require('settings') as any;

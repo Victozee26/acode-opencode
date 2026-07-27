@@ -4,6 +4,7 @@ import { HEADER_CONTAINER_ID, CONTENT_CONTAINER_ID } from '../config/ui';
 import {
   createSpinner,
   createIframe,
+  setIframeScale,
   createCustomHeader,
   createErrorDisplay,
   FabAction,
@@ -26,6 +27,7 @@ export interface RenderActions {
 const log = createLogger('ui');
 
 let activeSpinner: (HTMLElement & { stop: () => void }) | null = null;
+let activeIframe: HTMLIFrameElement | null = null;
 
 let pageHeader: HTMLElement | null = null;
 let pageContent: HTMLElement | null = null;
@@ -97,7 +99,7 @@ export function render(
   actions: RenderActions,
 ): void {
   log.debug(`render: ${state}`);
-
+  activeIframe = null;
   if (activeSpinner) {
     activeSpinner.stop();
     activeSpinner = null;
@@ -182,8 +184,15 @@ function renderReady(container: HTMLElement): void {
   container.style.overflow = 'hidden';
   const wrapper = document.createElement('div');
   wrapper.className = 'opencode-ready-wrapper';
-  wrapper.appendChild(createIframe(BASE_URL, getIframeScale()));
+  activeIframe = createIframe(BASE_URL, getIframeScale());
+  wrapper.appendChild(activeIframe);
   container.appendChild(wrapper);
+}
+
+export function updateIframeScale(scale: number): void {
+  if (activeIframe) {
+    setIframeScale(activeIframe, scale);
+  }
 }
 
 function renderError(
