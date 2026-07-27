@@ -5,18 +5,25 @@ import * as installModule from '../src/opencode/install';
 import * as serverModule from '../src/opencode/server';
 import * as healthModule from '../src/opencode/health';
 import * as settingsModule from '../src/settings';
+import * as updateModule from '../src/opencode/update';
+import * as uiModule from '../src/ui/index';
 
 vi.mock('../src/state');
 vi.mock('../src/opencode/install');
 vi.mock('../src/opencode/server');
 vi.mock('../src/opencode/health');
 vi.mock('../src/settings');
+vi.mock('../src/opencode/update');
 vi.mock('../src/ui/index');
 vi.mock('../plugin.json', () => ({
   default: { id: 'acode.plugin', name: 'Plugin', main: 'main.js', version: '1.0.0' },
 }));
 
 const mockTransition = vi.mocked(stateModule.transition);
+const mockGetState = vi.mocked(stateModule.getState);
+const mockInstallUpdate = vi.mocked(updateModule.installUpdate);
+const mockCheckForUpdates = vi.mocked(updateModule.checkForUpdates);
+const mockUpdateHeader = vi.mocked(uiModule.updateHeader);
 const mockSetError = vi.mocked(stateModule.setError);
 const mockCheckInstalled = vi.mocked(installModule.checkInstalled);
 const mockInstallOpenCode = vi.mocked(installModule.installOpenCode);
@@ -31,6 +38,7 @@ import { AcodePlugin } from '../src/main';
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetSettingsSchema.mockReturnValue({ list: [] });
+  mockCheckForUpdates.mockResolvedValue(null);
 });
 
 function makePlugin(): AcodePlugin {
@@ -213,5 +221,62 @@ describe('handleRestart', () => {
     await (plugin as any).handleRestart();
 
     expect(mockSetError).toHaveBeenCalledWith('port busy', '');
+  });
+});
+
+describe('header-only updates (Phase 2)', () => {
+  beforeEach(() => {
+    mockCheckForUpdates.mockReset();
+    mockInstallUpdate.mockReset();
+    mockGetState.mockReturnValue({ currentState: AppState.Error, error: null });
+  });
+
+  it('handleCancelUpdate calls updateHeader, not transition', async () => {
+    const plugin = makePlugin();
+    (plugin as any).updateStatus = 'installing';
+    (plugin as any).updateInfo = { currentVersion: '1.0.0', latestVersion: '2.0.0' };
+
+    (plugin as any).handleCancelUpdate();
+
+    expect(mockUpdateHeader).toHaveBeenCalled();
+    expect(mockTransition).not.toHaveBeenCalled();
+    expect((plugin as any).updateStatus).toBeNull();
+  });
+
+  it('handleUpdateClick calls updateHeader instead of transition on success', async () => {
+    mockInstallUpdate.mockResolvedValue(undefined);
+    mockCheckForUpdates.mockResolvedValue(null);
+
+    const plugin = makePlugin();
+    (plugin as any).updateInfo = { currentVersion: '1.0.0', latestVersion: '2.0.0' };
+
+    await (plugin as any).handleUpdateClick();
+
+    expect(mockUpdateHeader).toHaveBeenCalled();
+    expect(mockTransition).not.toHaveBeenCalled();
+    expect((plugin as any).updateStatus).toBe('updated');
+  });
+
+  it('handleUpdateClick calls updateHeader instead of transition on error', async () => {
+    mockInstallUpdate.mockRejectedValue(new Error('network failed'));
+
+    const plugin = makePlugin();
+    (plugin as any).updateInfo = { currentVersion: '1.0.0', latestVersion: '2.0.0' };
+
+    await (plugin as any).handleUpdateClick();
+
+    expect(mockUpdateHeader).toHaveBeenCalled();
+    expect(mockTransition).not.toHaveBeenCalled();
+    expect((plugin as any).updateStatus).toBe('error');
+  });
+
+  it('handleUpdateClick does nothing when already installing', async () => {
+    const plugin = makePlugin();
+    (plugin as any).updateStatus = 'installing';
+
+    await (plugin as any).handleUpdateClick();
+
+    expect(mockUpdateHeader).not.toHaveBeenCalled();
+    expect(mockInstallUpdate).not.toHaveBeenCalled();
   });
 });

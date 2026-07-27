@@ -32,19 +32,10 @@
   background: var(--hover-bg, rgba(255,255,255,0.08));
 }
 
-.opencode-header-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--success-text-color, #4caf50);
-  box-shadow: 0 0 6px var(--success-text-color, #4caf50);
-}
-
-.opencode-header-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-color, #ccc);
-  letter-spacing: 0.3px;
+.opencode-header-wordmark {
+  height: 20px;
+  width: auto;
+  display: block;
 }
 
 .opencode-header-hamburger {
