@@ -11,7 +11,3 @@ export const HOSTNAME = '127.0.0.1';
 
 // Convenience base URL for the embedded iframe and health checks.
 export const BASE_URL = `http://${HOSTNAME}:${PORT}`;
-
-// Where the server's stdout/stderr are redirected by buildStartCommand()
-// (see opencode/server.ts).
-export const LOG_PATH = '/tmp/opencode.log';

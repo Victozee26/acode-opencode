@@ -123,7 +123,7 @@ describe('startFlow', () => {
     await (plugin as any).startFlow();
 
     expect(mockSetError).toHaveBeenCalledWith(
-      'No output captured. Check /tmp/opencode.log in Alpine terminal.',
+      'An unknown error occurred.',
       '',
     );
   });

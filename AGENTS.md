@@ -22,7 +22,7 @@ Acode plugin (Android WebView) that launches OpenCode as a background HTTP serve
 ## Hard constraints (non-negotiable)
 
 - **Fixed port 4096, loopback only.** `opencode serve --port 4096 --hostname 127.0.0.1`. Never bind to `0.0.0.0` without adding auth.
-- **Executor.execute is blocking AND session-reaping.** The terminal module resolves only after the command exits, and it treats the command as finished the moment its stdout pipe hits EOF — then tears down the shell session, reaping any backgrounded child. A persistent server MUST therefore keep that stdout pipe open: launch it as `nohup ... 2>&1 | tee LOG &` (tee holds the pipe open while still writing a log file). A plain `> LOG 2>&1` file redirect closes the pipe and gets the server reaped (it vanishes from the inspector and the health probe misses it). `setsid` was tried but combined with a file redirect was still reaped; the pipe-keep-open approach is the validated one. `disown` is a bash-ism not available in BusyBox `ash` (Acode's Alpine shell).
+- **Executor.execute is blocking AND session-reaping.** The terminal module resolves only after the command exits, and it treats the command as finished the moment its stdout pipe hits EOF — then tears down the shell session, reaping any backgrounded child. Use `nohup ... &` to outlive the blocking call. `disown` is a bash-ism not available in BusyBox `ash` (Acode's Alpine shell).
 
 ## Code conventions
 
