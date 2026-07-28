@@ -13,6 +13,7 @@ import { createLogger, setLogEnabled } from './logger';
 import { DEBUG } from './config/app';
 import { extractErrorInfo } from './error';
 import { getSettingsSchema, setOnScaleChange } from './settings';
+import { HEALTH_PROBE_INTERVAL } from './config/health';
 
 const log = createLogger('main');
 
@@ -38,6 +39,7 @@ export class AcodePlugin {
   private handleShow!: () => void;
   private updateInfo: UpdateInfo | null = null;
   private updateStatus: UpdateStatus | null = null;
+  private healthProbeTimer: ReturnType<typeof setInterval> | null = null;
 
   /**
    * Registers the reactive render hook and UI entry points.
@@ -92,6 +94,7 @@ export class AcodePlugin {
 
     onStateChange((state, context) => {
       if (this.$page) {
+        this.manageHealthProbe(state);
         const actions: RenderActions = {
           start: () => this.handleStart(),
           restart: () => this.handleRestart(),
@@ -144,6 +147,7 @@ export class AcodePlugin {
    */
   async destroy(): Promise<void> {
     log.info('destroy: tearing down');
+    this.stopHealthProbe();
     this.sideButton?.hide();
     this.sideButton = null;
     if (this.handleShow) {
@@ -321,6 +325,27 @@ export class AcodePlugin {
     log.error(`${stage}: failed`, err);
     const { summary, logTail } = extractErrorInfo(err);
     setError(summary, logTail);
+  }
+
+  private manageHealthProbe(state: AppState): void {
+    if (state === AppState.Ready && !this.healthProbeTimer) {
+      this.healthProbeTimer = setInterval(async () => {
+        const up = await isServerUp();
+        if (!up) {
+          this.stopHealthProbe();
+          setError('Server connection lost', '');
+        }
+      }, HEALTH_PROBE_INTERVAL);
+    } else if (state !== AppState.Ready && this.healthProbeTimer) {
+      this.stopHealthProbe();
+    }
+  }
+
+  private stopHealthProbe(): void {
+    if (this.healthProbeTimer) {
+      clearInterval(this.healthProbeTimer);
+      this.healthProbeTimer = null;
+    }
   }
 }
 

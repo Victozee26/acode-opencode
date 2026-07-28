@@ -130,7 +130,7 @@ describe('pollUntilDown (via stopServer)', () => {
 describe('startServer', () => {
   it('resolves when pgrep finds the process alive after delay', async () => {
     mockExecute
-      .mockResolvedValueOnce('ok')
+      .mockReturnValueOnce(new Promise(() => {}))
       .mockResolvedValueOnce('1234');
 
     const promise = startServer();
@@ -141,13 +141,22 @@ describe('startServer', () => {
 
   it('throws when process not found (pgrep returns empty)', async () => {
     mockExecute
-      .mockResolvedValueOnce('ok')
+      .mockReturnValueOnce(new Promise(() => {}))
       .mockResolvedValueOnce('');
 
     const promise = startServer();
     promise.catch(() => {});
     await vi.advanceTimersByTimeAsync(STARTUP_CHECK_DELAY);
     await expect(promise).rejects.toThrow('OpenCode server process exited immediately after start.');
+  });
+
+  it('throws when server process exits during startup', async () => {
+    mockExecute.mockRejectedValueOnce(new Error('opencode: not found'));
+
+    const promise = startServer();
+    promise.catch(() => {});
+    await expect(promise).rejects.toThrow('OpenCode server process exited immediately after start.');
+    await expect(promise).rejects.toThrow('opencode: not found');
   });
 });
 

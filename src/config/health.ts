@@ -9,3 +9,7 @@ export const HEALTH_CHECK_TIMEOUT = 2000;
 // Shown in the error UI when no error message was captured.
 export const ERROR_FALLBACK_MESSAGE =
   'An unknown error occurred.';
+
+// Interval in ms between periodic health probes while the server is in
+// the Ready state. Used by the background crash detector.
+export const HEALTH_PROBE_INTERVAL = 5000;

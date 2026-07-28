@@ -15,14 +15,40 @@ import { isServerUp } from './health';
 
 const log = createLogger('server');
 
+let shuttingDown = false;
+
 export function buildStartCommand(): string {
-  return `nohup opencode serve --port ${PORT} --hostname ${HOSTNAME} &`;
+  return `opencode serve --port ${PORT} --hostname ${HOSTNAME}`;
 }
 
 export async function startServer(): Promise<void> {
   log.info('startServer: launching');
-  await execute(buildStartCommand());
-  await new Promise((resolve) => setTimeout(resolve, STARTUP_CHECK_DELAY));
+  const serverCmd = execute(buildStartCommand());
+
+  serverCmd.catch((err) => {
+    if (!shuttingDown) {
+      log.error('server process exited unexpectedly', err);
+    }
+  });
+
+  const exitInfo = await Promise.race([
+    serverCmd
+      .then(() => ({ exited: true as const, reason: 'process exited with code 0' }))
+      .catch((err) => ({
+        exited: true as const,
+        reason: err instanceof Error ? err.message : String(err),
+      })),
+    new Promise<{ exited: false }>((resolve) =>
+      setTimeout(() => resolve({ exited: false }), STARTUP_CHECK_DELAY),
+    ),
+  ]);
+
+  if (exitInfo.exited) {
+    throw new Error(
+      `OpenCode server process exited immediately after start.\n${exitInfo.reason}`,
+    );
+  }
+
   const pgrepOutput = String(await execute(PROCESS_CHECK_COMMAND)).trim();
   if (!pgrepOutput) {
     throw new Error('OpenCode server process exited immediately after start.');
@@ -96,31 +122,36 @@ async function pollUntilDown(timeout: number): Promise<boolean> {
  * unkillable (e.g. zombie/permission issue) and the caller must surface it.
  */
 export async function stopServer(): Promise<void> {
-  log.info('stopServer: sending SIGTERM');
+  shuttingDown = true;
   try {
-    await execute(KILL_COMMAND);
-  } catch {
-    // pkill returns non-zero when no match; don't fail here — poll decides.
+    log.info('stopServer: sending SIGTERM');
+    try {
+      await execute(KILL_COMMAND);
+    } catch {
+      // pkill returns non-zero when no match; don't fail here — poll decides.
+    }
+
+    const softDown = await pollUntilDown(STOP_POLL_TIMEOUT);
+    if (softDown) {
+      log.info('stopServer: stopped via SIGTERM');
+      return;
+    }
+
+    log.warn('stopServer: SIGTERM failed, escalating to SIGKILL');
+    log.warn('stopServer: executing pkill -9');
+    await execute(HARD_KILL_COMMAND);
+    log.info('stopServer: hard kill command done');
+
+    const hardDown = await pollUntilDown(STOP_POLL_TIMEOUT);
+    if (hardDown) {
+      log.info('stopServer: stopped via SIGKILL');
+      return;
+    }
+
+    throw new Error('Cannot stop server: port 4096 still occupied after SIGKILL');
+  } finally {
+    shuttingDown = false;
   }
-
-  const softDown = await pollUntilDown(STOP_POLL_TIMEOUT);
-  if (softDown) {
-    log.info('stopServer: stopped via SIGTERM');
-    return;
-  }
-
-  log.warn('stopServer: SIGTERM failed, escalating to SIGKILL');
-  log.warn('stopServer: executing pkill -9');
-  await execute(HARD_KILL_COMMAND);
-  log.info('stopServer: hard kill command done');
-
-  const hardDown = await pollUntilDown(STOP_POLL_TIMEOUT);
-  if (hardDown) {
-    log.info('stopServer: stopped via SIGKILL');
-    return;
-  }
-
-  throw new Error('Cannot stop server: port 4096 still occupied after SIGKILL');
 }
 
 /**
