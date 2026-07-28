@@ -1,5 +1,5 @@
 import { execute } from '../terminal/executor';
-import { CHECK_COMMAND, INSTALL_DEPS_COMMAND, INSTALL_OPENCODE_COMMAND } from '../config/opencode';
+import { CHECK_COMMAND, INSTALL_DEPS_COMMAND, INSTALL_OPENCODE_COMMAND, UNINSTALL_COMMAND } from '../config/opencode';
 import { createLogger } from '../logger';
 
 const log = createLogger('install');
@@ -47,4 +47,21 @@ export async function installOpenCode(): Promise<void> {
     throw new Error(`Installation failed (opencode): ${message}`);
   }
   log.info('installOpenCode: done');
+}
+
+/**
+ * Uninstalls OpenCode by running `npm uninstall -g opencode-ai`.
+ *
+ * Failures are re-thrown with a `Uninstallation failed:` prefix so the caller
+ * can surface the exact context without parsing shell output.
+ */
+export async function uninstallOpenCode(): Promise<void> {
+  log.info('uninstallOpenCode: uninstalling');
+  try {
+    await execute(UNINSTALL_COMMAND);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Uninstallation failed: ${message}`);
+  }
+  log.info('uninstallOpenCode: done');
 }

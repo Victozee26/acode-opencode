@@ -7,6 +7,9 @@ export const INSTALL_OPENCODE_COMMAND = 'npm install -g opencode-ai';
 // Presence check for the opencode binary.
 export const CHECK_COMMAND = 'which opencode';
 
+// Uninstall the opencode-ai npm package.
+export const UNINSTALL_COMMAND = 'npm uninstall -g opencode-ai';
+
 // Grace period after issuing the start command before we begin polling, giving
 // the process a moment to bind the socket.
 export const STARTUP_CHECK_DELAY = 500;

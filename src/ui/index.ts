@@ -22,6 +22,7 @@ export interface RenderActions {
   updateStatus?: UpdateStatus | null;
   onUpdateClick?: () => void;
   onCancelUpdate?: () => void;
+  onReinstall?: () => void;
 }
 
 const log = createLogger('ui');
@@ -45,6 +46,7 @@ const STYLESHEETS = [
   'styles/errorDisplay.css',
   'styles/iframe.css',
   'styles/ready.css',
+  'styles/confirmModal.css',
 ];
 
 export function initUiStyles(baseUrl: string): void {
@@ -82,6 +84,7 @@ export function initUiPage($page: Acode.WCPage): void {
 
 const STATUS_MESSAGES: Record<string, string> = {
   [AppState.CheckingInstall]: 'Checking OpenCode installation\u2026',
+  [AppState.Uninstalling]: 'Uninstalling OpenCode\u2026',
   [AppState.Installing]: 'Installing OpenCode\u2026',
   [AppState.CheckingServer]: 'Checking server status\u2026',
   [AppState.StartingServer]: 'Starting OpenCode server\u2026',
@@ -116,6 +119,7 @@ export function render(
       { id: 'start', label: 'Start Server', onClick: actions.start },
       { id: 'restart', label: 'Restart Server', onClick: actions.restart },
       { id: 'stop', label: 'Stop Server', onClick: actions.stop },
+      { id: 'reinstall', label: 'Reinstall OpenCode', onClick: () => actions.onReinstall?.() },
     ];
     const banner = buildUpdateBanner(actions);
     pageHeader!.appendChild(createCustomHeader(fabActions, state === AppState.Ready, pluginBaseUrl, actions.back, banner));
@@ -130,6 +134,7 @@ export function render(
       break;
 
     case AppState.CheckingInstall:
+    case AppState.Uninstalling:
     case AppState.Installing:
     case AppState.CheckingServer:
     case AppState.StartingServer:

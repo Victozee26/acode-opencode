@@ -414,3 +414,120 @@ describe('updateHeader directly (Phase 2)', () => {
     expect(onCancel).toHaveBeenCalled();
   });
 });
+
+// --- createConfirmModal ---
+
+describe('createConfirmModal', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  async function loadConfirmModal() {
+    const mod = await import('../../src/ui/components/confirmModal');
+    return mod;
+  }
+
+  it('renders message text', async () => {
+    const { createConfirmModal } = await loadConfirmModal();
+    const modal = createConfirmModal({
+      message: 'This will delete everything. Continue?',
+      onConfirm: vi.fn(),
+      onCancel: vi.fn(),
+    });
+
+    expect(modal.className).toBe('opencode-confirm-overlay');
+    const msg = modal.querySelector('.opencode-confirm-message');
+    expect(msg).not.toBeNull();
+    expect(msg!.textContent).toBe('This will delete everything. Continue?');
+  });
+
+  it('renders Cancel and Reinstall buttons by default', async () => {
+    const { createConfirmModal } = await loadConfirmModal();
+    const modal = createConfirmModal({
+      message: 'Proceed?',
+      onConfirm: vi.fn(),
+      onCancel: vi.fn(),
+    });
+
+    const buttons = modal.querySelectorAll('button');
+    expect(buttons.length).toBe(2);
+    expect(buttons[0].textContent).toBe('Cancel');
+    expect(buttons[1].textContent).toBe('Reinstall');
+  });
+
+  it('uses custom button labels when provided', async () => {
+    const { createConfirmModal } = await loadConfirmModal();
+    const modal = createConfirmModal({
+      message: 'Go?',
+      confirmLabel: 'Yes',
+      cancelLabel: 'No',
+      onConfirm: vi.fn(),
+      onCancel: vi.fn(),
+    });
+
+    const buttons = modal.querySelectorAll('button');
+    expect(buttons[0].textContent).toBe('No');
+    expect(buttons[1].textContent).toBe('Yes');
+  });
+
+  it('calls onConfirm when confirm button is clicked', async () => {
+    const { createConfirmModal } = await loadConfirmModal();
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+    const modal = createConfirmModal({
+      message: 'Continue?',
+      onConfirm,
+      onCancel,
+    });
+
+    const confirmBtn = modal.querySelector('.opencode-confirm-btn--confirm') as HTMLButtonElement;
+    confirmBtn.click();
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it('calls onCancel when cancel button is clicked', async () => {
+    const { createConfirmModal } = await loadConfirmModal();
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+    const modal = createConfirmModal({
+      message: 'Continue?',
+      onConfirm,
+      onCancel,
+    });
+
+    const cancelBtn = modal.querySelector('.opencode-confirm-btn--cancel') as HTMLButtonElement;
+    cancelBtn.click();
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('calls onCancel when overlay scrim is clicked', async () => {
+    const { createConfirmModal } = await loadConfirmModal();
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+    const modal = createConfirmModal({
+      message: 'Continue?',
+      onConfirm,
+      onCancel,
+    });
+
+    modal.click();
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('does not call onCancel when dialog interior is clicked', async () => {
+    const { createConfirmModal } = await loadConfirmModal();
+    const onCancel = vi.fn();
+    const modal = createConfirmModal({
+      message: 'Continue?',
+      onConfirm: vi.fn(),
+      onCancel,
+    });
+
+    const dialog = modal.querySelector('.opencode-confirm-dialog') as HTMLElement;
+    dialog.click();
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+});

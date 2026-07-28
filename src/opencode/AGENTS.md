@@ -7,7 +7,7 @@ OpenCode lifecycle management: install detection, installation, server start/sto
 ## Ownership
 
 Owned by the root AGENTS.md. Four export modules:
-- `install.ts` — `checkInstalled()`, `installOpenCode()`
+- `install.ts` — `checkInstalled()`, `installOpenCode()`, `uninstallOpenCode()`
 - `health.ts` — `isServerUp()` (Cordova Advanced HTTP probe)
 - `server.ts` — `buildStartCommand()`, `startServer()`, `waitForReady()`, `stopServer()`, `restartServer()`
 - `update.ts` — `checkForUpdates()`, `installUpdate()` (npm version check + install)
@@ -16,6 +16,7 @@ Owned by the root AGENTS.md. Four export modules:
 
 - `checkInstalled()` runs `which opencode` and returns boolean — errors mean not installed.
 - `installOpenCode()` runs two sequential commands: install deps (`apk add nodejs npm`), then `npm install -g opencode-ai`. Both are blocking. On failure, throws `Error` with distinct prefixes — `"Installation failed (deps): "` or `"Installation failed (opencode): "` — followed by the captured error message and command output from `execute()`.
+- `uninstallOpenCode()` runs `npm uninstall -g opencode-ai`. On failure, throws `Error` with prefix `"Uninstallation failed: "` followed by the captured error message.
 - `isServerUp()` (in `health.ts`) probes the `/global/health` endpoint (the standard OpenCode server health endpoint) using `cordova.plugin.http` (Cordova Advanced HTTP). `cordova.plugin.http` runs on the native network stack, so WebView CORS does NOT apply and the loopback probe actually resolves (a plain `fetch` to `127.0.0.1` hangs forever in this WebView). Any response — success callback OR a failure callback carrying a *positive* status — means something answered on the port → up; a negative status (connection refused) → down. The promise never rejects (bounded by an independent watchdog). Returns `false` immediately when `cordova.plugin.http` is absent. There is no `fetch` fallback.
 - `startServer()` fires `opencode serve ...` via `execute()` without `await` (fire-and-forget), attaches a `.catch()` that logs unexpected exits only when `shuttingDown` is false, then waits `STARTUP_CHECK_DELAY` (500ms) and validates the process is alive via `PROCESS_CHECK_COMMAND`. If the process exited immediately (missing binary, config error, port conflict), it throws an `Error` before the caller ever hits `waitForReady()`.
 - `waitForReady()` polls `isServerUp()` every `READY_POLL_INTERVAL` ms until `READY_TIMEOUT`. On timeout, checks process state via `PROCESS_CHECK_COMMAND` and throws an `Error` that includes process state (alive/dead/unknown).

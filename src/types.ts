@@ -6,6 +6,7 @@
 export enum AppState {
   Idle = 'idle',
   CheckingInstall = 'checking-install',
+  Uninstalling = 'uninstalling',
   Installing = 'installing',
   CheckingServer = 'checking-server',
   StartingServer = 'starting-server',
@@ -55,4 +56,5 @@ export interface HeaderActions {
   updateStatus?: UpdateStatus | null;
   onUpdateClick?: () => void;
   onCancelUpdate?: () => void;
+  onReinstall?: () => void;
 }

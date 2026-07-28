@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { checkInstalled, installOpenCode } from '../../src/opencode/install';
+import { checkInstalled, installOpenCode, uninstallOpenCode } from '../../src/opencode/install';
 import * as executorModule from '../../src/terminal/executor';
 
 vi.mock('../../src/terminal/executor');
@@ -65,6 +65,32 @@ describe('installOpenCode', () => {
 
     await expect(installOpenCode()).rejects.toThrow(
       'Installation failed (opencode): plain string failure',
+    );
+  });
+});
+
+describe('uninstallOpenCode', () => {
+  it('resolves without error when execute succeeds', async () => {
+    mockExecute.mockResolvedValue('uninstalled');
+
+    await expect(uninstallOpenCode()).resolves.toBeUndefined();
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+  });
+
+  it('throws "Uninstallation failed: ..." when execute rejects', async () => {
+    mockExecute.mockRejectedValue(new Error('Command failed: EACCES'));
+
+    await expect(uninstallOpenCode()).rejects.toThrow(
+      'Uninstallation failed: Command failed: EACCES',
+    );
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles non-Error rejection', async () => {
+    mockExecute.mockRejectedValue('plain string failure');
+
+    await expect(uninstallOpenCode()).rejects.toThrow(
+      'Uninstallation failed: plain string failure',
     );
   });
 });
