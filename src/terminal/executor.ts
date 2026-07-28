@@ -17,7 +17,7 @@ export async function execute(command: string, alpine = true): Promise<string> {
   log.info(`executing: ${command}`);
   try {
     const result = await Executor.execute(command, alpine);
-    log.debug(`executed OK: ${command}`);
+    log.info(`executed OK: ${command} — ${result}`);
     return result;
   } catch (err: unknown) {
     log.error(`executed FAILED: ${command}`, err);
