@@ -415,3 +415,112 @@ describe('header-only updates (Phase 2)', () => {
     expect(mockInstallUpdate).not.toHaveBeenCalled();
   });
 });
+
+describe('toast notifications', () => {
+  let toastMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    toastMock = vi.fn();
+    (globalThis as any).acode = {
+      require: (name: string) => (name === 'toast' ? toastMock : undefined),
+    };
+  });
+
+  describe('showToast helper', () => {
+    it('calls acode.require("toast") with message and duration 2000', () => {
+      const plugin = makePlugin();
+      (plugin as any).showToast('Hello');
+      expect(toastMock).toHaveBeenCalledWith('Hello', 2000);
+    });
+
+    it('does not throw when acode is unavailable', () => {
+      (globalThis as any).acode = undefined;
+      const plugin = makePlugin();
+      expect(() => (plugin as any).showToast('Hello')).not.toThrow();
+    });
+
+    it('does not throw when toast is not a function', () => {
+      (globalThis as any).acode = {
+        require: () => ({}),
+      };
+      const plugin = makePlugin();
+      expect(() => (plugin as any).showToast('Hello')).not.toThrow();
+    });
+  });
+
+  describe('event points', () => {
+    it('startFlow → "OpenCode server already running" when server is already up', async () => {
+      mockCheckInstalled.mockResolvedValue(true);
+      mockIsServerUp.mockResolvedValue(true);
+
+      const plugin = makePlugin();
+      await (plugin as any).startFlow();
+
+      expect(toastMock).toHaveBeenCalledWith('OpenCode server already running', 2000);
+    });
+
+    it('startFlow → "OpenCode server ready" when server starts successfully', async () => {
+      mockCheckInstalled.mockResolvedValue(true);
+      mockIsServerUp.mockResolvedValue(false);
+      mockStartServer.mockResolvedValue(undefined);
+      mockWaitForReady.mockResolvedValue(undefined);
+
+      const plugin = makePlugin();
+      await (plugin as any).startFlow();
+
+      expect(toastMock).toHaveBeenCalledWith('OpenCode server ready', 2000);
+    });
+
+    it('handleRestart → "OpenCode server restarted"', async () => {
+      mockRestartServer.mockResolvedValue(undefined);
+      mockWaitForReady.mockResolvedValue(undefined);
+
+      const plugin = makePlugin();
+      await (plugin as any).handleRestart();
+
+      expect(toastMock).toHaveBeenCalledWith('OpenCode server restarted', 2000);
+    });
+
+    it('handleStop → "Server stopped"', async () => {
+      const plugin = makePlugin();
+      await (plugin as any).handleStop();
+
+      expect(toastMock).toHaveBeenCalledWith('Server stopped', 2000);
+    });
+
+    it('handleUpdateClick success → "Updated to X.X.X"', async () => {
+      mockInstallUpdate.mockResolvedValue(undefined);
+      mockCheckForUpdates.mockResolvedValue({ currentVersion: '1.0.0', latestVersion: '2.0.0' });
+
+      const plugin = makePlugin();
+      (plugin as any).updateInfo = { currentVersion: '1.0.0', latestVersion: '2.0.0' };
+
+      await (plugin as any).handleUpdateClick();
+
+      expect(toastMock).toHaveBeenCalledWith('Updated to 2.0.0', 2000);
+    });
+
+    it('handleUpdateClick success with no version → "Update complete"', async () => {
+      mockInstallUpdate.mockResolvedValue(undefined);
+      mockCheckForUpdates.mockResolvedValue(null);
+
+      const plugin = makePlugin();
+      (plugin as any).updateInfo = null;
+
+      await (plugin as any).handleUpdateClick();
+
+      expect(toastMock).toHaveBeenCalledWith('Update complete', 2000);
+    });
+
+    it('handleUpdateClick failure → "Update failed"', async () => {
+      mockInstallUpdate.mockRejectedValue(new Error('network error'));
+
+      const plugin = makePlugin();
+      (plugin as any).updateInfo = { currentVersion: '1.0.0', latestVersion: '2.0.0' };
+
+      await (plugin as any).handleUpdateClick();
+
+      expect(toastMock).toHaveBeenCalledWith('Update failed', 2000);
+    });
+  });
+});
