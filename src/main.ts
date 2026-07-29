@@ -419,6 +419,13 @@ export class AcodePlugin {
         const up = await isServerUp();
         if (!up) {
           this.stopHealthProbe();
+          try {
+            acode.pushNotification('OpenCode', 'Server connection lost', {
+              type: 'error',
+            });
+          } catch {
+            // pushNotification not available — not critical
+          }
           setError('Server connection lost', '');
         }
       }, HEALTH_PROBE_INTERVAL);
