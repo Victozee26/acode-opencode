@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AppState } from '../src/types';
+import { HEALTH_PROBE_INTERVAL } from '../src/config/health';
 import * as stateModule from '../src/state';
 import * as installModule from '../src/opencode/install';
 import * as serverModule from '../src/opencode/server';
@@ -522,6 +523,62 @@ describe('toast notifications', () => {
 
       expect(toastMock).toHaveBeenCalledWith('Update failed', 2000);
     });
+  });
+});
+
+describe('manageHealthProbe — pushNotification', () => {
+  let pushNotificationMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    pushNotificationMock = vi.fn();
+    (globalThis as any).acode = {
+      pushNotification: pushNotificationMock,
+    };
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('calls pushNotification with error args when server is down', async () => {
+    mockIsServerUp.mockResolvedValue(false);
+    const plugin = makePlugin();
+
+    (plugin as any).manageHealthProbe(AppState.Ready);
+    await vi.advanceTimersByTimeAsync(HEALTH_PROBE_INTERVAL);
+
+    expect(pushNotificationMock).toHaveBeenCalledWith(
+      'OpenCode',
+      'Server connection lost',
+      { type: 'error' },
+    );
+    expect(mockSetError).toHaveBeenCalledWith('Server connection lost', '');
+  });
+
+  it('does not crash when pushNotification throws', async () => {
+    mockIsServerUp.mockResolvedValue(false);
+    pushNotificationMock.mockImplementation(() => {
+      throw new Error('no api');
+    });
+    const plugin = makePlugin();
+
+    (plugin as any).manageHealthProbe(AppState.Ready);
+    await vi.advanceTimersByTimeAsync(HEALTH_PROBE_INTERVAL);
+
+    expect(pushNotificationMock).toHaveBeenCalled();
+    expect(mockSetError).toHaveBeenCalledWith('Server connection lost', '');
+  });
+
+  it('does not call pushNotification when server is up', async () => {
+    mockIsServerUp.mockResolvedValue(true);
+    const plugin = makePlugin();
+
+    (plugin as any).manageHealthProbe(AppState.Ready);
+    await vi.advanceTimersByTimeAsync(HEALTH_PROBE_INTERVAL);
+
+    expect(pushNotificationMock).not.toHaveBeenCalled();
+    expect(mockSetError).not.toHaveBeenCalled();
   });
 });
 
