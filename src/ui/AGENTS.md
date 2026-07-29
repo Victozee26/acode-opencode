@@ -11,7 +11,7 @@ Owned by the root AGENTS.md. Three subdirectories:
 - `components/` — one file per DOM factory function, re-exported through `components/index.ts` (barrel)
 - `styles/` — one CSS file per component/domain, loaded via `<link>` in `initUiStyles()`
 
-  Components: 10 files (9 + barrel `index.ts`)
+  Components: 9 files (8 + barrel `index.ts`)
   - `container.ts` — `createContainer` (shared root wrapper used by `spinner` and `errorDisplay`)
   - `spinner.ts` — `createSpinner`
   - `iframe.ts` — `createIframe`, `setIframeScale`
@@ -19,7 +19,6 @@ Owned by the root AGENTS.md. Three subdirectories:
   - `customHeader.ts` — `createCustomHeader` (replaces FAB, hamburger menu with Start/Restart/Stop)
   - `floatingActionButton.ts` — `createFloatingActionButton` plus the `FabAction` interface (legacy — unused)
   - `errorDisplay.ts` — `createErrorDisplay`
-  - `confirmModal.ts` — `createConfirmModal`, `ConfirmModalConfig`
 
   Styles:
   - `base.css` — keyframes (fade-in), `.opencode-fade-in`, `.opencode-btn` utility class
@@ -31,7 +30,6 @@ Owned by the root AGENTS.md. Three subdirectories:
   - `errorDisplay.css` — `.opencode-error-icon`, `.opencode-error-heading`, `.opencode-error-log`, `.opencode-error-retry`
   - `iframe.css` — `.opencode-iframe`
   - `floatingActionButton.css` — legacy, not loaded
-  - `confirmModal.css` — `.opencode-confirm-overlay`, `.opencode-confirm-dialog`, `.opencode-confirm-message`, `.opencode-confirm-actions`, `.opencode-confirm-btn`, `.opencode-confirm-btn--cancel`, `.opencode-confirm-btn--confirm`
 
   Consumers (e.g. `main.ts`, `ui/index.ts`) import from `./ui/components` (resolves to the barrel), never from an individual component file. Tests live in `test/ui/components.test.ts`.
 
@@ -56,7 +54,6 @@ Owned by the root AGENTS.md. Three subdirectories:
 - `createCustomHeader(actions, isReady, baseUrl, onBack?, updateBanner?)` builds a flex header bar with an optional back button, wordmark image, and hamburger toggle. The hamburger opens a dropdown of `FabAction[]`, preceded by an optional `.opencode-header-update` banner. The `UpdateBannerConfig` carries a `label`, `status` (`'installing'` | `'error'` | `'updated'` | `null`), `onClick`, and optional `onCancel` callbacks. When `status === 'installing'` — pulsing amber banner with a × close button (`.opencode-header-update-close`) that calls `onCancel` to revert to the pre-update state; the main label is non-clickable. When `status === 'updated'` — green banner, non-interactive `<div>` (not a button), shows "Updated to X.X". When `status === 'error'` — red text, clickable to retry. When `status === null` — amber text, clickable to start the update. A scrim overlay (dimmed + blurred) appears behind the menu to catch outside taps and close it. The scrim is a child of the header with `z-index: -1` so it paints behind the header but above page content. The menu is positioned below the header (`top: 100%`, right-aligned). The Start Server action is hidden when `isReady` is true. No document-level event listeners are used; the scrim `click` handler closes the menu directly. Each `FabAction` item gets a `data-action-id` attribute matching its `id` so `updateHeader()` can query by action id (e.g. `[data-action-id="start"]`).
 - `createHeaderBar()` and `createFloatingActionButton()` are legacy components kept for reference but no longer used. The FAB's functionality (Start/Restart/Stop actions) is now served by the hamburger menu in `createCustomHeader()`. The custom header is created once inside `pageHeader` and persists across state transitions; `updateHeader()` modifies it in-place.
 - `createErrorDisplay()` unconditionally renders a warning icon and retry button; the error detail `<pre>` block is conditional on `logTail` being truthy. All dynamic strings use `textContent` (safe from injection, no `escapeHtml` needed).
-- `createConfirmModal(config)` renders a fixed full-viewport overlay with dark scrim and centered dialog card. Contains message text, Cancel and Confirm buttons. Clicking the overlay background (outside the dialog) triggers cancel. Returns the overlay element; the caller appends it to the DOM and removes it on confirm/cancel.
 - The error heading `<h3>` uses class `opencode-error-heading` (`white-space: pre-wrap` from CSS) for legible multi-line summaries. `message` is a short summary (first line of the error); `logTail` is the diagnostic detail (remaining lines).
 - Event handlers (`onRestart`, `onRetry`) are attached via `addEventListener`, never inline `onclick` attributes.
 

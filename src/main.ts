@@ -5,7 +5,6 @@ import { onStateChange, transition, getState, setError, reset } from './state';
 import { render, initUiStyles, initUiPage, updateHeader, updateIframeScale } from './ui/index';
 import type { RenderActions } from './ui/index';
 import type { HeaderActions } from './types';
-import { createConfirmModal } from './ui/components';
 import { checkInstalled, installOpenCode, uninstallOpenCode } from './opencode/install';
 import { startServer, waitForReady, restartServer, stopServer } from './opencode/server';
 import { isServerUp } from './opencode/health';
@@ -250,19 +249,14 @@ export class AcodePlugin {
    * uninstall → verify → install → start server.
    */
   private async handleReinstall(): Promise<void> {
-    log.info('handleReinstall: showing confirmation modal');
-    const modal = createConfirmModal({
-      message: 'This will uninstall and reinstall OpenCode. Continue?',
-      confirmLabel: 'Reinstall',
-      onConfirm: () => {
-        modal.remove();
-        void this.reinstallFlow();
-      },
-      onCancel: () => {
-        modal.remove();
-      },
-    });
-    this.$page!.body.appendChild(modal);
+    log.info('handleReinstall: showing confirmation dialog');
+    const confirmed = await acode.confirm(
+      'Reinstall OpenCode',
+      'This will uninstall and reinstall OpenCode. Continue?',
+    );
+    if (confirmed) {
+      void this.reinstallFlow();
+    }
   }
 
   /**
