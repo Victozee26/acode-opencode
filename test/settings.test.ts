@@ -24,7 +24,7 @@ describe('getSettingsSchema', () => {
   it('returns settings list with iframeScale key', () => {
     const schema = getSettingsSchema();
 
-    expect(schema.list).toHaveLength(1);
+    expect(schema.list).toHaveLength(3);
     expect(schema.list[0].key).toBe(SETTINGS_KEY_IFRAME_SCALE);
     expect(schema.list[0].text).toBe('Iframe Scale (%)');
   });

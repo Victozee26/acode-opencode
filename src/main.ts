@@ -9,10 +9,10 @@ import { checkInstalled, installOpenCode, uninstallOpenCode } from './opencode/i
 import { startServer, waitForReady, restartServer, stopServer } from './opencode/server';
 import { isServerUp } from './opencode/health';
 import { checkForUpdates, installUpdate } from './opencode/update';
-import { createLogger, setLogEnabled } from './logger';
+import { createLogger, setLogEnabled, setLogLevel } from './logger';
 import { DEBUG } from './config/app';
 import { extractErrorInfo } from './error';
-import { getSettingsSchema, setOnScaleChange } from './settings';
+import { getSettingsSchema, setOnScaleChange, getAutoStart, getLogLevel } from './settings';
 import { HEALTH_PROBE_INTERVAL } from './config/health';
 
 const log = createLogger('main');
@@ -60,6 +60,7 @@ export class AcodePlugin {
     ctx: Acode.PluginContext | null,
   ): Promise<void> {
     setLogEnabled(DEBUG);
+    setLogLevel(getLogLevel() as 'debug' | 'info' | 'warn' | 'error');
     log.info('init: plugin initializing');
     initUiStyles(baseUrl);
     setOnScaleChange((scale) => updateIframeScale(scale));
@@ -119,7 +120,7 @@ export class AcodePlugin {
 
     // Lazy start: only run the flow the first time the page is shown.
     this.handleShow = () => {
-      if (!this.isRunning) {
+      if (!this.isRunning && getAutoStart()) {
         this.startFlow();
       }
     };
