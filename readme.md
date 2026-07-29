@@ -1,21 +1,29 @@
+<div align="center" style="padding: 14px 10%;">
+  <img src="https://raw.githubusercontent.com/Victozee26/acode-opencode/main/asset/opencode-wordmark-dark.png" alt="OpenCode wordmark" width="100%"/>
+</div>
+
 <div align="center">
 
-# Acode Plugin OpenCode
-
-![Version](https://img.shields.io/badge/version-0.1.4-blue.svg)
+![Version](https://img.shields.io/badge/version-0.1.41-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Acode](https://img.shields.io/badge/Acode-Compatible-orange.svg)
+
+</div>
 
 **Run the OpenCode AI coding agent inside Acode Editor**
 
 [Features](#features) • [Installation](#installation) • [Requirements](#requirements) • [Build](#build) • [Contributing](#contributing)
 
+**OpenCode Web** is an Acode plugin that launches [OpenCode](https://github.com/anomalyco/opencode) — an AI coding agent — as a background HTTP server inside Acode's built-in Alpine Linux terminal, then embeds its web UI in a full-page iframe. Instead of running OpenCode on a separate machine, this plugin runs it locally on your device and talks to it over loopback, giving you a fully self-contained AI coding workflow inside Acode.
+
+## Screenshot
+
+<div align="center">
+  <img src="https://raw.githubusercontent.com/Victozee26/acode-opencode/main/asset/SCREENSHOT-1.png" alt="OpenCode running inside Acode" width="100%"/>
 </div>
 
-**Acode-OpenCode** is an Acode plugin that launches [OpenCode](https://github.com/anomalyco/opencode) — an AI coding agent — as a background HTTP server inside Acode's built-in Alpine Linux terminal, then embeds its web UI in a full-page iframe. Instead of running OpenCode on a separate machine, this plugin runs it locally on your device and talks to it over loopback, giving you a fully self-contained AI coding workflow inside Acode.
-
-<div align="center" style="display: flex; width: 100%; align-item: center">
-  <img src="https://raw.githubusercontent.com/Victozee26/acode-opencode/main/asset/opencode-wordmark-dark.png" alt="OpenCode wordmark" width="100%"/>
+<div align="center">
+  <img src="https://raw.githubusercontent.com/Victozee26/acode-opencode/main/asset/SCREENSHOT-2.png" alt="OpenCode prompt interface" width="40%"/>
 </div>
 
 ## Requirements
@@ -35,7 +43,7 @@ apk add --no-cache nodejs npm
 
 1. Open **Settings**
 2. Select **Plugins**
-3. Search for **"OpenCode"**
+3. Search for **"OpenCode web"**
 4. Tap **Install**
 5. Restart
 
