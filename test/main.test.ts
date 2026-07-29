@@ -524,3 +524,52 @@ describe('toast notifications', () => {
     });
   });
 });
+
+describe('page lifecycle hooks (ondisconnect / onconnect)', () => {
+  const mockPage: any = {
+    on: vi.fn(),
+    off: vi.fn(),
+    hide: vi.fn(),
+    show: vi.fn(),
+    settitle: vi.fn(),
+    appendChild: vi.fn(),
+    body: { innerHTML: '' },
+    header: { innerHTML: '', style: {} },
+    style: {},
+  };
+
+  beforeEach(() => {
+    (globalThis as any).acode = {
+      addIcon: vi.fn(),
+      require: vi.fn().mockReturnValue(vi.fn().mockReturnValue({ show: vi.fn(), hide: vi.fn() })),
+    };
+    mockCheckForUpdates.mockResolvedValue(null);
+  });
+
+  it('init() sets $page.ondisconnect and $page.onconnect as functions', async () => {
+    const plugin = makePlugin();
+    await plugin.init('https://base/', mockPage as any, {} as any, '', null);
+    expect(typeof mockPage.ondisconnect).toBe('function');
+    expect(typeof mockPage.onconnect).toBe('function');
+  });
+
+  it('$page.ondisconnect calls stopHealthProbe', async () => {
+    const plugin = makePlugin();
+    const stopSpy = vi.spyOn(plugin as any, 'stopHealthProbe');
+    await plugin.init('https://base/', mockPage as any, {} as any, '', null);
+    mockPage.ondisconnect();
+    expect(stopSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('$page.ondisconnect does not throw when no health probe is running', async () => {
+    const plugin = makePlugin();
+    await plugin.init('https://base/', mockPage as any, {} as any, '', null);
+    expect(() => mockPage.ondisconnect()).not.toThrow();
+  });
+
+  it('$page.onconnect does not throw (logging only)', async () => {
+    const plugin = makePlugin();
+    await plugin.init('https://base/', mockPage as any, {} as any, '', null);
+    expect(() => mockPage.onconnect()).not.toThrow();
+  });
+});
