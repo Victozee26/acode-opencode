@@ -1,5 +1,9 @@
 # Changelogs
 
+## 0.1.4
+- Improved error handling UI/UX
+- Added option to reinstall OpenCode (uninstalls then reinstalls) directly from the plugin.
+
 ## 0.1.3
 - Refreshed the plugin UI for a cleaner, more polished look.
 - Added ability to update OpenCode directly from the plugin UI (with automatic update checks.
