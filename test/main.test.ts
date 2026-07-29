@@ -27,6 +27,7 @@ const mockUpdateHeader = vi.mocked(uiModule.updateHeader);
 const mockSetError = vi.mocked(stateModule.setError);
 const mockCheckInstalled = vi.mocked(installModule.checkInstalled);
 const mockInstallOpenCode = vi.mocked(installModule.installOpenCode);
+const mockUninstallOpenCode = vi.mocked(installModule.uninstallOpenCode);
 const mockIsServerUp = vi.mocked(healthModule.isServerUp);
 const mockStartServer = vi.mocked(serverModule.startServer);
 const mockWaitForReady = vi.mocked(serverModule.waitForReady);
@@ -221,6 +222,50 @@ describe('handleRestart', () => {
     await (plugin as any).handleRestart();
 
     expect(mockSetError).toHaveBeenCalledWith('port busy', '');
+  });
+});
+
+describe('handleReinstall', () => {
+  beforeEach(() => {
+    (globalThis as any).acode = {
+      confirm: vi.fn(),
+    };
+    mockInstallOpenCode.mockResolvedValue(undefined);
+    mockUninstallOpenCode.mockResolvedValue(undefined);
+    mockCheckInstalled.mockResolvedValue(true);
+    mockIsServerUp.mockResolvedValue(true);
+  });
+
+  it('confirm resolves true → reinstallFlow is triggered', async () => {
+    (globalThis as any).acode.confirm.mockResolvedValue(true);
+    const plugin = makePlugin();
+
+    await (plugin as any).handleReinstall();
+    await vi.waitFor(() => expect(mockUninstallOpenCode).toHaveBeenCalled());
+
+    expect(globalThis.acode.confirm).toHaveBeenCalledWith(
+      'Reinstall OpenCode',
+      'This will uninstall and reinstall OpenCode. Continue?',
+    );
+    expect(mockTransition).toHaveBeenCalledWith(AppState.Uninstalling);
+  });
+
+  it('confirm resolves false → reinstallFlow is NOT triggered', async () => {
+    (globalThis as any).acode.confirm.mockResolvedValue(false);
+    const plugin = makePlugin();
+
+    await (plugin as any).handleReinstall();
+
+    expect(mockUninstallOpenCode).not.toHaveBeenCalled();
+    expect(mockTransition).not.toHaveBeenCalled();
+  });
+
+  it('confirm throws → error propagates to caller', async () => {
+    (globalThis as any).acode.confirm.mockRejectedValue(new Error('dialog dismissed'));
+    const plugin = makePlugin();
+
+    await expect((plugin as any).handleReinstall()).rejects.toThrow('dialog dismissed');
+    expect(mockUninstallOpenCode).not.toHaveBeenCalled();
   });
 });
 
