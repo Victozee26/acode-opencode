@@ -75,6 +75,15 @@ export class AcodePlugin {
       $page.header.style.display = 'none';
     }
 
+    $page.ondisconnect = () => {
+      log.info('page disconnected — stopping health probe');
+      this.stopHealthProbe();
+    };
+
+    $page.onconnect = () => {
+      log.info('page connected');
+    };
+
     const STACK_ID = 'opencode-plugin';
     const builtinShow = $page.show.bind($page);
     let pageShown = false;
