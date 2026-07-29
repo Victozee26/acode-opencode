@@ -269,6 +269,96 @@ describe('handleReinstall', () => {
   });
 });
 
+describe('ctx / PluginContext', () => {
+  it('stores a valid PluginContext on the instance', async () => {
+    const mockPage = {
+      on: vi.fn(),
+      off: vi.fn(),
+      hide: vi.fn(),
+      show: vi.fn(),
+      settitle: vi.fn(),
+      appendChild: vi.fn(),
+      body: { innerHTML: '' },
+      header: { innerHTML: '', style: {} },
+      style: {},
+    };
+
+    (globalThis as any).acode = {
+      addIcon: vi.fn(),
+      require: vi.fn().mockReturnValue(vi.fn().mockReturnValue({ show: vi.fn(), hide: vi.fn() })),
+    };
+
+    const mockCtx: Acode.PluginContext = {
+      created_at: Date.now(),
+      uuid: 'test-uuid',
+      grantedPermission: vi.fn(),
+      listAllPermissions: vi.fn(),
+      getSecret: vi.fn(),
+      setSecret: vi.fn(),
+    };
+
+    const plugin = makePlugin();
+    await plugin.init('https://base/', mockPage as any, {} as any, '', mockCtx);
+
+    expect((plugin as any).ctx).toBe(mockCtx);
+    expect((plugin as any).ctx.uuid).toBe('test-uuid');
+  });
+
+  it('handles null ctx gracefully (no throw)', async () => {
+    const mockPage = {
+      on: vi.fn(),
+      off: vi.fn(),
+      hide: vi.fn(),
+      show: vi.fn(),
+      settitle: vi.fn(),
+      appendChild: vi.fn(),
+      body: { innerHTML: '' },
+      header: { innerHTML: '', style: {} },
+      style: {},
+    };
+
+    (globalThis as any).acode = {
+      addIcon: vi.fn(),
+      require: vi.fn().mockReturnValue(vi.fn().mockReturnValue({ show: vi.fn(), hide: vi.fn() })),
+    };
+
+    const plugin = makePlugin();
+
+    await expect(
+      plugin.init('https://base/', mockPage as any, {} as any, '', null),
+    ).resolves.toBeUndefined();
+
+    expect((plugin as any).ctx).toBeNull();
+  });
+
+  it('handles undefined ctx gracefully (no throw)', async () => {
+    const mockPage = {
+      on: vi.fn(),
+      off: vi.fn(),
+      hide: vi.fn(),
+      show: vi.fn(),
+      settitle: vi.fn(),
+      appendChild: vi.fn(),
+      body: { innerHTML: '' },
+      header: { innerHTML: '', style: {} },
+      style: {},
+    };
+
+    (globalThis as any).acode = {
+      addIcon: vi.fn(),
+      require: vi.fn().mockReturnValue(vi.fn().mockReturnValue({ show: vi.fn(), hide: vi.fn() })),
+    };
+
+    const plugin = makePlugin();
+
+    await expect(
+      plugin.init('https://base/', mockPage as any, {} as any, ''),
+    ).resolves.toBeUndefined();
+
+    expect((plugin as any).ctx).toBeUndefined();
+  });
+});
+
 describe('header-only updates (Phase 2)', () => {
   beforeEach(() => {
     mockCheckForUpdates.mockReset();
