@@ -2,17 +2,19 @@ import plugin from '../plugin.json';
 
 import { AppState, UpdateInfo, UpdateStatus } from './types';
 import { onStateChange, transition, getState, setError, reset } from './state';
-import { render, initUiStyles, initUiPage, updateHeader } from './ui/index';
+import { render, initUiStyles, initUiPage, updateHeader, updateIframeScale } from './ui/index';
 import type { RenderActions } from './ui/index';
 import type { HeaderActions } from './types';
-import { checkInstalled, installOpenCode } from './opencode/install';
+import { createConfirmModal } from './ui/components';
+import { checkInstalled, installOpenCode, uninstallOpenCode } from './opencode/install';
 import { startServer, waitForReady, restartServer, stopServer } from './opencode/server';
 import { isServerUp } from './opencode/health';
 import { checkForUpdates, installUpdate } from './opencode/update';
 import { createLogger, setLogEnabled } from './logger';
 import { DEBUG } from './config/app';
 import { extractErrorInfo } from './error';
-import { getSettingsSchema } from './settings';
+import { getSettingsSchema, setOnScaleChange } from './settings';
+import { HEALTH_PROBE_INTERVAL } from './config/health';
 
 const log = createLogger('main');
 
@@ -38,6 +40,7 @@ export class AcodePlugin {
   private handleShow!: () => void;
   private updateInfo: UpdateInfo | null = null;
   private updateStatus: UpdateStatus | null = null;
+  private healthProbeTimer: ReturnType<typeof setInterval> | null = null;
 
   /**
    * Registers the reactive render hook and UI entry points.
@@ -57,6 +60,7 @@ export class AcodePlugin {
     setLogEnabled(DEBUG);
     log.info('init: plugin initializing');
     initUiStyles(baseUrl);
+    setOnScaleChange((scale) => updateIframeScale(scale));
     this.$page = $page;
     initUiPage($page);
     if ($page.header) {
@@ -91,6 +95,7 @@ export class AcodePlugin {
 
     onStateChange((state, context) => {
       if (this.$page) {
+        this.manageHealthProbe(state);
         const actions: RenderActions = {
           start: () => this.handleStart(),
           restart: () => this.handleRestart(),
@@ -100,6 +105,7 @@ export class AcodePlugin {
           updateStatus: this.updateStatus,
           onUpdateClick: () => this.handleUpdateClick(),
           onCancelUpdate: () => this.handleCancelUpdate(),
+          onReinstall: () => this.handleReinstall(),
         };
         render(state, context, actions);
       }
@@ -143,6 +149,7 @@ export class AcodePlugin {
    */
   async destroy(): Promise<void> {
     log.info('destroy: tearing down');
+    this.stopHealthProbe();
     this.sideButton?.hide();
     this.sideButton = null;
     if (this.handleShow) {
@@ -238,6 +245,70 @@ export class AcodePlugin {
   /**
    * Stops the OpenCode server and returns to Idle so the user can start again.
    */
+  /**
+   * Shows a confirmation modal, and if confirmed, runs the reinstall flow:
+   * uninstall → verify → install → start server.
+   */
+  private async handleReinstall(): Promise<void> {
+    log.info('handleReinstall: showing confirmation modal');
+    const modal = createConfirmModal({
+      message: 'This will uninstall and reinstall OpenCode. Continue?',
+      confirmLabel: 'Reinstall',
+      onConfirm: () => {
+        modal.remove();
+        void this.reinstallFlow();
+      },
+      onCancel: () => {
+        modal.remove();
+      },
+    });
+    this.$page!.body.appendChild(modal);
+  }
+
+  /**
+   * Drives the reinstall flow through the state machine:
+   * Uninstalling → CheckingInstall → Installing → CheckingServer →
+   * StartingServer → Ready.
+   */
+  private async reinstallFlow(): Promise<void> {
+    if (this.isRunning) return;
+    this.isRunning = true;
+    log.info('reinstallFlow: beginning');
+
+    try {
+      transition(AppState.Uninstalling);
+      await uninstallOpenCode();
+
+      transition(AppState.CheckingInstall);
+      const installed = await checkInstalled();
+      if (installed) {
+        log.warn('reinstallFlow: opencode still present after uninstall, continuing');
+      }
+
+      transition(AppState.Installing);
+      await installOpenCode();
+
+      transition(AppState.CheckingServer);
+      const serverUp = await isServerUp();
+      if (serverUp) {
+        log.info('reinstallFlow: server already up, skipping start');
+        transition(AppState.Ready);
+        return;
+      }
+
+      transition(AppState.StartingServer);
+      await startServer();
+      await waitForReady();
+
+      transition(AppState.Ready);
+      log.info('reinstallFlow: ready');
+    } catch (err) {
+      this.handleError('reinstallFlow', err);
+    } finally {
+      this.isRunning = false;
+    }
+  }
+
   private async handleStop(): Promise<void> {
     log.info('handleStop: stopping server');
     try {
@@ -267,6 +338,7 @@ export class AcodePlugin {
       updateStatus: this.updateStatus,
       onUpdateClick: () => this.handleUpdateClick(),
       onCancelUpdate: () => this.handleCancelUpdate(),
+      onReinstall: () => this.handleReinstall(),
     };
   }
 
@@ -320,6 +392,27 @@ export class AcodePlugin {
     log.error(`${stage}: failed`, err);
     const { summary, logTail } = extractErrorInfo(err);
     setError(summary, logTail);
+  }
+
+  private manageHealthProbe(state: AppState): void {
+    if (state === AppState.Ready && !this.healthProbeTimer) {
+      this.healthProbeTimer = setInterval(async () => {
+        const up = await isServerUp();
+        if (!up) {
+          this.stopHealthProbe();
+          setError('Server connection lost', '');
+        }
+      }, HEALTH_PROBE_INTERVAL);
+    } else if (state !== AppState.Ready && this.healthProbeTimer) {
+      this.stopHealthProbe();
+    }
+  }
+
+  private stopHealthProbe(): void {
+    if (this.healthProbeTimer) {
+      clearInterval(this.healthProbeTimer);
+      this.healthProbeTimer = null;
+    }
   }
 }
 

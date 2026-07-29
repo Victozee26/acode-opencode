@@ -4,6 +4,7 @@ import { HEADER_CONTAINER_ID, CONTENT_CONTAINER_ID } from '../config/ui';
 import {
   createSpinner,
   createIframe,
+  setIframeScale,
   createCustomHeader,
   createErrorDisplay,
   FabAction,
@@ -21,11 +22,13 @@ export interface RenderActions {
   updateStatus?: UpdateStatus | null;
   onUpdateClick?: () => void;
   onCancelUpdate?: () => void;
+  onReinstall?: () => void;
 }
 
 const log = createLogger('ui');
 
 let activeSpinner: (HTMLElement & { stop: () => void }) | null = null;
+let activeIframe: HTMLIFrameElement | null = null;
 
 let pageHeader: HTMLElement | null = null;
 let pageContent: HTMLElement | null = null;
@@ -43,6 +46,7 @@ const STYLESHEETS = [
   'styles/errorDisplay.css',
   'styles/iframe.css',
   'styles/ready.css',
+  'styles/confirmModal.css',
 ];
 
 export function initUiStyles(baseUrl: string): void {
@@ -80,6 +84,7 @@ export function initUiPage($page: Acode.WCPage): void {
 
 const STATUS_MESSAGES: Record<string, string> = {
   [AppState.CheckingInstall]: 'Checking OpenCode installation\u2026',
+  [AppState.Uninstalling]: 'Uninstalling OpenCode\u2026',
   [AppState.Installing]: 'Installing OpenCode\u2026',
   [AppState.CheckingServer]: 'Checking server status\u2026',
   [AppState.StartingServer]: 'Starting OpenCode server\u2026',
@@ -97,7 +102,7 @@ export function render(
   actions: RenderActions,
 ): void {
   log.debug(`render: ${state}`);
-
+  activeIframe = null;
   if (activeSpinner) {
     activeSpinner.stop();
     activeSpinner = null;
@@ -114,6 +119,7 @@ export function render(
       { id: 'start', label: 'Start Server', onClick: actions.start },
       { id: 'restart', label: 'Restart Server', onClick: actions.restart },
       { id: 'stop', label: 'Stop Server', onClick: actions.stop },
+      { id: 'reinstall', label: 'Reinstall OpenCode', onClick: () => actions.onReinstall?.() },
     ];
     const banner = buildUpdateBanner(actions);
     pageHeader!.appendChild(createCustomHeader(fabActions, state === AppState.Ready, pluginBaseUrl, actions.back, banner));
@@ -128,6 +134,7 @@ export function render(
       break;
 
     case AppState.CheckingInstall:
+    case AppState.Uninstalling:
     case AppState.Installing:
     case AppState.CheckingServer:
     case AppState.StartingServer:
@@ -182,8 +189,15 @@ function renderReady(container: HTMLElement): void {
   container.style.overflow = 'hidden';
   const wrapper = document.createElement('div');
   wrapper.className = 'opencode-ready-wrapper';
-  wrapper.appendChild(createIframe(BASE_URL, getIframeScale()));
+  activeIframe = createIframe(BASE_URL, getIframeScale());
+  wrapper.appendChild(activeIframe);
   container.appendChild(wrapper);
+}
+
+export function updateIframeScale(scale: number): void {
+  if (activeIframe) {
+    setIframeScale(activeIframe, scale);
+  }
 }
 
 function renderError(

@@ -9,103 +9,53 @@ import {
   STOP_POLL_TIMEOUT,
   STOP_POLL_INTERVAL,
 } from '../config/opencode';
-import { LOG_PATH } from '../config/server';
-import { LOG_TAIL_LINES } from '../config/health';
 import { PORT, HOSTNAME } from '../config/server';
 import { createLogger } from '../logger';
 import { isServerUp } from './health';
 
 const log = createLogger('server');
 
-/**
- * Builds the command that launches OpenCode as a detached background server.
- *
- * CRITICAL CONSTRAINT (discovered empirically): Acode's `Executor.execute`
- * treats the command as finished the moment its stdout pipe reaches EOF. If we
- * redirect the server's output to a FILE (`> LOG_PATH 2>&1`), the backgrounded
- * process writes to the file, the executor's pipe closes immediately, execute()
- * resolves, and Acode tears down the shell session — reaping the server (it
- * never shows in the inspector and the health probe misses it). The server must
- * therefore KEEP THE EXECUTOR'S STDOUT PIPE OPEN so the session survives.
- *
- * We achieve both survival AND a log file with `2>&1 | tee LOG_PATH`: tee holds
- * the pipe open (so the session isn't torn down) while also mirroring output to
- * the log file for diagnostics. `nohup ... &` lets execute() return at once and
- * ignores SIGHUP. `--print-logs` makes OpenCode echo its logs (line-buffered) so
- * the log file holds the real startup sequence.
- *
- * `setsid` was also tried but, combined with a file redirect, still got reaped;
- * keeping the executor pipe open via tee is the validated approach.
- */
+let shuttingDown = false;
+
 export function buildStartCommand(): string {
-  return `nohup opencode serve --port ${PORT} --hostname ${HOSTNAME} --print-logs 2>&1 | tee ${LOG_PATH} &`;
+  return `opencode serve --port ${PORT} --hostname ${HOSTNAME}`;
 }
 
-/**
- * Returns the last `LOG_TAIL_LINES` lines of the server log, best-effort.
- *
- * Used to enrich timeout/crash errors with diagnostics. The `|| true` ensures
- * the shell command never fails even when the log file is missing or empty, so
- * `execute()` (which fails on non-zero exit) always resolves. If reading still
- * fails for any reason, we return an empty string rather than throwing.
- */
-async function readLogTail(): Promise<string> {
-  try {
-    const output = await execute(`tail -n ${LOG_TAIL_LINES} ${LOG_PATH} || true`);
-    const trimmed = String(output).trim();
-    log.info(`readLogTail: ${trimmed.length} chars`);
-    return trimmed;
-  } catch {
-    log.warn('readLogTail: failed, returning empty');
-    return '';
-  }
-}
-
-/**
- * Launches the OpenCode server in the background and verifies it survived
- * startup.
- *
- * `buildStartCommand()` uses `nohup ... &` so the process outlives the blocking
- * `execute()` call (the terminal wrapper only resolves once the command exits,
- * which for a detached `&` process is immediate). It also passes `--print-logs`
- * because `opencode serve` otherwise writes to `~/.local/share/opencode/log/`
- * and only emits 1–2 stdout lines that Node *block-buffers* when piped to a
- * file — they rarely flush, yielding a misleading "(no log output)". With
- * `--print-logs`, the Effect-Log output is mirrored to stderr (line-buffered,
- * flushes immediately) so `/tmp/opencode.log` holds the real startup sequence.
- *
- * After a short `STARTUP_CHECK_DELAY` (lets a crashed process actually exit), we
- * run `PROCESS_CHECK_COMMAND` (pgrep). If nothing is matched, the process died
- * during startup — typically a missing binary, config error, or port conflict —
- * and we throw *here*, before the caller's `waitForReady()` poll loop, so the
- * error surfaces fast with the log tail attached.
- */
 export async function startServer(): Promise<void> {
   log.info('startServer: launching');
-  await execute(buildStartCommand());
-  // Give a just-spawned (or instantly-dying) process a moment to settle before
-  // checking liveness — avoids a race where we check before a crash completes.
-  await new Promise((resolve) => setTimeout(resolve, STARTUP_CHECK_DELAY));
+  const serverCmd = execute(buildStartCommand());
+
+  serverCmd.catch((err) => {
+    if (!shuttingDown) {
+      log.error('server process exited unexpectedly', err);
+    }
+  });
+
+  const exitInfo = await Promise.race([
+    serverCmd
+      .then(() => ({ exited: true as const, reason: 'process exited with code 0' }))
+      .catch((err) => ({
+        exited: true as const,
+        reason: err instanceof Error ? err.message : String(err),
+      })),
+    new Promise<{ exited: false }>((resolve) =>
+      setTimeout(() => resolve({ exited: false }), STARTUP_CHECK_DELAY),
+    ),
+  ]);
+
+  if (exitInfo.exited) {
+    throw new Error(
+      `OpenCode server process exited immediately after start.\n${exitInfo.reason}`,
+    );
+  }
+
   const pgrepOutput = String(await execute(PROCESS_CHECK_COMMAND)).trim();
   if (!pgrepOutput) {
-    // Process already gone — surface the failure now, not after a 15s poll loop.
-    const logTail = await readLogTail();
-    throw new Error(
-      `OpenCode server process exited immediately after start.\nLast log lines:\n${logTail || '(no log output)'}`,
-    );
+    throw new Error('OpenCode server process exited immediately after start.');
   }
   log.info(`startServer: process alive (pid ${pgrepOutput})`);
 }
 
-/**
- * Polls `isServerUp()` until the server responds or `READY_TIMEOUT` elapses.
- *
- * The loop guards on `Date.now() - startedAt < READY_TIMEOUT` so the measured
- * window includes the time spent inside each `isServerUp()` call plus the
- * `READY_POLL_INTERVAL` sleep, giving a bounded total wait. On timeout we report
- * the process state (alive/dead/unknown via pgrep) together with the log tail so
- * the UI can distinguish "process crashed" from "process alive but not serving".
- */
 export async function waitForReady(): Promise<void> {
   const startedAt = Date.now();
   log.info('waitForReady: polling started');
@@ -121,8 +71,6 @@ export async function waitForReady(): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, READY_POLL_INTERVAL));
   }
 
-  const logTail = await readLogTail();
-
   let processState = 'unknown';
   try {
     const pgrepOutput = String(await execute(PROCESS_CHECK_COMMAND)).trim();
@@ -133,8 +81,7 @@ export async function waitForReady(): Promise<void> {
 
   throw new Error(
     `Server did not respond within ${READY_TIMEOUT / 1000}s.\n` +
-    `Process state: ${processState}\n` +
-    `Last log lines:\n${logTail || '(no log output)'}`,
+    `Process state: ${processState}`,
   );
 }
 
@@ -175,31 +122,36 @@ async function pollUntilDown(timeout: number): Promise<boolean> {
  * unkillable (e.g. zombie/permission issue) and the caller must surface it.
  */
 export async function stopServer(): Promise<void> {
-  log.info('stopServer: sending SIGTERM');
+  shuttingDown = true;
   try {
-    await execute(KILL_COMMAND);
-  } catch {
-    // pkill returns non-zero when no match; don't fail here — poll decides.
+    log.info('stopServer: sending SIGTERM');
+    try {
+      await execute(KILL_COMMAND);
+    } catch {
+      // pkill returns non-zero when no match; don't fail here — poll decides.
+    }
+
+    const softDown = await pollUntilDown(STOP_POLL_TIMEOUT);
+    if (softDown) {
+      log.info('stopServer: stopped via SIGTERM');
+      return;
+    }
+
+    log.warn('stopServer: SIGTERM failed, escalating to SIGKILL');
+    log.warn('stopServer: executing pkill -9');
+    await execute(HARD_KILL_COMMAND);
+    log.info('stopServer: hard kill command done');
+
+    const hardDown = await pollUntilDown(STOP_POLL_TIMEOUT);
+    if (hardDown) {
+      log.info('stopServer: stopped via SIGKILL');
+      return;
+    }
+
+    throw new Error('Cannot stop server: port 4096 still occupied after SIGKILL');
+  } finally {
+    shuttingDown = false;
   }
-
-  const softDown = await pollUntilDown(STOP_POLL_TIMEOUT);
-  if (softDown) {
-    log.info('stopServer: stopped via SIGTERM');
-    return;
-  }
-
-  log.warn('stopServer: SIGTERM failed, escalating to SIGKILL');
-  log.warn('stopServer: executing pkill -9');
-  await execute(HARD_KILL_COMMAND);
-  log.info('stopServer: hard kill command done');
-
-  const hardDown = await pollUntilDown(STOP_POLL_TIMEOUT);
-  if (hardDown) {
-    log.info('stopServer: stopped via SIGKILL');
-    return;
-  }
-
-  throw new Error('Cannot stop server: port 4096 still occupied after SIGKILL');
 }
 
 /**
