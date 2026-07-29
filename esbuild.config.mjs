@@ -21,16 +21,16 @@ function copyStyles() {
   }
 }
 
-// Copy static assets from project root asset/ to dist/asset/
+// Copy the wordmark image (only, not screenshots) to dist/asset/
 function copyAssets() {
-  const src = join(__dirname, "asset");
-  const dest = join(__dirname, "dist", "asset");
+  const src = join(__dirname, "asset", "opencode-wordmark-dark.png");
+  const destDir = join(__dirname, "dist", "asset");
   if (existsSync(src)) {
-    if (!existsSync(dest)) {
-      mkdirSync(dest, { recursive: true });
+    if (!existsSync(destDir)) {
+      mkdirSync(destDir, { recursive: true });
     }
-    cpSync(src, dest, { recursive: true });
-    console.log("Assets copied to dist/asset/");
+    cpSync(src, join(destDir, "opencode-wordmark-dark.png"));
+    console.log("Wordmark copied to dist/asset/");
   }
 }
 
