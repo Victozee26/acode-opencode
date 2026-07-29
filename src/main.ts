@@ -25,6 +25,7 @@ const ICON_CLASS = 'opencode-icon';
  * Responsibilities:
  * - `init()` wires the reactive UI (onStateChange -> render) and the page `show`
  *   event + side-button so the app starts on demand.
+ * - `ctx` stores the PluginContext for persistent key-value storage and permission checks.
  * - `destroy()` tears everything down and resets the state machine.
  * - `startFlow()` is the state-machine driver that installs/starts OpenCode.
  * - `handleRestart()` reuses the StartingServer path to restart a running server.
@@ -40,6 +41,7 @@ export class AcodePlugin {
   private updateInfo: UpdateInfo | null = null;
   private updateStatus: UpdateStatus | null = null;
   private healthProbeTimer: ReturnType<typeof setInterval> | null = null;
+  private ctx: Acode.PluginContext | null = null;
 
   /**
    * Registers the reactive render hook and UI entry points.
@@ -55,12 +57,17 @@ export class AcodePlugin {
     $page: Acode.WCPage,
     _cacheFile: Acode.FileSystem,
     _cacheFileUrl: string,
+    ctx: Acode.PluginContext | null,
   ): Promise<void> {
     setLogEnabled(DEBUG);
     log.info('init: plugin initializing');
     initUiStyles(baseUrl);
     setOnScaleChange((scale) => updateIframeScale(scale));
     this.$page = $page;
+    this.ctx = ctx;
+    if (ctx) {
+      log.info(`init: plugin context available (created_at=${ctx.created_at})`);
+    }
     initUiPage($page);
     if ($page.header) {
       $page.header.innerHTML = '';
@@ -422,14 +429,14 @@ if (window.acode) {
     async (
       baseUrl: string,
       $page: Acode.WCPage,
-      { cacheFileUrl, cacheFile }: Acode.PluginInitOptions,
+      { cacheFileUrl, cacheFile, ctx }: Acode.PluginInitOptions,
     ) => {
       // Normalize the trailing slash so asset paths (e.g. icon.png) concatenate
       // correctly regardless of how Acode supplies the base URL.
       if (!baseUrl.endsWith('/')) {
         baseUrl += '/';
       }
-      await acodePlugin.init(baseUrl, $page, cacheFile, cacheFileUrl);
+      await acodePlugin.init(baseUrl, $page, cacheFile, cacheFileUrl, ctx);
     },
     getSettingsSchema(),
   );
