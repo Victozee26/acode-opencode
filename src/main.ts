@@ -195,6 +195,7 @@ export class AcodePlugin {
       const serverUp = await isServerUp();
       if (serverUp) {
         log.info('startFlow: server already up, skipping start');
+        this.showToast('OpenCode server already running');
         transition(AppState.Ready);
         return;
       }
@@ -206,6 +207,7 @@ export class AcodePlugin {
 
       transition(AppState.Ready);
       log.info('startFlow: ready');
+      this.showToast('OpenCode server ready');
     } catch (err) {
       this.handleError('startFlow', err);
     }
@@ -228,6 +230,7 @@ export class AcodePlugin {
       log.info('handleRestart: server ready, transitioning to Ready');
       transition(AppState.Ready);
       log.info('handleRestart: ready');
+      this.showToast('OpenCode server restarted');
     } catch (err) {
       this.handleError('handleRestart', err);
     }
@@ -317,6 +320,7 @@ export class AcodePlugin {
       log.info('handleStop: server stopped');
       this.isRunning = false;
       transition(AppState.Idle);
+      this.showToast('Server stopped');
     } catch (err) {
       this.handleError('handleStop', err);
     }
@@ -367,10 +371,14 @@ export class AcodePlugin {
         this.updateInfo = fresh;
       }
       updateHeader(getState().currentState, this.getHeaderActions());
+      const freshInfo = this.updateInfo;
+      const version = freshInfo ? freshInfo.latestVersion : '';
+      this.showToast(version ? `Updated to ${version}` : 'Update complete');
     } catch (err) {
       log.error('handleUpdateClick: failed', err);
       this.updateStatus = 'error';
       updateHeader(getState().currentState, this.getHeaderActions());
+      this.showToast('Update failed');
     }
   }
 
@@ -406,6 +414,17 @@ export class AcodePlugin {
       }, HEALTH_PROBE_INTERVAL);
     } else if (state !== AppState.Ready && this.healthProbeTimer) {
       this.stopHealthProbe();
+    }
+  }
+
+  private showToast(message: string): void {
+    try {
+      const toast = acode.require('toast');
+      if (typeof toast === 'function') {
+        toast(message, 2000);
+      }
+    } catch {
+      // toast module unavailable — not critical
     }
   }
 
