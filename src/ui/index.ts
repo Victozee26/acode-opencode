@@ -3,6 +3,7 @@ import { BASE_URL } from '../config/server';
 import { HEADER_CONTAINER_ID, CONTENT_CONTAINER_ID } from '../config/ui';
 import {
   createSpinner,
+  SpinnerElement,
   createIframe,
   setIframeScale,
   createCustomHeader,
@@ -27,7 +28,7 @@ export interface RenderActions {
 
 const log = createLogger('ui');
 
-let activeSpinner: (HTMLElement & { stop: () => void }) | null = null;
+let activeSpinner: SpinnerElement | null = null;
 let activeIframe: HTMLIFrameElement | null = null;
 
 let pageHeader: HTMLElement | null = null;
@@ -200,12 +201,22 @@ export function updateIframeScale(scale: number): void {
   }
 }
 
+/**
+ * Stream real-time command output to the active spinner's progress label.
+ * No-op when no spinner is rendered (e.g. not in a loading state).
+ */
+export function setSpinnerProgress(text: string): void {
+  if (activeSpinner) {
+    activeSpinner.setProgressText(text);
+  }
+}
+
 function renderError(
   container: HTMLElement,
   context: StateContext,
   actions: RenderActions,
 ): void {
-  container.appendChild(createErrorDisplay(context, actions.restart));
+  container.appendChild(createErrorDisplay(context, actions.start));
 }
 
 function buildUpdateBanner(actions: HeaderActions): UpdateBannerConfig | null {

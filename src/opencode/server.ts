@@ -1,8 +1,8 @@
-import { execute } from '../terminal/executor';
+import { execute, startBackground, stopBackground } from '../terminal/executor';
 import {
   READY_POLL_INTERVAL,
   READY_TIMEOUT,
-  STARTUP_CHECK_DELAY,
+  SERVER_LOG_LINES,
   KILL_COMMAND,
   HARD_KILL_COMMAND,
   PROCESS_CHECK_COMMAND,
@@ -15,45 +15,50 @@ import { isServerUp } from './health';
 
 const log = createLogger('server');
 
-let shuttingDown = false;
+let serverUuid: string | null = null;
+
+const ringBuffer: string[] = [];
+
+function feedLog(line: string): void {
+  ringBuffer.push(line);
+  if (ringBuffer.length > SERVER_LOG_LINES) {
+    ringBuffer.shift();
+  }
+}
+
+export function getServerLog(): string {
+  return ringBuffer.join('\n');
+}
 
 export function buildStartCommand(): string {
   return `opencode serve --port ${PORT} --hostname ${HOSTNAME}`;
 }
 
 export async function startServer(): Promise<void> {
-  log.info('startServer: launching');
-  const serverCmd = execute(buildStartCommand());
+  log.info('startServer: launching via BackgroundExecutor');
+  const command = buildStartCommand();
+  ringBuffer.length = 0;
 
-  serverCmd.catch((err) => {
-    if (!shuttingDown) {
-      log.error('server process exited unexpectedly', err);
-    }
-  });
+  const bg = await startBackground(
+    command,
+    (type, data) => {
+      const trimmed = data.trim();
+      if (type === 'stdout') {
+        log.info(`server[stdout]: ${trimmed}`);
+      } else if (type === 'stderr') {
+        log.warn(`server[stderr]: ${trimmed}`);
+      }
+      const lines = data.split('\n');
+      for (const line of lines) {
+        const t = line.trim();
+        if (t) feedLog(t);
+      }
+    },
+    true,
+  );
 
-  const exitInfo = await Promise.race([
-    serverCmd
-      .then(() => ({ exited: true as const, reason: 'process exited with code 0' }))
-      .catch((err) => ({
-        exited: true as const,
-        reason: err instanceof Error ? err.message : String(err),
-      })),
-    new Promise<{ exited: false }>((resolve) =>
-      setTimeout(() => resolve({ exited: false }), STARTUP_CHECK_DELAY),
-    ),
-  ]);
-
-  if (exitInfo.exited) {
-    throw new Error(
-      `OpenCode server process exited immediately after start.\n${exitInfo.reason}`,
-    );
-  }
-
-  const pgrepOutput = String(await execute(PROCESS_CHECK_COMMAND)).trim();
-  if (!pgrepOutput) {
-    throw new Error('OpenCode server process exited immediately after start.');
-  }
-  log.info(`startServer: process alive (pid ${pgrepOutput})`);
+  serverUuid = bg.uuid;
+  log.info(`startServer: BackgroundExecutor started, uuid=${serverUuid}`);
 }
 
 export async function waitForReady(): Promise<void> {
@@ -79,19 +84,14 @@ export async function waitForReady(): Promise<void> {
     processState = 'unknown (pgrep failed)';
   }
 
+  const logTail = ringBuffer.join('\n');
   throw new Error(
     `Server did not respond within ${READY_TIMEOUT / 1000}s.\n` +
-    `Process state: ${processState}`,
+    `Process state: ${processState}\n` +
+    (logTail ? `Last ${Math.min(SERVER_LOG_LINES, ringBuffer.length)} lines:\n${logTail}` : ''),
   );
 }
 
-/**
- * Polls `isServerUp()` until the server stops responding or `timeout` elapses.
- *
- * Returns true once the server is confirmed down, false if it is still up after
- * the timeout. Reused for both the SIGTERM and SIGKILL grace periods in
- * `stopServer()`, so the same wait logic isn't duplicated per signal.
- */
 async function pollUntilDown(timeout: number): Promise<boolean> {
   const startedAt = Date.now();
   log.info(`pollUntilDown: polling for ${timeout}ms`);
@@ -111,56 +111,51 @@ async function pollUntilDown(timeout: number): Promise<boolean> {
   return false;
 }
 
-/**
- * Stops the OpenCode server with graceful-then-forceful signal escalation.
- *
- * Sends SIGTERM (`KILL_COMMAND`), then polls up to `STOP_POLL_TIMEOUT` for the
- * server to stop responding. If it's still up, escalates to SIGKILL
- * (`HARD_KILL_COMMAND`) and polls again. This two-stage approach lets a healthy
- * process shut down cleanly while guaranteeing termination of a stuck one. If
- * the port is still occupied even after SIGKILL, we throw — the process is
- * unkillable (e.g. zombie/permission issue) and the caller must surface it.
- */
 export async function stopServer(): Promise<void> {
-  shuttingDown = true;
+  if (!serverUuid) {
+    log.info('stopServer: no running server, nothing to stop');
+    return;
+  }
+
   try {
-    log.info('stopServer: sending SIGTERM');
+    log.info(`stopServer: stopping via BackgroundExecutor (uuid=${serverUuid})`);
+    await stopBackground(serverUuid);
+  } catch (err) {
+    log.warn('stopServer: stopBackground() failed, falling back to pkill', err);
     try {
       await execute(KILL_COMMAND);
     } catch {
-      // pkill returns non-zero when no match; don't fail here — poll decides.
+      // pkill may return non-zero — ignore
     }
-
-    const softDown = await pollUntilDown(STOP_POLL_TIMEOUT);
-    if (softDown) {
-      log.info('stopServer: stopped via SIGTERM');
-      return;
-    }
-
-    log.warn('stopServer: SIGTERM failed, escalating to SIGKILL');
-    log.warn('stopServer: executing pkill -9');
-    await execute(HARD_KILL_COMMAND);
-    log.info('stopServer: hard kill command done');
-
-    const hardDown = await pollUntilDown(STOP_POLL_TIMEOUT);
-    if (hardDown) {
-      log.info('stopServer: stopped via SIGKILL');
-      return;
-    }
-
-    throw new Error('Cannot stop server: port 4096 still occupied after SIGKILL');
-  } finally {
-    shuttingDown = false;
   }
+
+  const softDown = await pollUntilDown(STOP_POLL_TIMEOUT);
+  if (softDown) {
+    log.info('stopServer: server stopped');
+    serverUuid = null;
+    ringBuffer.length = 0;
+    return;
+  }
+
+  log.warn('stopServer: SIGTERM failed, escalating to SIGKILL');
+  try {
+    await execute(HARD_KILL_COMMAND);
+  } catch {
+    // pkill -9 may return non-zero — ignore
+  }
+
+  const hardDown = await pollUntilDown(STOP_POLL_TIMEOUT);
+  serverUuid = null;
+  ringBuffer.length = 0;
+
+  if (hardDown) {
+    log.info('stopServer: stopped via SIGKILL');
+    return;
+  }
+
+  throw new Error('Cannot stop server: port 4096 still occupied after SIGKILL');
 }
 
-/**
- * Restarts the OpenCode server by fully stopping it, then starting it again.
- *
- * The two phases are strictly sequential with no overlap: we must confirm the
- * old process is gone (freeing port 4096) before launching the new one, so a
- * concurrent start would collide on the fixed port. No concurrency semantics.
- */
 export async function restartServer(): Promise<void> {
   log.info('restartServer: beginning');
   await stopServer();

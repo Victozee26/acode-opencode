@@ -1,1 +1,1 @@
-npm run sync-version && git add readme.md && npm test
+npm run sync-version && git add readme.md

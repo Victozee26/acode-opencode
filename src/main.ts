@@ -2,18 +2,17 @@ import plugin from '../plugin.json';
 
 import { AppState, UpdateInfo, UpdateStatus } from './types';
 import { onStateChange, transition, getState, setError, reset } from './state';
-import { render, initUiStyles, initUiPage, updateHeader, updateIframeScale } from './ui/index';
+import { render, initUiStyles, initUiPage, updateHeader, updateIframeScale, setSpinnerProgress } from './ui/index';
 import type { RenderActions } from './ui/index';
 import type { HeaderActions } from './types';
-import { createConfirmModal } from './ui/components';
 import { checkInstalled, installOpenCode, uninstallOpenCode } from './opencode/install';
 import { startServer, waitForReady, restartServer, stopServer } from './opencode/server';
 import { isServerUp } from './opencode/health';
 import { checkForUpdates, installUpdate } from './opencode/update';
-import { createLogger, setLogEnabled } from './logger';
+import { createLogger, setLogEnabled, setLogLevel } from './logger';
 import { DEBUG } from './config/app';
 import { extractErrorInfo } from './error';
-import { getSettingsSchema, setOnScaleChange } from './settings';
+import { getSettingsSchema, setOnScaleChange, getAutoStart, getLogLevel } from './settings';
 import { HEALTH_PROBE_INTERVAL } from './config/health';
 
 const log = createLogger('main');
@@ -26,6 +25,7 @@ const ICON_CLASS = 'opencode-icon';
  * Responsibilities:
  * - `init()` wires the reactive UI (onStateChange -> render) and the page `show`
  *   event + side-button so the app starts on demand.
+ * - `ctx` stores the PluginContext for persistent key-value storage and permission checks.
  * - `destroy()` tears everything down and resets the state machine.
  * - `startFlow()` is the state-machine driver that installs/starts OpenCode.
  * - `handleRestart()` reuses the StartingServer path to restart a running server.
@@ -41,6 +41,7 @@ export class AcodePlugin {
   private updateInfo: UpdateInfo | null = null;
   private updateStatus: UpdateStatus | null = null;
   private healthProbeTimer: ReturnType<typeof setInterval> | null = null;
+  private ctx: Acode.PluginContext | null = null;
 
   /**
    * Registers the reactive render hook and UI entry points.
@@ -56,17 +57,32 @@ export class AcodePlugin {
     $page: Acode.WCPage,
     _cacheFile: Acode.FileSystem,
     _cacheFileUrl: string,
+    ctx: Acode.PluginContext | null,
   ): Promise<void> {
     setLogEnabled(DEBUG);
+    setLogLevel(getLogLevel() as 'debug' | 'info' | 'warn' | 'error');
     log.info('init: plugin initializing');
     initUiStyles(baseUrl);
     setOnScaleChange((scale) => updateIframeScale(scale));
     this.$page = $page;
+    this.ctx = ctx;
+    if (ctx) {
+      log.info(`init: plugin context available (created_at=${ctx.created_at})`);
+    }
     initUiPage($page);
     if ($page.header) {
       $page.header.innerHTML = '';
       $page.header.style.display = 'none';
     }
+
+    $page.ondisconnect = () => {
+      log.info('page disconnected — stopping health probe');
+      this.stopHealthProbe();
+    };
+
+    $page.onconnect = () => {
+      log.info('page connected');
+    };
 
     const STACK_ID = 'opencode-plugin';
     const builtinShow = $page.show.bind($page);
@@ -113,7 +129,7 @@ export class AcodePlugin {
 
     // Lazy start: only run the flow the first time the page is shown.
     this.handleShow = () => {
-      if (!this.isRunning) {
+      if (!this.isRunning && getAutoStart()) {
         this.startFlow();
       }
     };
@@ -181,7 +197,9 @@ export class AcodePlugin {
 
       if (!installed) {
         transition(AppState.Installing);
-        await installOpenCode();
+        await installOpenCode((text) => {
+          setSpinnerProgress(text);
+        });
       }
 
       transition(AppState.CheckingServer);
@@ -189,6 +207,7 @@ export class AcodePlugin {
       const serverUp = await isServerUp();
       if (serverUp) {
         log.info('startFlow: server already up, skipping start');
+        this.showToast('OpenCode server already running');
         transition(AppState.Ready);
         return;
       }
@@ -200,6 +219,7 @@ export class AcodePlugin {
 
       transition(AppState.Ready);
       log.info('startFlow: ready');
+      this.showToast('OpenCode server ready');
     } catch (err) {
       this.handleError('startFlow', err);
     }
@@ -222,6 +242,7 @@ export class AcodePlugin {
       log.info('handleRestart: server ready, transitioning to Ready');
       transition(AppState.Ready);
       log.info('handleRestart: ready');
+      this.showToast('OpenCode server restarted');
     } catch (err) {
       this.handleError('handleRestart', err);
     }
@@ -250,19 +271,14 @@ export class AcodePlugin {
    * uninstall → verify → install → start server.
    */
   private async handleReinstall(): Promise<void> {
-    log.info('handleReinstall: showing confirmation modal');
-    const modal = createConfirmModal({
-      message: 'This will uninstall and reinstall OpenCode. Continue?',
-      confirmLabel: 'Reinstall',
-      onConfirm: () => {
-        modal.remove();
-        void this.reinstallFlow();
-      },
-      onCancel: () => {
-        modal.remove();
-      },
-    });
-    this.$page!.body.appendChild(modal);
+    log.info('handleReinstall: showing confirmation dialog');
+    const confirmed = await acode.confirm(
+      'Reinstall OpenCode',
+      'This will uninstall and reinstall OpenCode. Continue?',
+    );
+    if (confirmed) {
+      void this.reinstallFlow();
+    }
   }
 
   /**
@@ -286,7 +302,9 @@ export class AcodePlugin {
       }
 
       transition(AppState.Installing);
-      await installOpenCode();
+      await installOpenCode((text) => {
+        setSpinnerProgress(text);
+      });
 
       transition(AppState.CheckingServer);
       const serverUp = await isServerUp();
@@ -316,6 +334,7 @@ export class AcodePlugin {
       log.info('handleStop: server stopped');
       this.isRunning = false;
       transition(AppState.Idle);
+      this.showToast('Server stopped');
     } catch (err) {
       this.handleError('handleStop', err);
     }
@@ -366,10 +385,14 @@ export class AcodePlugin {
         this.updateInfo = fresh;
       }
       updateHeader(getState().currentState, this.getHeaderActions());
+      const freshInfo = this.updateInfo;
+      const version = freshInfo ? freshInfo.latestVersion : '';
+      this.showToast(version ? `Updated to ${version}` : 'Update complete');
     } catch (err) {
       log.error('handleUpdateClick: failed', err);
       this.updateStatus = 'error';
       updateHeader(getState().currentState, this.getHeaderActions());
+      this.showToast('Update failed');
     }
   }
 
@@ -400,11 +423,29 @@ export class AcodePlugin {
         const up = await isServerUp();
         if (!up) {
           this.stopHealthProbe();
+          try {
+            acode.pushNotification('OpenCode', 'Server connection lost', {
+              type: 'error',
+            });
+          } catch {
+            // pushNotification not available — not critical
+          }
           setError('Server connection lost', '');
         }
       }, HEALTH_PROBE_INTERVAL);
     } else if (state !== AppState.Ready && this.healthProbeTimer) {
       this.stopHealthProbe();
+    }
+  }
+
+  private showToast(message: string): void {
+    try {
+      const toast = acode.require('toast');
+      if (typeof toast === 'function') {
+        toast(message, 2000);
+      }
+    } catch {
+      // toast module unavailable — not critical
     }
   }
 
@@ -428,14 +469,14 @@ if (window.acode) {
     async (
       baseUrl: string,
       $page: Acode.WCPage,
-      { cacheFileUrl, cacheFile }: Acode.PluginInitOptions,
+      { cacheFileUrl, cacheFile, ctx }: Acode.PluginInitOptions,
     ) => {
       // Normalize the trailing slash so asset paths (e.g. icon.png) concatenate
       // correctly regardless of how Acode supplies the base URL.
       if (!baseUrl.endsWith('/')) {
         baseUrl += '/';
       }
-      await acodePlugin.init(baseUrl, $page, cacheFile, cacheFileUrl);
+      await acodePlugin.init(baseUrl, $page, cacheFile, cacheFileUrl, ctx);
     },
     getSettingsSchema(),
   );

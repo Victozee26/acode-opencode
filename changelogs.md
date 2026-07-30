@@ -1,5 +1,10 @@
 # Changelogs
 
+## 0.1.5
+- Better installation UX with real-time progress output.
+- Improved error handling with smarter retry logic.
+- Refined error UI with cleaner styling and theme-aware colors.
+
 ## 0.1.4
 - Improved error handling UI/UX
 - Added option to reinstall OpenCode (uninstalls then reinstalls) directly from the plugin.

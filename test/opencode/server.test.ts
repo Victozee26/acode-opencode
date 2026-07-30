@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { startServer, stopServer, waitForReady } from '../../src/opencode/server';
 import * as executorModule from '../../src/terminal/executor';
 import {
-  STARTUP_CHECK_DELAY,
   STOP_POLL_INTERVAL,
   STOP_POLL_TIMEOUT,
   KILL_COMMAND,
@@ -14,58 +13,94 @@ import {
 vi.mock('../../src/terminal/executor');
 
 const mockExecute = vi.mocked(executorModule.execute);
+const mockStartBackground = vi.mocked(executorModule.startBackground);
+const mockStopBackground = vi.mocked(executorModule.stopBackground);
 
 const mockSendRequest = vi.fn();
 
-const respondUp = () => mockSendRequest.mockImplementation((_u: string, _o: unknown, success: () => void) => success());
+const respondUp = () =>
+  mockSendRequest.mockImplementation((_u: string, _o: unknown, success: () => void) => success());
 const respondDown = () =>
-  mockSendRequest.mockImplementation((_u: string, _o: unknown, _s: unknown, failure: (e: { status: number }) => void) => failure({ status: 0 }));
+  mockSendRequest.mockImplementation(
+    (_u: string, _o: unknown, _s: unknown, failure: (e: { status: number }) => void) =>
+      failure({ status: 0 }),
+  );
+
+async function givenRunningServer(): Promise<void> {
+  mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
+
+  await startServer();
+
+  mockStartBackground.mockClear();
+  mockStopBackground.mockClear();
+  mockExecute.mockClear();
+  mockSendRequest.mockClear();
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
-  (window as unknown as { cordova: { plugin: { http: { sendRequest: typeof mockSendRequest } } } }).cordova = {
-    plugin: { http: { sendRequest: mockSendRequest } },
-  };
+  mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
+  mockStopBackground.mockResolvedValue('stopped');
+  mockExecute.mockResolvedValue('ok');
+  (window as any).cordova = { plugin: { http: { sendRequest: mockSendRequest } } };
 });
 
 afterEach(() => {
   vi.useRealTimers();
 });
 
+describe('startServer', () => {
+  it('resolves after launching the background process', async () => {
+    mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
+
+    await expect(startServer()).resolves.toBeUndefined();
+    expect(mockStartBackground).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('stopServer', () => {
-  it('resolves after SIGTERM when server goes down during polling', async () => {
-    mockExecute.mockResolvedValue('ok');
+  it('resolves after stopBackground() when server goes down during polling', async () => {
+    await givenRunningServer();
+    mockStopBackground.mockResolvedValue('stopped');
     mockSendRequest
       .mockImplementationOnce((_u: string, _o: unknown, success: () => void) => success())
-      .mockImplementationOnce((_u: string, _o: unknown, _s: unknown, failure: (e: { status: number }) => void) => failure({ status: 0 }));
+      .mockImplementationOnce(
+        (_u: string, _o: unknown, _s: unknown, failure: (e: { status: number }) => void) =>
+          failure({ status: 0 }),
+      );
 
     const promise = stopServer();
-
     await vi.advanceTimersByTimeAsync(STOP_POLL_INTERVAL + 100);
-
     await expect(promise).resolves.toBeUndefined();
-    expect(mockExecute).toHaveBeenCalledTimes(1);
-    expect(mockExecute).toHaveBeenCalledWith(KILL_COMMAND);
+    expect(mockStopBackground).toHaveBeenCalledWith('test-uuid');
+    expect(mockExecute).not.toHaveBeenCalled();
   });
 
-  it('escalates to SIGKILL when SIGTERM does not stop the server', async () => {
+  it('escalates to HARD_KILL_COMMAND when stop succeeds but server stays up', async () => {
+    await givenRunningServer();
+    mockStopBackground.mockResolvedValue('stopped');
     mockExecute.mockResolvedValue('ok');
     respondUp();
 
     const promise = stopServer();
 
     await vi.advanceTimersByTimeAsync(STOP_POLL_TIMEOUT + STOP_POLL_INTERVAL * 2);
-    mockSendRequest.mockImplementationOnce((_u: string, _o: unknown, _s: unknown, failure: (e: { status: number }) => void) => failure({ status: 0 }));
-    await vi.advanceTimersByTimeAsync(STOP_POLL_INTERVAL);
+    mockSendRequest.mockImplementationOnce(
+      (_u: string, _o: unknown, _s: unknown, failure: (e: { status: number }) => void) =>
+        failure({ status: 0 }),
+    );
+    await vi.advanceTimersByTimeAsync(STOP_POLL_INTERVAL + 100);
 
     await expect(promise).resolves.toBeUndefined();
-    expect(mockExecute).toHaveBeenCalledTimes(2);
-    expect(mockExecute).toHaveBeenNthCalledWith(1, KILL_COMMAND);
-    expect(mockExecute).toHaveBeenNthCalledWith(2, HARD_KILL_COMMAND);
+    expect(mockStopBackground).toHaveBeenCalledWith('test-uuid');
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(mockExecute).toHaveBeenCalledWith(HARD_KILL_COMMAND);
   });
 
-  it('throws when port is still occupied after both SIGTERM and SIGKILL', async () => {
+  it('throws when port is still occupied after both phases', async () => {
+    await givenRunningServer();
+    mockStopBackground.mockResolvedValue('stopped');
     mockExecute.mockResolvedValue('ok');
     respondUp();
 
@@ -79,13 +114,14 @@ describe('stopServer', () => {
     await expect(promise).rejects.toThrow(
       'Cannot stop server: port 4096 still occupied after SIGKILL',
     );
-    expect(mockExecute).toHaveBeenCalledTimes(2);
-    expect(mockExecute).toHaveBeenNthCalledWith(1, KILL_COMMAND);
-    expect(mockExecute).toHaveBeenNthCalledWith(2, HARD_KILL_COMMAND);
+    expect(mockStopBackground).toHaveBeenCalledWith('test-uuid');
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(mockExecute).toHaveBeenCalledWith(HARD_KILL_COMMAND);
   });
 
-  it('handles execute(SIGTERM) throwing and still escalates on polling failure', async () => {
-    mockExecute.mockRejectedValueOnce(new Error('pkill failed'));
+  it('handles stopBackground() throwing and falls back to pkill + escalation', async () => {
+    await givenRunningServer();
+    mockStopBackground.mockRejectedValue(new Error('stop failed'));
     mockExecute.mockResolvedValue('ok');
     respondUp();
 
@@ -97,6 +133,7 @@ describe('stopServer', () => {
     );
 
     await expect(promise).rejects.toThrow('Cannot stop server: port 4096 still occupied after SIGKILL');
+    expect(mockStopBackground).toHaveBeenCalledWith('test-uuid');
     expect(mockExecute).toHaveBeenCalledTimes(2);
     expect(mockExecute).toHaveBeenNthCalledWith(1, KILL_COMMAND);
     expect(mockExecute).toHaveBeenNthCalledWith(2, HARD_KILL_COMMAND);
@@ -105,6 +142,8 @@ describe('stopServer', () => {
 
 describe('pollUntilDown (via stopServer)', () => {
   it('times out when server never goes down, rejecting after both poll phases', async () => {
+    await givenRunningServer();
+    mockStopBackground.mockResolvedValue('stopped');
     mockExecute.mockResolvedValue('ok');
     respondUp();
 
@@ -116,47 +155,18 @@ describe('pollUntilDown (via stopServer)', () => {
     );
 
     await expect(promise).rejects.toThrow('Cannot stop server');
-    expect(mockExecute).toHaveBeenCalledTimes(2);
+    expect(mockStopBackground).toHaveBeenCalledWith('test-uuid');
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(mockExecute).toHaveBeenCalledWith(HARD_KILL_COMMAND);
   });
 
-  it('returns promptly when server is already down (no polls needed)', async () => {
-    mockExecute.mockResolvedValue('ok');
+  it('returns promptly when server is already down', async () => {
+    await givenRunningServer();
+    mockStopBackground.mockResolvedValue('stopped');
     respondDown();
 
     await expect(stopServer()).resolves.toBeUndefined();
-  });
-});
-
-describe('startServer', () => {
-  it('resolves when pgrep finds the process alive after delay', async () => {
-    mockExecute
-      .mockReturnValueOnce(new Promise(() => {}))
-      .mockResolvedValueOnce('1234');
-
-    const promise = startServer();
-    await vi.advanceTimersByTimeAsync(STARTUP_CHECK_DELAY);
-    await expect(promise).resolves.toBeUndefined();
-    expect(mockExecute).toHaveBeenCalledTimes(2);
-  });
-
-  it('throws when process not found (pgrep returns empty)', async () => {
-    mockExecute
-      .mockReturnValueOnce(new Promise(() => {}))
-      .mockResolvedValueOnce('');
-
-    const promise = startServer();
-    promise.catch(() => {});
-    await vi.advanceTimersByTimeAsync(STARTUP_CHECK_DELAY);
-    await expect(promise).rejects.toThrow('OpenCode server process exited immediately after start.');
-  });
-
-  it('throws when server process exits during startup', async () => {
-    mockExecute.mockRejectedValueOnce(new Error('opencode: not found'));
-
-    const promise = startServer();
-    promise.catch(() => {});
-    await expect(promise).rejects.toThrow('OpenCode server process exited immediately after start.');
-    await expect(promise).rejects.toThrow('opencode: not found');
+    expect(mockStopBackground).toHaveBeenCalledWith('test-uuid');
   });
 });
 

@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AppState } from '../src/types';
+import { HEALTH_PROBE_INTERVAL } from '../src/config/health';
 import * as stateModule from '../src/state';
 import * as installModule from '../src/opencode/install';
 import * as serverModule from '../src/opencode/server';
@@ -27,6 +28,7 @@ const mockUpdateHeader = vi.mocked(uiModule.updateHeader);
 const mockSetError = vi.mocked(stateModule.setError);
 const mockCheckInstalled = vi.mocked(installModule.checkInstalled);
 const mockInstallOpenCode = vi.mocked(installModule.installOpenCode);
+const mockUninstallOpenCode = vi.mocked(installModule.uninstallOpenCode);
 const mockIsServerUp = vi.mocked(healthModule.isServerUp);
 const mockStartServer = vi.mocked(serverModule.startServer);
 const mockWaitForReady = vi.mocked(serverModule.waitForReady);
@@ -224,6 +226,140 @@ describe('handleRestart', () => {
   });
 });
 
+describe('handleReinstall', () => {
+  beforeEach(() => {
+    (globalThis as any).acode = {
+      confirm: vi.fn(),
+    };
+    mockInstallOpenCode.mockResolvedValue(undefined);
+    mockUninstallOpenCode.mockResolvedValue(undefined);
+    mockCheckInstalled.mockResolvedValue(true);
+    mockIsServerUp.mockResolvedValue(true);
+  });
+
+  it('confirm resolves true → reinstallFlow is triggered', async () => {
+    (globalThis as any).acode.confirm.mockResolvedValue(true);
+    const plugin = makePlugin();
+
+    await (plugin as any).handleReinstall();
+    await vi.waitFor(() => expect(mockUninstallOpenCode).toHaveBeenCalled());
+
+    expect(globalThis.acode.confirm).toHaveBeenCalledWith(
+      'Reinstall OpenCode',
+      'This will uninstall and reinstall OpenCode. Continue?',
+    );
+    expect(mockTransition).toHaveBeenCalledWith(AppState.Uninstalling);
+  });
+
+  it('confirm resolves false → reinstallFlow is NOT triggered', async () => {
+    (globalThis as any).acode.confirm.mockResolvedValue(false);
+    const plugin = makePlugin();
+
+    await (plugin as any).handleReinstall();
+
+    expect(mockUninstallOpenCode).not.toHaveBeenCalled();
+    expect(mockTransition).not.toHaveBeenCalled();
+  });
+
+  it('confirm throws → error propagates to caller', async () => {
+    (globalThis as any).acode.confirm.mockRejectedValue(new Error('dialog dismissed'));
+    const plugin = makePlugin();
+
+    await expect((plugin as any).handleReinstall()).rejects.toThrow('dialog dismissed');
+    expect(mockUninstallOpenCode).not.toHaveBeenCalled();
+  });
+});
+
+describe('ctx / PluginContext', () => {
+  it('stores a valid PluginContext on the instance', async () => {
+    const mockPage = {
+      on: vi.fn(),
+      off: vi.fn(),
+      hide: vi.fn(),
+      show: vi.fn(),
+      settitle: vi.fn(),
+      appendChild: vi.fn(),
+      body: { innerHTML: '' },
+      header: { innerHTML: '', style: {} },
+      style: {},
+    };
+
+    (globalThis as any).acode = {
+      addIcon: vi.fn(),
+      require: vi.fn().mockReturnValue(vi.fn().mockReturnValue({ show: vi.fn(), hide: vi.fn() })),
+    };
+
+    const mockCtx: Acode.PluginContext = {
+      created_at: Date.now(),
+      uuid: 'test-uuid',
+      grantedPermission: vi.fn(),
+      listAllPermissions: vi.fn(),
+      getSecret: vi.fn(),
+      setSecret: vi.fn(),
+    };
+
+    const plugin = makePlugin();
+    await plugin.init('https://base/', mockPage as any, {} as any, '', mockCtx);
+
+    expect((plugin as any).ctx).toBe(mockCtx);
+    expect((plugin as any).ctx.uuid).toBe('test-uuid');
+  });
+
+  it('handles null ctx gracefully (no throw)', async () => {
+    const mockPage = {
+      on: vi.fn(),
+      off: vi.fn(),
+      hide: vi.fn(),
+      show: vi.fn(),
+      settitle: vi.fn(),
+      appendChild: vi.fn(),
+      body: { innerHTML: '' },
+      header: { innerHTML: '', style: {} },
+      style: {},
+    };
+
+    (globalThis as any).acode = {
+      addIcon: vi.fn(),
+      require: vi.fn().mockReturnValue(vi.fn().mockReturnValue({ show: vi.fn(), hide: vi.fn() })),
+    };
+
+    const plugin = makePlugin();
+
+    await expect(
+      plugin.init('https://base/', mockPage as any, {} as any, '', null),
+    ).resolves.toBeUndefined();
+
+    expect((plugin as any).ctx).toBeNull();
+  });
+
+  it('handles undefined ctx gracefully (no throw)', async () => {
+    const mockPage = {
+      on: vi.fn(),
+      off: vi.fn(),
+      hide: vi.fn(),
+      show: vi.fn(),
+      settitle: vi.fn(),
+      appendChild: vi.fn(),
+      body: { innerHTML: '' },
+      header: { innerHTML: '', style: {} },
+      style: {},
+    };
+
+    (globalThis as any).acode = {
+      addIcon: vi.fn(),
+      require: vi.fn().mockReturnValue(vi.fn().mockReturnValue({ show: vi.fn(), hide: vi.fn() })),
+    };
+
+    const plugin = makePlugin();
+
+    await expect(
+      plugin.init('https://base/', mockPage as any, {} as any, ''),
+    ).resolves.toBeUndefined();
+
+    expect((plugin as any).ctx).toBeUndefined();
+  });
+});
+
 describe('header-only updates (Phase 2)', () => {
   beforeEach(() => {
     mockCheckForUpdates.mockReset();
@@ -278,5 +414,219 @@ describe('header-only updates (Phase 2)', () => {
 
     expect(mockUpdateHeader).not.toHaveBeenCalled();
     expect(mockInstallUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe('toast notifications', () => {
+  let toastMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    toastMock = vi.fn();
+    (globalThis as any).acode = {
+      require: (name: string) => (name === 'toast' ? toastMock : undefined),
+    };
+  });
+
+  describe('showToast helper', () => {
+    it('calls acode.require("toast") with message and duration 2000', () => {
+      const plugin = makePlugin();
+      (plugin as any).showToast('Hello');
+      expect(toastMock).toHaveBeenCalledWith('Hello', 2000);
+    });
+
+    it('does not throw when acode is unavailable', () => {
+      (globalThis as any).acode = undefined;
+      const plugin = makePlugin();
+      expect(() => (plugin as any).showToast('Hello')).not.toThrow();
+    });
+
+    it('does not throw when toast is not a function', () => {
+      (globalThis as any).acode = {
+        require: () => ({}),
+      };
+      const plugin = makePlugin();
+      expect(() => (plugin as any).showToast('Hello')).not.toThrow();
+    });
+  });
+
+  describe('event points', () => {
+    it('startFlow → "OpenCode server already running" when server is already up', async () => {
+      mockCheckInstalled.mockResolvedValue(true);
+      mockIsServerUp.mockResolvedValue(true);
+
+      const plugin = makePlugin();
+      await (plugin as any).startFlow();
+
+      expect(toastMock).toHaveBeenCalledWith('OpenCode server already running', 2000);
+    });
+
+    it('startFlow → "OpenCode server ready" when server starts successfully', async () => {
+      mockCheckInstalled.mockResolvedValue(true);
+      mockIsServerUp.mockResolvedValue(false);
+      mockStartServer.mockResolvedValue(undefined);
+      mockWaitForReady.mockResolvedValue(undefined);
+
+      const plugin = makePlugin();
+      await (plugin as any).startFlow();
+
+      expect(toastMock).toHaveBeenCalledWith('OpenCode server ready', 2000);
+    });
+
+    it('handleRestart → "OpenCode server restarted"', async () => {
+      mockRestartServer.mockResolvedValue(undefined);
+      mockWaitForReady.mockResolvedValue(undefined);
+
+      const plugin = makePlugin();
+      await (plugin as any).handleRestart();
+
+      expect(toastMock).toHaveBeenCalledWith('OpenCode server restarted', 2000);
+    });
+
+    it('handleStop → "Server stopped"', async () => {
+      const plugin = makePlugin();
+      await (plugin as any).handleStop();
+
+      expect(toastMock).toHaveBeenCalledWith('Server stopped', 2000);
+    });
+
+    it('handleUpdateClick success → "Updated to X.X.X"', async () => {
+      mockInstallUpdate.mockResolvedValue(undefined);
+      mockCheckForUpdates.mockResolvedValue({ currentVersion: '1.0.0', latestVersion: '2.0.0' });
+
+      const plugin = makePlugin();
+      (plugin as any).updateInfo = { currentVersion: '1.0.0', latestVersion: '2.0.0' };
+
+      await (plugin as any).handleUpdateClick();
+
+      expect(toastMock).toHaveBeenCalledWith('Updated to 2.0.0', 2000);
+    });
+
+    it('handleUpdateClick success with no version → "Update complete"', async () => {
+      mockInstallUpdate.mockResolvedValue(undefined);
+      mockCheckForUpdates.mockResolvedValue(null);
+
+      const plugin = makePlugin();
+      (plugin as any).updateInfo = null;
+
+      await (plugin as any).handleUpdateClick();
+
+      expect(toastMock).toHaveBeenCalledWith('Update complete', 2000);
+    });
+
+    it('handleUpdateClick failure → "Update failed"', async () => {
+      mockInstallUpdate.mockRejectedValue(new Error('network error'));
+
+      const plugin = makePlugin();
+      (plugin as any).updateInfo = { currentVersion: '1.0.0', latestVersion: '2.0.0' };
+
+      await (plugin as any).handleUpdateClick();
+
+      expect(toastMock).toHaveBeenCalledWith('Update failed', 2000);
+    });
+  });
+});
+
+describe('manageHealthProbe — pushNotification', () => {
+  let pushNotificationMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    pushNotificationMock = vi.fn();
+    (globalThis as any).acode = {
+      pushNotification: pushNotificationMock,
+    };
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('calls pushNotification with error args when server is down', async () => {
+    mockIsServerUp.mockResolvedValue(false);
+    const plugin = makePlugin();
+
+    (plugin as any).manageHealthProbe(AppState.Ready);
+    await vi.advanceTimersByTimeAsync(HEALTH_PROBE_INTERVAL);
+
+    expect(pushNotificationMock).toHaveBeenCalledWith(
+      'OpenCode',
+      'Server connection lost',
+      { type: 'error' },
+    );
+    expect(mockSetError).toHaveBeenCalledWith('Server connection lost', '');
+  });
+
+  it('does not crash when pushNotification throws', async () => {
+    mockIsServerUp.mockResolvedValue(false);
+    pushNotificationMock.mockImplementation(() => {
+      throw new Error('no api');
+    });
+    const plugin = makePlugin();
+
+    (plugin as any).manageHealthProbe(AppState.Ready);
+    await vi.advanceTimersByTimeAsync(HEALTH_PROBE_INTERVAL);
+
+    expect(pushNotificationMock).toHaveBeenCalled();
+    expect(mockSetError).toHaveBeenCalledWith('Server connection lost', '');
+  });
+
+  it('does not call pushNotification when server is up', async () => {
+    mockIsServerUp.mockResolvedValue(true);
+    const plugin = makePlugin();
+
+    (plugin as any).manageHealthProbe(AppState.Ready);
+    await vi.advanceTimersByTimeAsync(HEALTH_PROBE_INTERVAL);
+
+    expect(pushNotificationMock).not.toHaveBeenCalled();
+    expect(mockSetError).not.toHaveBeenCalled();
+  });
+});
+
+describe('page lifecycle hooks (ondisconnect / onconnect)', () => {
+  const mockPage: any = {
+    on: vi.fn(),
+    off: vi.fn(),
+    hide: vi.fn(),
+    show: vi.fn(),
+    settitle: vi.fn(),
+    appendChild: vi.fn(),
+    body: { innerHTML: '' },
+    header: { innerHTML: '', style: {} },
+    style: {},
+  };
+
+  beforeEach(() => {
+    (globalThis as any).acode = {
+      addIcon: vi.fn(),
+      require: vi.fn().mockReturnValue(vi.fn().mockReturnValue({ show: vi.fn(), hide: vi.fn() })),
+    };
+    mockCheckForUpdates.mockResolvedValue(null);
+  });
+
+  it('init() sets $page.ondisconnect and $page.onconnect as functions', async () => {
+    const plugin = makePlugin();
+    await plugin.init('https://base/', mockPage as any, {} as any, '', null);
+    expect(typeof mockPage.ondisconnect).toBe('function');
+    expect(typeof mockPage.onconnect).toBe('function');
+  });
+
+  it('$page.ondisconnect calls stopHealthProbe', async () => {
+    const plugin = makePlugin();
+    const stopSpy = vi.spyOn(plugin as any, 'stopHealthProbe');
+    await plugin.init('https://base/', mockPage as any, {} as any, '', null);
+    mockPage.ondisconnect();
+    expect(stopSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('$page.ondisconnect does not throw when no health probe is running', async () => {
+    const plugin = makePlugin();
+    await plugin.init('https://base/', mockPage as any, {} as any, '', null);
+    expect(() => mockPage.ondisconnect()).not.toThrow();
+  });
+
+  it('$page.onconnect does not throw (logging only)', async () => {
+    const plugin = makePlugin();
+    await plugin.init('https://base/', mockPage as any, {} as any, '', null);
+    expect(() => mockPage.onconnect()).not.toThrow();
   });
 });
