@@ -5,12 +5,13 @@
 }
 
 .opencode-error-heading {
-  color: var(--error-text-color, #f44);
-  margin: 0 0 12px 0;
+  color: var(--error-text-color, #e57373);
+  margin: 0 0 16px 0;
   font-size: 15px;
   font-weight: 600;
   white-space: pre-wrap;
   text-align: center;
+  line-height: 1.4;
 }
 
 .opencode-error-log {
@@ -19,25 +20,43 @@
   overflow: auto;
   padding: 12px;
   background: var(--code-bg, var(--background-color, #111));
-  color: var(--code-text, var(--text-color, #f88));
+  color: var(--code-text, var(--text-color, #ccc));
   border-radius: 6px;
   font-size: 12px;
   white-space: pre-wrap;
   word-break: break-all;
-  margin: 0 0 20px 0;
+  margin: 0 0 24px 0;
   width: 100%;
   box-sizing: border-box;
   border: 1px solid var(--border-color, #333);
+  line-height: 1.5;
 }
 
-.opencode-error-retry {
-  margin-top: 8px;
-  padding: 10px 32px;
-  background: var(--primary-color, #06f);
-  color: var(--button-text-color, #fff);
+.opencode-error-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.opencode-error-retry,
+.opencode-error-copy {
+  padding: 10px 28px;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.opencode-error-retry {
+  background: var(--primary-color, #06f);
+  color: var(--button-text-color, #fff);
+}
+
+.opencode-error-copy {
+  background: transparent;
+  color: var(--text-color, #ccc);
+  border: 1px solid var(--border-color, #444);
 }

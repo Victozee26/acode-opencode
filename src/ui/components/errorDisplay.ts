@@ -30,11 +30,25 @@ export function createErrorDisplay(context: StateContext, onRetry: () => void): 
     wrapper.appendChild(pre);
   }
 
+  const buttonRow = document.createElement('div');
+  buttonRow.className = 'opencode-error-actions';
+
   const retryBtn = document.createElement('button');
   retryBtn.textContent = 'Retry';
   retryBtn.className = 'opencode-btn opencode-error-retry';
   retryBtn.addEventListener('click', onRetry);
-  wrapper.appendChild(retryBtn);
+  buttonRow.appendChild(retryBtn);
+
+  const fullText = [errorInfo?.message, errorInfo?.logTail].filter(Boolean).join('\n');
+  const copyBtn = document.createElement('button');
+  copyBtn.textContent = 'Copy';
+  copyBtn.className = 'opencode-btn opencode-error-copy';
+  copyBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(fullText);
+  });
+  buttonRow.appendChild(copyBtn);
+
+  wrapper.appendChild(buttonRow);
 
   return wrapper;
 }
