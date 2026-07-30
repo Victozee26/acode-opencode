@@ -216,7 +216,7 @@ function renderError(
   context: StateContext,
   actions: RenderActions,
 ): void {
-  container.appendChild(createErrorDisplay(context, actions.restart));
+  container.appendChild(createErrorDisplay(context, actions.start));
 }
 
 function buildUpdateBanner(actions: HeaderActions): UpdateBannerConfig | null {

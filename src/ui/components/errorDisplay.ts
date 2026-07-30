@@ -13,11 +13,6 @@ export function createErrorDisplay(context: StateContext, onRetry: () => void): 
   const wrapper = createContainer('opencode-error');
   const errorInfo = context.error;
 
-  const icon = document.createElement('div');
-  icon.textContent = '⚠️';
-  icon.className = 'opencode-error-icon';
-  wrapper.appendChild(icon);
-
   const heading = document.createElement('h3');
   heading.className = 'opencode-error-heading';
   heading.textContent = errorInfo?.message ?? 'An unknown error occurred';

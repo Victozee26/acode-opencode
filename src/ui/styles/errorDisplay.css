@@ -5,7 +5,7 @@
 }
 
 .opencode-error-heading {
-  color: var(--error-text-color, #e57373);
+  color: var(--text-color, #e0e0e0);
   margin: 0 0 16px 0;
   font-size: 15px;
   font-weight: 600;
