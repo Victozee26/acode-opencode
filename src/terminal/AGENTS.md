@@ -10,10 +10,32 @@ Owned by the root AGENTS.md. Single file: `executor.ts`.
 
 ## Local Contracts
 
-- `execute(command, alpine = true): Promise<string>` — resolves with command output on success, rejects on non-zero exit. On rejection, the thrown error includes the original message and any captured command output: `"Command failed: <original message>\nOutput: <output>"`. If no output is available, the error is `"Command failed: <original message>"`.
-- **Blocking by nature.** Acode's terminal `Executor.execute` resolves only after the command exits. For persistent processes, fire `execute()` without `await` and attach a `.catch()` to handle unexpected exits (use a `shuttingDown` flag to suppress noise during intentional kills). `disown` is not available in BusyBox `ash` (Acode's Alpine shell).
-- Uses the globally available `Executor.execute()` — no `require()` needed. The `Executor` type is declared globally by `acode-plugin-types`.
+### `execute(command, alpine = true): Promise<string>`
+
+Blocking command execution. Resolves with command output on success, rejects on non-zero exit. On rejection, the thrown error includes the original message and any captured command output: `"Command failed: <original message>\nOutput: <output>"`. If no output is available, the error is `"Command failed: <original message>"`.
+
+### `startBackground(command, onData?, alpine = true): Promise<BackgroundProcess>`
+
+Launches a persistent process via `Executor.BackgroundExecutor.start()`. Unlike `execute`, the returned promise resolves with a `BackgroundProcess` handle (containing `uuid`) once launched — it does NOT wait for the process to exit. The optional `onData` callback receives typed output chunks (`stdout`, `stderr`, `exit`, `unknown`). The returned `BackgroundProcess` exposes `stop()`, `isRunning()`, and `write(input)` methods.
+
+### `stopBackground(uuid): Promise<string>`
+
+Stops a persistent background process by UUID via `Executor.BackgroundExecutor.stop()`.
+
+### `isBackgroundRunning(uuid): Promise<boolean>`
+
+Checks whether a persistent background process is still alive via `Executor.BackgroundExecutor.isRunning()`.
+
+### `writeBackground(uuid, input): Promise<string>`
+
+Writes input to a persistent background process's stdin via `Executor.BackgroundExecutor.write()`.
+
+### General rules
+
+- Uses the globally available `Executor` — no `require()` needed. The `Executor` type is declared globally by `acode-plugin-types`.
 - `alpine` parameter defaults to `true` (all commands execute inside Alpine Linux).
+- `disown` is not available in BusyBox `ash` (Acode's Alpine shell).
+- Error output probing uses a local `ExecutorError` interface (`{ output?: string }`) instead of `Record<string, unknown>` casts.
 
 ## Work Guidance
 

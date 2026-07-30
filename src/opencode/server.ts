@@ -1,4 +1,4 @@
-import { execute } from '../terminal/executor';
+import { execute, startBackground, stopBackground, isBackgroundRunning } from '../terminal/executor';
 import {
   READY_POLL_INTERVAL,
   READY_TIMEOUT,
@@ -25,7 +25,7 @@ export async function startServer(): Promise<void> {
   log.info('startServer: launching via BackgroundExecutor');
   const command = buildStartCommand();
 
-  const uuid = await Executor.BackgroundExecutor.start(
+  const bg = await startBackground(
     command,
     (type, data) => {
       if (type === 'stdout') {
@@ -37,12 +37,12 @@ export async function startServer(): Promise<void> {
     true,
   );
 
-  serverUuid = uuid;
-  log.info(`startServer: BackgroundExecutor started, uuid=${uuid}`);
+  serverUuid = bg.uuid;
+  log.info(`startServer: BackgroundExecutor started, uuid=${serverUuid}`);
 
   await new Promise((resolve) => setTimeout(resolve, STARTUP_CHECK_DELAY));
 
-  const running = await Executor.BackgroundExecutor.isRunning(serverUuid);
+  const running = await isBackgroundRunning(serverUuid);
   if (!running) {
     serverUuid = null;
     throw new Error('OpenCode server process exited immediately after start.');
@@ -112,9 +112,9 @@ export async function stopServer(): Promise<void> {
 
   try {
     log.info(`stopServer: stopping via BackgroundExecutor (uuid=${serverUuid})`);
-    await Executor.BackgroundExecutor.stop(serverUuid);
+    await stopBackground(serverUuid);
   } catch (err) {
-    log.warn('stopServer: BackgroundExecutor.stop() failed, falling back to pkill', err);
+    log.warn('stopServer: stopBackground() failed, falling back to pkill', err);
     try {
       await execute(KILL_COMMAND);
     } catch {

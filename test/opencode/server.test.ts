@@ -15,18 +15,9 @@ import {
 vi.mock('../../src/terminal/executor');
 
 const mockExecute = vi.mocked(executorModule.execute);
-
-const mockBgStart = vi.fn();
-const mockBgStop = vi.fn();
-const mockBgIsRunning = vi.fn();
-
-(globalThis as any).Executor = {
-  BackgroundExecutor: {
-    start: mockBgStart,
-    stop: mockBgStop,
-    isRunning: mockBgIsRunning,
-  },
-};
+const mockStartBackground = vi.mocked(executorModule.startBackground);
+const mockStopBackground = vi.mocked(executorModule.stopBackground);
+const mockIsBackgroundRunning = vi.mocked(executorModule.isBackgroundRunning);
 
 const mockSendRequest = vi.fn();
 
@@ -39,17 +30,17 @@ const respondDown = () =>
   );
 
 async function givenRunningServer(): Promise<void> {
-  mockBgStart.mockResolvedValue('test-uuid');
-  mockBgIsRunning.mockResolvedValue(true);
+  mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
+  mockIsBackgroundRunning.mockResolvedValue(true);
   mockExecute.mockResolvedValue('1234');
 
   const promise = startServer();
   await vi.advanceTimersByTimeAsync(STARTUP_CHECK_DELAY + 100);
   await promise;
 
-  mockBgStart.mockClear();
-  mockBgStop.mockClear();
-  mockBgIsRunning.mockClear();
+  mockStartBackground.mockClear();
+  mockStopBackground.mockClear();
+  mockIsBackgroundRunning.mockClear();
   mockExecute.mockClear();
   mockSendRequest.mockClear();
 }
@@ -57,9 +48,9 @@ async function givenRunningServer(): Promise<void> {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
-  mockBgStart.mockResolvedValue('test-uuid');
-  mockBgStop.mockResolvedValue(undefined);
-  mockBgIsRunning.mockResolvedValue(true);
+  mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
+  mockStopBackground.mockResolvedValue('stopped');
+  mockIsBackgroundRunning.mockResolvedValue(true);
   mockExecute.mockResolvedValue('ok');
   (window as any).cordova = { plugin: { http: { sendRequest: mockSendRequest } } };
 });
@@ -70,22 +61,22 @@ afterEach(() => {
 
 describe('startServer', () => {
   it('resolves when pgrep finds the process alive after delay', async () => {
-    mockBgStart.mockResolvedValue('test-uuid');
-    mockBgIsRunning.mockResolvedValue(true);
+    mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
+    mockIsBackgroundRunning.mockResolvedValue(true);
     mockExecute.mockResolvedValue('1234');
 
     const promise = startServer();
     await vi.advanceTimersByTimeAsync(STARTUP_CHECK_DELAY + 100);
     await expect(promise).resolves.toBeUndefined();
-    expect(mockBgStart).toHaveBeenCalledTimes(1);
-    expect(mockBgIsRunning).toHaveBeenCalledWith('test-uuid');
+    expect(mockStartBackground).toHaveBeenCalledTimes(1);
+    expect(mockIsBackgroundRunning).toHaveBeenCalledWith('test-uuid');
     expect(mockExecute).toHaveBeenCalledTimes(1);
     expect(mockExecute).toHaveBeenCalledWith(PROCESS_CHECK_COMMAND);
   });
 
   it('throws when BackgroundExecutor.isRunning says process dead', async () => {
-    mockBgStart.mockResolvedValue('test-uuid');
-    mockBgIsRunning.mockResolvedValue(false);
+    mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
+    mockIsBackgroundRunning.mockResolvedValue(false);
 
     const promise = startServer();
     promise.catch(() => {});
@@ -95,8 +86,8 @@ describe('startServer', () => {
   });
 
   it('throws when pgrep returns empty', async () => {
-    mockBgStart.mockResolvedValue('test-uuid');
-    mockBgIsRunning.mockResolvedValue(true);
+    mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
+    mockIsBackgroundRunning.mockResolvedValue(true);
     mockExecute.mockResolvedValue('');
 
     const promise = startServer();
@@ -107,9 +98,9 @@ describe('startServer', () => {
 });
 
 describe('stopServer', () => {
-  it('resolves after BackgroundExecutor.stop() when server goes down during polling', async () => {
+  it('resolves after stopBackground() when server goes down during polling', async () => {
     await givenRunningServer();
-    mockBgStop.mockResolvedValue(undefined);
+    mockStopBackground.mockResolvedValue('stopped');
     mockSendRequest
       .mockImplementationOnce((_u: string, _o: unknown, success: () => void) => success())
       .mockImplementationOnce(
@@ -120,13 +111,13 @@ describe('stopServer', () => {
     const promise = stopServer();
     await vi.advanceTimersByTimeAsync(STOP_POLL_INTERVAL + 100);
     await expect(promise).resolves.toBeUndefined();
-    expect(mockBgStop).toHaveBeenCalledWith('test-uuid');
+    expect(mockStopBackground).toHaveBeenCalledWith('test-uuid');
     expect(mockExecute).not.toHaveBeenCalled();
   });
 
   it('escalates to HARD_KILL_COMMAND when stop succeeds but server stays up', async () => {
     await givenRunningServer();
-    mockBgStop.mockResolvedValue(undefined);
+    mockStopBackground.mockResolvedValue('stopped');
     mockExecute.mockResolvedValue('ok');
     respondUp();
 
@@ -140,14 +131,14 @@ describe('stopServer', () => {
     await vi.advanceTimersByTimeAsync(STOP_POLL_INTERVAL + 100);
 
     await expect(promise).resolves.toBeUndefined();
-    expect(mockBgStop).toHaveBeenCalledWith('test-uuid');
+    expect(mockStopBackground).toHaveBeenCalledWith('test-uuid');
     expect(mockExecute).toHaveBeenCalledTimes(1);
     expect(mockExecute).toHaveBeenCalledWith(HARD_KILL_COMMAND);
   });
 
   it('throws when port is still occupied after both phases', async () => {
     await givenRunningServer();
-    mockBgStop.mockResolvedValue(undefined);
+    mockStopBackground.mockResolvedValue('stopped');
     mockExecute.mockResolvedValue('ok');
     respondUp();
 
@@ -161,14 +152,14 @@ describe('stopServer', () => {
     await expect(promise).rejects.toThrow(
       'Cannot stop server: port 4096 still occupied after SIGKILL',
     );
-    expect(mockBgStop).toHaveBeenCalledWith('test-uuid');
+    expect(mockStopBackground).toHaveBeenCalledWith('test-uuid');
     expect(mockExecute).toHaveBeenCalledTimes(1);
     expect(mockExecute).toHaveBeenCalledWith(HARD_KILL_COMMAND);
   });
 
-  it('handles BackgroundExecutor.stop() throwing and falls back to pkill + escalation', async () => {
+  it('handles stopBackground() throwing and falls back to pkill + escalation', async () => {
     await givenRunningServer();
-    mockBgStop.mockRejectedValue(new Error('stop failed'));
+    mockStopBackground.mockRejectedValue(new Error('stop failed'));
     mockExecute.mockResolvedValue('ok');
     respondUp();
 
@@ -180,7 +171,7 @@ describe('stopServer', () => {
     );
 
     await expect(promise).rejects.toThrow('Cannot stop server: port 4096 still occupied after SIGKILL');
-    expect(mockBgStop).toHaveBeenCalledWith('test-uuid');
+    expect(mockStopBackground).toHaveBeenCalledWith('test-uuid');
     expect(mockExecute).toHaveBeenCalledTimes(2);
     expect(mockExecute).toHaveBeenNthCalledWith(1, KILL_COMMAND);
     expect(mockExecute).toHaveBeenNthCalledWith(2, HARD_KILL_COMMAND);
@@ -190,7 +181,7 @@ describe('stopServer', () => {
 describe('pollUntilDown (via stopServer)', () => {
   it('times out when server never goes down, rejecting after both poll phases', async () => {
     await givenRunningServer();
-    mockBgStop.mockResolvedValue(undefined);
+    mockStopBackground.mockResolvedValue('stopped');
     mockExecute.mockResolvedValue('ok');
     respondUp();
 
@@ -202,18 +193,18 @@ describe('pollUntilDown (via stopServer)', () => {
     );
 
     await expect(promise).rejects.toThrow('Cannot stop server');
-    expect(mockBgStop).toHaveBeenCalledWith('test-uuid');
+    expect(mockStopBackground).toHaveBeenCalledWith('test-uuid');
     expect(mockExecute).toHaveBeenCalledTimes(1);
     expect(mockExecute).toHaveBeenCalledWith(HARD_KILL_COMMAND);
   });
 
   it('returns promptly when server is already down', async () => {
     await givenRunningServer();
-    mockBgStop.mockResolvedValue(undefined);
+    mockStopBackground.mockResolvedValue('stopped');
     respondDown();
 
     await expect(stopServer()).resolves.toBeUndefined();
-    expect(mockBgStop).toHaveBeenCalledWith('test-uuid');
+    expect(mockStopBackground).toHaveBeenCalledWith('test-uuid');
   });
 });
 
