@@ -1,5 +1,8 @@
 # Changelogs
 
+## 0.1.6
+- 
+
 ## 0.1.5
 - Better installation UX with real-time progress output.
 - Improved error handling with smarter retry logic.

@@ -3,7 +3,7 @@
   "id": "com.victozee.opencode",
   "name": "OpenCode Web",
   "main": "dist/main.js",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "repository": "https://github.com/Victozee26/acode-opencode",
   "icon": "icon.png",
   "minVersionCode": 290,
