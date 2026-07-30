@@ -2,7 +2,7 @@ import plugin from '../plugin.json';
 
 import { AppState, UpdateInfo, UpdateStatus } from './types';
 import { onStateChange, transition, getState, setError, reset } from './state';
-import { render, initUiStyles, initUiPage, updateHeader, updateIframeScale } from './ui/index';
+import { render, initUiStyles, initUiPage, updateHeader, updateIframeScale, setSpinnerProgress } from './ui/index';
 import type { RenderActions } from './ui/index';
 import type { HeaderActions } from './types';
 import { checkInstalled, installOpenCode, uninstallOpenCode } from './opencode/install';
@@ -197,7 +197,9 @@ export class AcodePlugin {
 
       if (!installed) {
         transition(AppState.Installing);
-        await installOpenCode();
+        await installOpenCode((text) => {
+          setSpinnerProgress(text);
+        });
       }
 
       transition(AppState.CheckingServer);
@@ -300,7 +302,9 @@ export class AcodePlugin {
       }
 
       transition(AppState.Installing);
-      await installOpenCode();
+      await installOpenCode((text) => {
+        setSpinnerProgress(text);
+      });
 
       transition(AppState.CheckingServer);
       const serverUp = await isServerUp();

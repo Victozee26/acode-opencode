@@ -2,12 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { startServer, stopServer, waitForReady } from '../../src/opencode/server';
 import * as executorModule from '../../src/terminal/executor';
 import {
-  STARTUP_CHECK_DELAY,
   STOP_POLL_INTERVAL,
   STOP_POLL_TIMEOUT,
   KILL_COMMAND,
   HARD_KILL_COMMAND,
-  PROCESS_CHECK_COMMAND,
   READY_POLL_INTERVAL,
   READY_TIMEOUT,
 } from '../../src/config/opencode';
@@ -17,7 +15,6 @@ vi.mock('../../src/terminal/executor');
 const mockExecute = vi.mocked(executorModule.execute);
 const mockStartBackground = vi.mocked(executorModule.startBackground);
 const mockStopBackground = vi.mocked(executorModule.stopBackground);
-const mockIsBackgroundRunning = vi.mocked(executorModule.isBackgroundRunning);
 
 const mockSendRequest = vi.fn();
 
@@ -31,16 +28,11 @@ const respondDown = () =>
 
 async function givenRunningServer(): Promise<void> {
   mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
-  mockIsBackgroundRunning.mockResolvedValue(true);
-  mockExecute.mockResolvedValue('1234');
 
-  const promise = startServer();
-  await vi.advanceTimersByTimeAsync(STARTUP_CHECK_DELAY + 100);
-  await promise;
+  await startServer();
 
   mockStartBackground.mockClear();
   mockStopBackground.mockClear();
-  mockIsBackgroundRunning.mockClear();
   mockExecute.mockClear();
   mockSendRequest.mockClear();
 }
@@ -50,7 +42,6 @@ beforeEach(() => {
   vi.useFakeTimers();
   mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
   mockStopBackground.mockResolvedValue('stopped');
-  mockIsBackgroundRunning.mockResolvedValue(true);
   mockExecute.mockResolvedValue('ok');
   (window as any).cordova = { plugin: { http: { sendRequest: mockSendRequest } } };
 });
@@ -60,40 +51,11 @@ afterEach(() => {
 });
 
 describe('startServer', () => {
-  it('resolves when pgrep finds the process alive after delay', async () => {
+  it('resolves after launching the background process', async () => {
     mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
-    mockIsBackgroundRunning.mockResolvedValue(true);
-    mockExecute.mockResolvedValue('1234');
 
-    const promise = startServer();
-    await vi.advanceTimersByTimeAsync(STARTUP_CHECK_DELAY + 100);
-    await expect(promise).resolves.toBeUndefined();
+    await expect(startServer()).resolves.toBeUndefined();
     expect(mockStartBackground).toHaveBeenCalledTimes(1);
-    expect(mockIsBackgroundRunning).toHaveBeenCalledWith('test-uuid');
-    expect(mockExecute).toHaveBeenCalledTimes(1);
-    expect(mockExecute).toHaveBeenCalledWith(PROCESS_CHECK_COMMAND);
-  });
-
-  it('throws when BackgroundExecutor.isRunning says process dead', async () => {
-    mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
-    mockIsBackgroundRunning.mockResolvedValue(false);
-
-    const promise = startServer();
-    promise.catch(() => {});
-    await vi.advanceTimersByTimeAsync(STARTUP_CHECK_DELAY + 100);
-    await expect(promise).rejects.toThrow('OpenCode server process exited immediately after start.');
-    expect(mockExecute).not.toHaveBeenCalled();
-  });
-
-  it('throws when pgrep returns empty', async () => {
-    mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
-    mockIsBackgroundRunning.mockResolvedValue(true);
-    mockExecute.mockResolvedValue('');
-
-    const promise = startServer();
-    promise.catch(() => {});
-    await vi.advanceTimersByTimeAsync(STARTUP_CHECK_DELAY + 100);
-    await expect(promise).rejects.toThrow('OpenCode server process exited immediately after start.');
   });
 });
 

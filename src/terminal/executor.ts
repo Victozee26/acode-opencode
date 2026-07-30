@@ -114,3 +114,72 @@ export async function isBackgroundRunning(uuid: string): Promise<boolean> {
 export async function writeBackground(uuid: string, input: string): Promise<string> {
   return Executor.BackgroundExecutor.write(uuid, input);
 }
+
+/**
+ * Run a shell command as a background process and stream its output in
+ * real-time via the optional `onProgress` callback, then resolve when the
+ * process exits.
+ *
+ * Unlike {@link execute}, this does NOT block until the process exits — it
+ * fires `onProgress` with each stdout/stderr chunk, forwarding the latest
+ * trimmed line for live UI display. The returned promise resolves with the
+ * full accumulated stdout on success, or rejects with the exit code and
+ * captured output on failure.
+ *
+ * @param command - The command string to execute.
+ * @param onProgress - Optional callback receiving the latest output line on
+ *   each stdout/stderr chunk (trimmed, single line).
+ * @param alpine - Whether to run inside Alpine Linux (default true).
+ * @returns The full accumulated stdout on success.
+ * @throws Rejects with exit code and captured output on non-zero exit.
+ */
+export async function executeVerbose(
+  command: string,
+  onProgress?: (text: string) => void,
+  alpine = true,
+): Promise<string> {
+  log.info(`executeVerbose: launching "${command}"`);
+
+  return new Promise((resolve, reject) => {
+    let stdout = '';
+    let settled = false;
+
+    startBackground(
+      command,
+      (type, data) => {
+        if (settled) return;
+
+        if (type === 'stdout' || type === 'stderr') {
+          stdout += data;
+          if (onProgress) {
+            const lines = data
+              .split('\n')
+              .map((l) => l.trim())
+              .filter((l) => l);
+            if (lines.length > 0) {
+              onProgress(lines[lines.length - 1]);
+            }
+          }
+        } else if (type === 'exit') {
+          settled = true;
+          const exitCode = parseInt(data, 10);
+          if (exitCode === 0) {
+            log.info(`executeVerbose: exited OK: ${command}`);
+            resolve(stdout);
+          } else {
+            log.error(`executeVerbose: exited with code ${exitCode}: ${command}`);
+            reject(
+              new Error(`Command failed: exit ${exitCode}\nOutput: ${stdout}`),
+            );
+          }
+        }
+      },
+      alpine,
+    ).catch((err: unknown) => {
+      if (!settled) {
+        settled = true;
+        reject(err);
+      }
+    });
+  });
+}

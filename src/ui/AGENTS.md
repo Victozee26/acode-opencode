@@ -13,7 +13,7 @@ Owned by the root AGENTS.md. Three subdirectories:
 
   Components: 9 files (8 + barrel `index.ts`)
   - `container.ts` — `createContainer` (shared root wrapper used by `spinner` and `errorDisplay`)
-  - `spinner.ts` — `createSpinner`
+  - `spinner.ts` — `createSpinner`, `SpinnerElement` type
   - `iframe.ts` — `createIframe`, `setIframeScale`
   - `headerBar.ts` — `createHeaderBar` (legacy — unused)
   - `customHeader.ts` — `createCustomHeader` (replaces FAB, hamburger menu with Start/Restart/Stop)
@@ -26,7 +26,7 @@ Owned by the root AGENTS.md. Three subdirectories:
   - `idle.css` — `.opencode-idle`, `.opencode-idle-icon`, `.opencode-idle-text`
   - `ready.css` — `.opencode-ready-wrapper`
   - `headerBar.css` — `.opencode-header`, `.opencode-header-left`, `.opencode-header-wordmark`, `.opencode-header-hamburger`, `.opencode-header-menu`, `.opencode-header-scrim`, `.opencode-fab-item`, `.opencode-header-update`, `.opencode-header-update--installing`, `.opencode-header-update--error`, `.opencode-header-update--updated`, `.opencode-header-update-close`, `@keyframes opencode-update-pulse`
-  - `spinner.css` — `.opencode-spinner-ring` (conic arc), `.opencode-spinner-label`
+  - `spinner.css` — `.opencode-spinner-ring` (conic arc), `.opencode-spinner-label`, `.opencode-spinner-progress` (monospace command output line)
   - `errorDisplay.css` — `.opencode-error-icon`, `.opencode-error-heading`, `.opencode-error-log`, `.opencode-error-retry`
   - `iframe.css` — `.opencode-iframe`
   - `floatingActionButton.css` — legacy, not loaded
@@ -50,7 +50,8 @@ Owned by the root AGENTS.md. Three subdirectories:
 - Styles use CSS custom properties (`var(--primary-color, fallback)`) for Acode theming compatibility.
 - Global keyframe/utility styles are in `styles/base.css`, loaded via `<link>` by `initUiStyles()`. Provides `.opencode-fade-in` (state transition), `.opencode-btn` (hover/active button effects).
 - State transitions fade in: the content container gets `.opencode-fade-in` after every render, triggered with a forced reflow for reliable animation restart.
-- `createSpinner()` uses `requestAnimationFrame` (not `setInterval`) for GPU-friendly rotation. The spinner is a conic-gradient arc ring cut with a CSS `mask`.
+- `createSpinner()` uses `requestAnimationFrame` (not `setInterval`) for GPU-friendly rotation. The spinner is a conic-gradient arc ring cut with a CSS `mask`. Returns a `SpinnerElement` with a `stop()` method (cancels animation frame) and a `setProgressText(text)` method (shows/hides a monospace progress line below the status label for real-time command output).
+- `setSpinnerProgress(text)` (exported from `index.ts`) streams text to the active spinner's progress label — used by `main.ts` to display live installation output. No-op when no spinner is rendered.
 - `createCustomHeader(actions, isReady, baseUrl, onBack?, updateBanner?)` builds a flex header bar with an optional back button, wordmark image, and hamburger toggle. The hamburger opens a dropdown of `FabAction[]`, preceded by an optional `.opencode-header-update` banner. The `UpdateBannerConfig` carries a `label`, `status` (`'installing'` | `'error'` | `'updated'` | `null`), `onClick`, and optional `onCancel` callbacks. When `status === 'installing'` — pulsing amber banner with a × close button (`.opencode-header-update-close`) that calls `onCancel` to revert to the pre-update state; the main label is non-clickable. When `status === 'updated'` — green banner, non-interactive `<div>` (not a button), shows "Updated to X.X". When `status === 'error'` — red text, clickable to retry. When `status === null` — amber text, clickable to start the update. A scrim overlay (dimmed + blurred) appears behind the menu to catch outside taps and close it. The scrim is a child of the header with `z-index: -1` so it paints behind the header but above page content. The menu is positioned below the header (`top: 100%`, right-aligned). The Start Server action is hidden when `isReady` is true. No document-level event listeners are used; the scrim `click` handler closes the menu directly. Each `FabAction` item gets a `data-action-id` attribute matching its `id` so `updateHeader()` can query by action id (e.g. `[data-action-id="start"]`).
 - `createHeaderBar()` and `createFloatingActionButton()` are legacy components kept for reference but no longer used. The FAB's functionality (Start/Restart/Stop actions) is now served by the hamburger menu in `createCustomHeader()`. The custom header is created once inside `pageHeader` and persists across state transitions; `updateHeader()` modifies it in-place.
 - `createErrorDisplay()` unconditionally renders a warning icon and retry button; the error detail `<pre>` block is conditional on `logTail` being truthy. All dynamic strings use `textContent` (safe from injection, no `escapeHtml` needed).

@@ -30,6 +30,10 @@ Checks whether a persistent background process is still alive via `Executor.Back
 
 Writes input to a persistent background process's stdin via `Executor.BackgroundExecutor.write()`.
 
+### `executeVerbose(command, onProgress?, alpine = true): Promise<string>`
+
+Runs a command as a background process and streams its output in real-time via the optional `onProgress` callback while waiting for exit. Resolves with full accumulated stdout on success, rejects with exit code and captured output on failure. Used for installation commands where live UI feedback is desired (npm install output, apk add progress).
+
 ### General rules
 
 - Uses the globally available `Executor` — no `require()` needed. The `Executor` type is declared globally by `acode-plugin-types`.

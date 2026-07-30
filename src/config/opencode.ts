@@ -1,18 +1,14 @@
 // Alpine package install for the runtime (node/npm) OpenCode needs.
-export const INSTALL_DEPS_COMMAND = 'apk add --no-cache nodejs npm';
+export const INSTALL_DEPS_COMMAND = 'apk add --no-cache --verbose nodejs npm';
 
 // Global install of the OpenCode CLI itself.
-export const INSTALL_OPENCODE_COMMAND = 'npm install -g opencode-ai';
+export const INSTALL_OPENCODE_COMMAND = 'npm install -g --loglevel verbose opencode-ai';
 
 // Presence check for the opencode binary.
 export const CHECK_COMMAND = 'which opencode';
 
 // Uninstall the opencode-ai npm package.
 export const UNINSTALL_COMMAND = 'npm uninstall -g opencode-ai';
-
-// Grace period after issuing the start command before we begin polling, giving
-// the process a moment to bind the socket.
-export const STARTUP_CHECK_DELAY = 500;
 
 // Polling cadence while waiting for the server to become Ready.
 export const READY_POLL_INTERVAL = 1000;
@@ -23,6 +19,10 @@ export const READY_POLL_INTERVAL = 1000;
 // cutting it off too early. 30s gives the first boot comfortable headroom while
 // still failing fast on a genuinely dead process.
 export const READY_TIMEOUT = 30000;
+
+// Number of recent server stdout/stderr lines to keep in the ring buffer for
+// diagnostics (shown on startup failure / timeout).
+export const SERVER_LOG_LINES = 40;
 
 // Graceful and forced shutdown of any running server instance.
 export const KILL_COMMAND = 'pkill -f "opencode serve"';

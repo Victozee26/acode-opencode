@@ -1,4 +1,4 @@
-import { execute } from '../terminal/executor';
+import { execute, executeVerbose } from '../terminal/executor';
 import { CHECK_COMMAND, INSTALL_DEPS_COMMAND, INSTALL_OPENCODE_COMMAND, UNINSTALL_COMMAND } from '../config/opencode';
 import { createLogger } from '../logger';
 
@@ -24,24 +24,37 @@ export async function checkInstalled(): Promise<boolean> {
 }
 
 /**
- * Installs OpenCode by running two sequential blocking commands: OS package
- * dependencies first, then the global npm package.
+ * Installs OpenCode by running two sequential commands: OS package dependencies
+ * first, then the global npm package.
+ *
+ * When `onProgress` is provided the commands are launched via
+ * {@link executeVerbose} so stdout lines stream to the callback in real-time
+ * for live UI display. Without `onProgress` the blocking {@link execute} is
+ * used (backward-compatible path for callers that don't need streaming output).
  *
  * Failures are re-thrown with a distinct prefix — `(deps)` for the apk step and
  * `(opencode)` for the npm step — so the UI layer can tell the user exactly
  * which stage failed without needing to parse the underlying shell output.
  */
-export async function installOpenCode(): Promise<void> {
+export async function installOpenCode(onProgress?: (text: string) => void): Promise<void> {
   log.info('installOpenCode: installing deps');
   try {
-    await execute(INSTALL_DEPS_COMMAND);
+    if (onProgress) {
+      await executeVerbose(INSTALL_DEPS_COMMAND, onProgress);
+    } else {
+      await execute(INSTALL_DEPS_COMMAND);
+    }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     throw new Error(`Installation failed (deps): ${message}`);
   }
   log.info('installOpenCode: installing opencode-ai');
   try {
-    await execute(INSTALL_OPENCODE_COMMAND);
+    if (onProgress) {
+      await executeVerbose(INSTALL_OPENCODE_COMMAND, onProgress);
+    } else {
+      await execute(INSTALL_OPENCODE_COMMAND);
+    }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     throw new Error(`Installation failed (opencode): ${message}`);

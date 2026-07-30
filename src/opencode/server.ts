@@ -1,8 +1,8 @@
-import { execute, startBackground, stopBackground, isBackgroundRunning } from '../terminal/executor';
+import { execute, startBackground, stopBackground } from '../terminal/executor';
 import {
   READY_POLL_INTERVAL,
   READY_TIMEOUT,
-  STARTUP_CHECK_DELAY,
+  SERVER_LOG_LINES,
   KILL_COMMAND,
   HARD_KILL_COMMAND,
   PROCESS_CHECK_COMMAND,
@@ -17,6 +17,19 @@ const log = createLogger('server');
 
 let serverUuid: string | null = null;
 
+const ringBuffer: string[] = [];
+
+function feedLog(line: string): void {
+  ringBuffer.push(line);
+  if (ringBuffer.length > SERVER_LOG_LINES) {
+    ringBuffer.shift();
+  }
+}
+
+export function getServerLog(): string {
+  return ringBuffer.join('\n');
+}
+
 export function buildStartCommand(): string {
   return `opencode serve --port ${PORT} --hostname ${HOSTNAME}`;
 }
@@ -24,14 +37,21 @@ export function buildStartCommand(): string {
 export async function startServer(): Promise<void> {
   log.info('startServer: launching via BackgroundExecutor');
   const command = buildStartCommand();
+  ringBuffer.length = 0;
 
   const bg = await startBackground(
     command,
     (type, data) => {
+      const trimmed = data.trim();
       if (type === 'stdout') {
-        log.info(`server[stdout]: ${data.trim()}`);
+        log.info(`server[stdout]: ${trimmed}`);
       } else if (type === 'stderr') {
-        log.warn(`server[stderr]: ${data.trim()}`);
+        log.warn(`server[stderr]: ${trimmed}`);
+      }
+      const lines = data.split('\n');
+      for (const line of lines) {
+        const t = line.trim();
+        if (t) feedLog(t);
       }
     },
     true,
@@ -39,21 +59,6 @@ export async function startServer(): Promise<void> {
 
   serverUuid = bg.uuid;
   log.info(`startServer: BackgroundExecutor started, uuid=${serverUuid}`);
-
-  await new Promise((resolve) => setTimeout(resolve, STARTUP_CHECK_DELAY));
-
-  const running = await isBackgroundRunning(serverUuid);
-  if (!running) {
-    serverUuid = null;
-    throw new Error('OpenCode server process exited immediately after start.');
-  }
-
-  const pgrepOutput = String(await execute(PROCESS_CHECK_COMMAND)).trim();
-  if (!pgrepOutput) {
-    serverUuid = null;
-    throw new Error('OpenCode server process exited immediately after start.');
-  }
-  log.info(`startServer: process alive (pid ${pgrepOutput})`);
 }
 
 export async function waitForReady(): Promise<void> {
@@ -79,9 +84,11 @@ export async function waitForReady(): Promise<void> {
     processState = 'unknown (pgrep failed)';
   }
 
+  const logTail = ringBuffer.join('\n');
   throw new Error(
     `Server did not respond within ${READY_TIMEOUT / 1000}s.\n` +
-    `Process state: ${processState}`,
+    `Process state: ${processState}\n` +
+    (logTail ? `Last ${Math.min(SERVER_LOG_LINES, ringBuffer.length)} lines:\n${logTail}` : ''),
   );
 }
 
@@ -126,6 +133,7 @@ export async function stopServer(): Promise<void> {
   if (softDown) {
     log.info('stopServer: server stopped');
     serverUuid = null;
+    ringBuffer.length = 0;
     return;
   }
 
@@ -138,6 +146,7 @@ export async function stopServer(): Promise<void> {
 
   const hardDown = await pollUntilDown(STOP_POLL_TIMEOUT);
   serverUuid = null;
+  ringBuffer.length = 0;
 
   if (hardDown) {
     log.info('stopServer: stopped via SIGKILL');

@@ -8,7 +8,7 @@ Single source of truth for every named constant in the plugin: network/server va
 
 Owned by the root AGENTS.md. Ten files:
 - `server.ts` — network/server core: `PORT`, `HOSTNAME`, `BASE_URL` (leaf, imports nothing).
-- `opencode.ts` — OpenCode lifecycle: install/start/stop/readiness commands and timeouts (`INSTALL_DEPS_COMMAND`, `INSTALL_OPENCODE_COMMAND`, `CHECK_COMMAND`, `UNINSTALL_COMMAND`, `STARTUP_CHECK_DELAY`, `READY_POLL_INTERVAL`, `READY_TIMEOUT`, `KILL_COMMAND`, `HARD_KILL_COMMAND`, `PROCESS_CHECK_COMMAND`, `STOP_POLL_TIMEOUT`, `STOP_POLL_INTERVAL`).
+- `opencode.ts` — OpenCode lifecycle: install/start/stop/readiness commands and timeouts (`INSTALL_DEPS_COMMAND`, `INSTALL_OPENCODE_COMMAND`, `CHECK_COMMAND`, `UNINSTALL_COMMAND`, `READY_POLL_INTERVAL`, `READY_TIMEOUT`, `SERVER_LOG_LINES`, `KILL_COMMAND`, `HARD_KILL_COMMAND`, `PROCESS_CHECK_COMMAND`, `STOP_POLL_TIMEOUT`, `STOP_POLL_INTERVAL`).
 - `health.ts` — health probe + diagnostics: `HEALTH_CHECK_URL` (derives from `BASE_URL` in `server.ts`), `HEALTH_CHECK_TIMEOUT`, `ERROR_FALLBACK_MESSAGE`.
 - `ui.ts` — rendering constants: `SPINNER_DEG_PER_SEC`, `SPINNER_FPS`, `FLOATING_BUTTON_IDLE_OPACITY_TIMEOUT`, `FAB_SCRIM_BACKGROUND`, `FAB_SCRIM_BLUR`, `FAB_SCRIM_Z_INDEX`, `FAB_Z_INDEX`, `HEADER_CONTAINER_ID`, `CONTENT_CONTAINER_ID`.
 - `app.ts` — global debug master switch: `DEBUG`.
