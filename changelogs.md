@@ -1,7 +1,9 @@
 # Changelogs
 
-## 0.2.0
-- 
+## 0.2.1
+- Renamed the plugin from "OpenCode Web" to "OpenCode AI".
+- Handled blocking errors that could prevent the plugin from launching.
+- Updated project documentation.
 
 ## 0.1.5
 - Better installation UX with real-time progress output.
