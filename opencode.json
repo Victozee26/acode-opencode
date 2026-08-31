@@ -4,8 +4,8 @@
   "plugin": ["opencode-runtime-fallback"],
   "agent": {
     "explore": {
-      "variant": "max",
-      "model": "opencode-go/deepseek-v4-flash",
+      "variant": "xhigh",
+      "model": "opencode/muse-spark-1.2-contributor-free",
       "fallback_models": [
         "opencode/big-pickle"
       ]
