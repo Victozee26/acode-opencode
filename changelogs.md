@@ -2,11 +2,7 @@
 
 ## 0.2.2
 - Added auto-hide header in landscape orientation to maximize content area in fullscreen view.
-- Added native plugin setting to toggle landscape header behavior on or off.
-- Added native plugin setting to control console logs including an off switch (`Enable console logs`, default off) with log-level filtering.
-- Fixed plugin settings persistence so changes survive app restart (store under `value[pluginId]` and `settings.update()`).
-- Fixed toggle settings (checkbox) not saving due to static `checkbox:true` flag shadowing the persisted value.
-- Removed auto-start server setting; plugin now auto-starts on page show when not already running.
+- Added setting to toggle landscape header behavior.
 
 ## 0.2.1
 - Renamed the plugin from "OpenCode Web" to "OpenCode AI".
