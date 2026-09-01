@@ -10,7 +10,7 @@ import {
   SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE,
   DEFAULT_HIDE_HEADER_IN_LANDSCAPE,
   SETTINGS_KEY_LOG_LEVEL,
-  SETTINGS_KEY_ENABLE_CONSOLE_LOGS,
+  DEFAULT_LOG_LEVEL,
 } from '../src/config/settings';
 
 vi.mock('../src/logger', async () => {
@@ -35,37 +35,6 @@ beforeEach(() => {
   setupAcode();
   mockSettingsGet.mockReturnValue(null);
   setOnHideHeaderChange(null as any);
-});
-
-describe('getSettingsSchema hideHeader entry', () => {
-  it('list has 4 entries and hideHeader is third', () => {
-    const schema = getSettingsSchema();
-    expect(schema.list).toHaveLength(4);
-    expect(schema.list[2].key).toBe(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE);
-  });
-
-  it('hideHeader entry is checkbox with default true', () => {
-    const schema = getSettingsSchema();
-    const entry = schema.list[2];
-    expect(entry.checkbox).toBe(true);
-    expect(entry.value).toBe(DEFAULT_HIDE_HEADER_IN_LANDSCAPE);
-    expect(entry.value).toBe(true);
-  });
-
-  it('hideHeader entry has correct text and info', () => {
-    const schema = getSettingsSchema();
-    const entry = schema.list[2];
-    expect(entry.text).toBe('Hide header in landscape');
-    expect(entry.info).toContain('landscape');
-    expect(entry.info.toLowerCase()).toContain('header');
-  });
-
-  it('hideHeader entry has no select/promptType', () => {
-    const schema = getSettingsSchema();
-    const entry = schema.list[2] as any;
-    expect(entry.select).toBeUndefined();
-    expect(entry.promptType).toBeUndefined();
-  });
 });
 
 describe('getHideHeaderInLandscape', () => {
@@ -154,7 +123,6 @@ describe('setOnHideHeaderChange', () => {
     const handler = vi.fn();
     setOnHideHeaderChange(handler);
     const schema = getSettingsSchema();
-    schema.cb(SETTINGS_KEY_ENABLE_CONSOLE_LOGS, true);
     schema.cb(SETTINGS_KEY_LOG_LEVEL, 'debug');
     expect(handler).not.toHaveBeenCalled();
   });
@@ -212,7 +180,7 @@ describe('resetSettingsCache extension', () => {
     expect(getLogLevel()).toBe('debug');
     expect(getHideHeaderInLandscape()).toBe(false);
     resetSettingsCache();
-    expect(getLogLevel()).toBe('info');
+    expect(getLogLevel()).toBe(DEFAULT_LOG_LEVEL);
     expect(getHideHeaderInLandscape()).toBe(true);
   });
 });

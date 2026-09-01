@@ -3,3 +3,4 @@ yarn.lock
 dist.zip
 dist
 pnpm-lock.yaml
+opencode.json

@@ -15,8 +15,6 @@ import {
   DEFAULT_LOG_LEVEL,
   SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE,
   DEFAULT_HIDE_HEADER_IN_LANDSCAPE,
-  SETTINGS_KEY_ENABLE_CONSOLE_LOGS,
-  DEFAULT_ENABLE_CONSOLE_LOGS,
 } from '../src/config/settings';
 import { setLogLevel } from '../src/logger';
 
@@ -47,7 +45,7 @@ describe('getSettingsSchema', () => {
   it('returns settings list with iframeScale key', () => {
     const schema = getSettingsSchema();
 
-    expect(schema.list).toHaveLength(4);
+    expect(schema.list).toHaveLength(3);
     expect(schema.list[0].key).toBe(SETTINGS_KEY_IFRAME_SCALE);
     expect(schema.list[0].text).toBe('Iframe Scale (%)');
   });
@@ -78,7 +76,7 @@ describe('getSettingsSchema', () => {
     const setting = schema.list[1];
 
     expect(setting.key).toBe(SETTINGS_KEY_LOG_LEVEL);
-    expect(setting.select).toEqual(['debug', 'info', 'warn', 'error']);
+    expect(setting.select).toEqual(['none', 'debug', 'info', 'warn', 'error']);
     expect(setting.value).toBe(DEFAULT_LOG_LEVEL);
   });
 
@@ -90,15 +88,6 @@ describe('getSettingsSchema', () => {
     expect(setting.text).toBe('Hide header in landscape');
     expect(setting.checkbox).toBe(true);
     expect(setting.value).toBe(DEFAULT_HIDE_HEADER_IN_LANDSCAPE);
-  });
-
-  it('has enableConsoleLogs setting with checkbox', () => {
-    const schema = getSettingsSchema();
-    const setting = schema.list[3];
-
-    expect(setting.key).toBe(SETTINGS_KEY_ENABLE_CONSOLE_LOGS);
-    expect(setting.checkbox).toBe(DEFAULT_ENABLE_CONSOLE_LOGS);
-    expect(setting.value).toBe(DEFAULT_ENABLE_CONSOLE_LOGS);
   });
 });
 

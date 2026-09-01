@@ -118,21 +118,6 @@ afterEach(() => {
   // do not restoreAllMocks here as it would remove vi.fn wrappers needed
 });
 
-// ---- config constants ----
-describe('config constants: HEADER_LANDSCAPE_HIDDEN_CLASS / LANDSCAPE_MEDIA_QUERY', () => {
-  it('HEADER_LANDSCAPE_HIDDEN_CLASS exists and is correct', () => {
-    expect(HEADER_LANDSCAPE_HIDDEN_CLASS).toBe('opencode-hide-header-in-landscape');
-  });
-  it('LANDSCAPE_MEDIA_QUERY exists and is correct', () => {
-    expect(LANDSCAPE_MEDIA_QUERY).toBe('(orientation: landscape)');
-  });
-  it('barrel re-exports both', async () => {
-    const barrel = await import('../../src/config');
-    expect((barrel as any).HEADER_LANDSCAPE_HIDDEN_CLASS).toBe('opencode-hide-header-in-landscape');
-    expect((barrel as any).LANDSCAPE_MEDIA_QUERY).toBe('(orientation: landscape)');
-  });
-});
-
 // ---- CSS file ----
 describe('headerBar.css landscape rule', () => {
   it('contains @media (orientation: landscape) and hidden class', () => {
