@@ -129,6 +129,15 @@
   padding: 0 2px;
 }
 
+@media (orientation: landscape) {
+  body.opencode-hide-header-in-landscape #opencode-header {
+    display: none;
+  }
+  body.opencode-hide-header-in-landscape .opencode-header {
+    display: none;
+  }
+}
+
 @keyframes opencode-update-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }

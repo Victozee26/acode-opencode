@@ -1,6 +1,11 @@
 import { AppState, StateContext, UpdateInfo, UpdateStatus, HeaderActions } from '../types';
 import { BASE_URL } from '../config/server';
-import { HEADER_CONTAINER_ID, CONTENT_CONTAINER_ID } from '../config/ui';
+import {
+  HEADER_CONTAINER_ID,
+  CONTENT_CONTAINER_ID,
+  HEADER_LANDSCAPE_HIDDEN_CLASS,
+  LANDSCAPE_MEDIA_QUERY,
+} from '../config/ui';
 import {
   createSpinner,
   SpinnerElement,
@@ -11,7 +16,7 @@ import {
   FabAction,
   UpdateBannerConfig,
 } from './components';
-import { getIframeScale } from '../settings';
+import { getIframeScale, getHideHeaderInLandscape } from '../settings';
 import { createLogger } from '../logger';
 
 export interface RenderActions {
@@ -50,6 +55,79 @@ const STYLESHEETS = [
   'styles/confirmModal.css',
 ];
 
+let orientationMql: MediaQueryList | null = null;
+let orientationHandler: (() => void) | null = null;
+let orientationInitialized = false;
+
+export function isLandscape(): boolean {
+  try {
+    if (typeof window.matchMedia === 'function') {
+      const mql = window.matchMedia(LANDSCAPE_MEDIA_QUERY);
+      const byQuery = mql.matches;
+      const bySize = window.innerWidth > window.innerHeight;
+      return byQuery || bySize;
+    }
+  } catch {
+    // ignore matchMedia errors — fall back to size check
+  }
+  return window.innerWidth > window.innerHeight;
+}
+
+export function applyHeaderVisibility(): void {
+  const hide = getHideHeaderInLandscape();
+  const landscape = isLandscape();
+  const shouldHide = hide && landscape;
+  if (shouldHide) {
+    document.body.classList.add(HEADER_LANDSCAPE_HIDDEN_CLASS);
+  } else {
+    document.body.classList.remove(HEADER_LANDSCAPE_HIDDEN_CLASS);
+  }
+}
+
+export function initOrientationListener(): void {
+  if (orientationInitialized) return;
+  orientationInitialized = true;
+  orientationHandler = () => applyHeaderVisibility();
+  applyHeaderVisibility();
+  try {
+    if (typeof window.matchMedia === 'function') {
+      orientationMql = window.matchMedia(LANDSCAPE_MEDIA_QUERY);
+      if (typeof orientationMql.addEventListener === 'function') {
+        orientationMql.addEventListener('change', orientationHandler);
+      } else if (typeof (orientationMql as any).addListener === 'function') {
+        (orientationMql as any).addListener(orientationHandler);
+      }
+    }
+  } catch {
+    // matchMedia not available — window listeners still cover fallback
+  }
+  window.addEventListener('resize', orientationHandler);
+  window.addEventListener('orientationchange', orientationHandler);
+}
+
+export function destroyOrientationListener(): void {
+  if (!orientationInitialized) return;
+  orientationInitialized = false;
+  if (orientationMql && orientationHandler) {
+    try {
+      if (typeof orientationMql.removeEventListener === 'function') {
+        orientationMql.removeEventListener('change', orientationHandler);
+      } else if (typeof (orientationMql as any).removeListener === 'function') {
+        (orientationMql as any).removeListener(orientationHandler);
+      }
+    } catch {
+      // ignore removal errors
+    }
+  }
+  if (orientationHandler) {
+    window.removeEventListener('resize', orientationHandler);
+    window.removeEventListener('orientationchange', orientationHandler);
+  }
+  orientationMql = null;
+  orientationHandler = null;
+  document.body.classList.remove(HEADER_LANDSCAPE_HIDDEN_CLASS);
+}
+
 export function initUiStyles(baseUrl: string): void {
   if (stylesInitialized) return;
   stylesInitialized = true;
@@ -81,6 +159,9 @@ export function initUiPage($page: Acode.WCPage): void {
   content.style.flexDirection = 'column';
   pageContent = content;
   $page.body.appendChild(content);
+
+  initOrientationListener();
+  applyHeaderVisibility();
 }
 
 const STATUS_MESSAGES: Record<string, string> = {
@@ -111,6 +192,7 @@ export function render(
 
   if (state === previousState) {
     updateHeader(state, actions);
+    applyHeaderVisibility();
     return;
   }
 
@@ -157,6 +239,7 @@ export function render(
   pageContent!.classList.add('opencode-fade-in');
 
   updateHeader(state, actions);
+  applyHeaderVisibility();
   previousState = state;
 }
 
@@ -255,6 +338,7 @@ function buildUpdateBanner(actions: HeaderActions): UpdateBannerConfig | null {
 }
 
 export function updateHeader(state: AppState, actions: HeaderActions): void {
+  applyHeaderVisibility();
   if (!pageHeader) return;
 
   const startItem = pageHeader.querySelector<HTMLElement>('[data-action-id="start"]');

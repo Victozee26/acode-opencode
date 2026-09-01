@@ -24,3 +24,6 @@ export const FAB_Z_INDEX = 1001;
 
 export const HEADER_CONTAINER_ID = 'opencode-header';
 export const CONTENT_CONTAINER_ID = 'opencode-content';
+
+export const HEADER_LANDSCAPE_HIDDEN_CLASS = 'opencode-hide-header-in-landscape';
+export const LANDSCAPE_MEDIA_QUERY = '(orientation: landscape)';

@@ -2,7 +2,16 @@ import plugin from '../plugin.json';
 
 import { AppState, UpdateInfo, UpdateStatus } from './types';
 import { onStateChange, transition, getState, setError, reset } from './state';
-import { render, initUiStyles, initUiPage, updateHeader, updateIframeScale, setSpinnerProgress } from './ui/index';
+import {
+  render,
+  initUiStyles,
+  initUiPage,
+  updateHeader,
+  updateIframeScale,
+  setSpinnerProgress,
+  applyHeaderVisibility,
+  destroyOrientationListener,
+} from './ui/index';
 import type { RenderActions } from './ui/index';
 import type { HeaderActions } from './types';
 import { checkInstalled, installOpenCode, uninstallOpenCode } from './opencode/install';
@@ -12,7 +21,13 @@ import { checkForUpdates, installUpdate } from './opencode/update';
 import { createLogger, setLogEnabled, setLogLevel } from './logger';
 import { DEBUG } from './config/app';
 import { extractErrorInfo } from './error';
-import { getSettingsSchema, setOnScaleChange, getAutoStart, getLogLevel } from './settings';
+import {
+  getSettingsSchema,
+  setOnScaleChange,
+  setOnHideHeaderChange,
+  getAutoStart,
+  getLogLevel,
+} from './settings';
 import { HEALTH_PROBE_INTERVAL } from './config/health';
 
 const log = createLogger('main');
@@ -64,6 +79,7 @@ export class AcodePlugin {
     log.info('init: plugin initializing');
     initUiStyles(baseUrl);
     setOnScaleChange((scale) => updateIframeScale(scale));
+    setOnHideHeaderChange(() => applyHeaderVisibility());
     this.$page = $page;
     this.ctx = ctx;
     if (ctx) {
@@ -166,6 +182,8 @@ export class AcodePlugin {
   async destroy(): Promise<void> {
     log.info('destroy: tearing down');
     this.stopHealthProbe();
+    destroyOrientationListener();
+    setOnHideHeaderChange(() => {});
     this.sideButton?.hide();
     this.sideButton = null;
     if (this.handleShow) {
