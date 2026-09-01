@@ -27,15 +27,6 @@ const respondDown = (): void => {
   );
 };
 
-async function givenRunningServer(): Promise<void> {
-  mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
-  await startServer();
-  mockStartBackground.mockClear();
-  mockStopBackground.mockClear();
-  mockExecute.mockClear();
-  mockSendRequest.mockClear();
-}
-
 beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
@@ -60,12 +51,28 @@ describe('startServer', () => {
     // Assert
     await expect(promise).resolves.toBeUndefined();
   });
+
+  it('should_reject_when_background_start_fails', async () => {
+    // Arrange
+    mockStartBackground.mockRejectedValue(new Error('spawn failed'));
+
+    // Act
+    const promise = startServer();
+
+    // Assert
+    await expect(promise).rejects.toThrow('spawn failed');
+  });
 });
 
 describe('stopServer', () => {
   it('should_resolve_when_server_goes_down_after_stop', async () => {
     // Arrange
-    await givenRunningServer();
+    mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
+    await startServer();
+    mockStartBackground.mockClear();
+    mockStopBackground.mockClear();
+    mockExecute.mockClear();
+    mockSendRequest.mockClear();
     mockStopBackground.mockResolvedValue('stopped');
     mockSendRequest
       .mockImplementationOnce((_u: string, _o: unknown, success: () => void) => success())
@@ -84,7 +91,12 @@ describe('stopServer', () => {
 
   it('should_resolve_promptly_when_server_already_down', async () => {
     // Arrange
-    await givenRunningServer();
+    mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
+    await startServer();
+    mockStartBackground.mockClear();
+    mockStopBackground.mockClear();
+    mockExecute.mockClear();
+    mockSendRequest.mockClear();
     mockStopBackground.mockResolvedValue('stopped');
     respondDown();
 
@@ -97,7 +109,12 @@ describe('stopServer', () => {
 
   it('should_throw_when_port_still_occupied_after_SIGKILL', async () => {
     // Arrange
-    await givenRunningServer();
+    mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
+    await startServer();
+    mockStartBackground.mockClear();
+    mockStopBackground.mockClear();
+    mockExecute.mockClear();
+    mockSendRequest.mockClear();
     mockStopBackground.mockResolvedValue('stopped');
     mockExecute.mockResolvedValue('ok');
     respondUp();
@@ -115,7 +132,12 @@ describe('stopServer', () => {
 
   it('should_throw_after_both_poll_phases_when_server_never_down', async () => {
     // Arrange
-    await givenRunningServer();
+    mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
+    await startServer();
+    mockStartBackground.mockClear();
+    mockStopBackground.mockClear();
+    mockExecute.mockClear();
+    mockSendRequest.mockClear();
     mockStopBackground.mockResolvedValue('stopped');
     mockExecute.mockResolvedValue('ok');
     respondUp();

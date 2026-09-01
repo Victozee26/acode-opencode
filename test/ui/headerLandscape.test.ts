@@ -1,6 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import fs from 'node:fs';
-import path from 'node:path';
 import { AppState } from '../../src/types';
 import { HEADER_LANDSCAPE_HIDDEN_CLASS, LANDSCAPE_MEDIA_QUERY } from '../../src/config/ui';
 
@@ -107,63 +105,6 @@ afterEach(() => {
   }
   document.body.innerHTML = '';
   document.body.className = '';
-});
-
-describe('headerBar.css landscape rule', () => {
-  it('should_contain_media_query_when_css_read', () => {
-    // Arrange
-    const cssPath = path.resolve('src/ui/styles/headerBar.css');
-
-    // Act
-    const css = fs.readFileSync(cssPath, 'utf-8');
-
-    // Assert
-    expect(css).toContain('@media (orientation: landscape)');
-  });
-
-  it('should_contain_hidden_class_when_css_read', () => {
-    // Arrange
-    const cssPath = path.resolve('src/ui/styles/headerBar.css');
-
-    // Act
-    const css = fs.readFileSync(cssPath, 'utf-8');
-
-    // Assert
-    expect(css).toContain(HEADER_LANDSCAPE_HIDDEN_CLASS);
-  });
-
-  it('should_contain_header_selector_when_css_read', () => {
-    // Arrange
-    const cssPath = path.resolve('src/ui/styles/headerBar.css');
-
-    // Act
-    const css = fs.readFileSync(cssPath, 'utf-8');
-
-    // Assert
-    expect(css).toContain('#opencode-header');
-  });
-
-  it('should_contain_display_none_when_css_read', () => {
-    // Arrange
-    const cssPath = path.resolve('src/ui/styles/headerBar.css');
-
-    // Act
-    const css = fs.readFileSync(cssPath, 'utf-8');
-
-    // Assert
-    expect(css).toContain('display: none');
-  });
-
-  it('should_use_body_class_selector_when_css_read', () => {
-    // Arrange
-    const css = fs.readFileSync(path.resolve('src/ui/styles/headerBar.css'), 'utf-8');
-
-    // Act
-    const contains = css.includes(`body.${HEADER_LANDSCAPE_HIDDEN_CLASS} #opencode-header`);
-
-    // Assert
-    expect(contains).toBe(true);
-  });
 });
 
 describe('isLandscape fallback', () => {

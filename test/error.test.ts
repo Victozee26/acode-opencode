@@ -90,4 +90,26 @@ describe('extractErrorInfo', () => {
     // Assert
     expect(result.logTail).toBe('');
   });
+
+  it('should_coerce_null_when_error_is_null', () => {
+    // Arrange
+    const error = null;
+
+    // Act
+    const result = extractErrorInfo(error);
+
+    // Assert
+    expect(result.summary).toBe('null');
+  });
+
+  it('should_coerce_undefined_when_error_is_undefined', () => {
+    // Arrange
+    const error = undefined;
+
+    // Act
+    const result = extractErrorInfo(error);
+
+    // Assert
+    expect(result.summary).toBe('undefined');
+  });
 });

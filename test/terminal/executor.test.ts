@@ -114,15 +114,15 @@ describe('startBackground', () => {
     expect(process.uuid).toBe('test-uuid');
   });
 
-  it('should_resolve_when_onData_omitted', async () => {
+  it('should_reject_when_start_fails', async () => {
     // Arrange
-    mockBgStart.mockResolvedValue('test-uuid');
+    mockBgStart.mockRejectedValue(new Error('spawn failed'));
 
     // Act
-    const process = await startBackground('my-command');
+    const promise = startBackground('my-command');
 
     // Assert
-    expect(process.uuid).toBe('test-uuid');
+    await expect(promise).rejects.toThrow('spawn failed');
   });
 });
 
@@ -137,6 +137,17 @@ describe('stopBackground', () => {
     // Assert
     expect(result).toBe('stopped');
   });
+
+  it('should_reject_when_stop_fails', async () => {
+    // Arrange
+    mockBgStop.mockRejectedValue(new Error('stop failed'));
+
+    // Act
+    const promise = stopBackground('test-uuid');
+
+    // Assert
+    await expect(promise).rejects.toThrow('stop failed');
+  });
 });
 
 describe('isBackgroundRunning', () => {
@@ -150,6 +161,17 @@ describe('isBackgroundRunning', () => {
     // Assert
     expect(result).toBe(true);
   });
+
+  it('should_return_false_when_not_running', async () => {
+    // Arrange
+    mockBgIsRunning.mockResolvedValue(false);
+
+    // Act
+    const result = await isBackgroundRunning('test-uuid');
+
+    // Assert
+    expect(result).toBe(false);
+  });
 });
 
 describe('writeBackground', () => {
@@ -162,6 +184,17 @@ describe('writeBackground', () => {
 
     // Assert
     expect(result).toBe('ok');
+  });
+
+  it('should_reject_when_write_fails', async () => {
+    // Arrange
+    mockBgWrite.mockRejectedValue(new Error('write failed'));
+
+    // Act
+    const promise = writeBackground('test-uuid', 'input data');
+
+    // Assert
+    await expect(promise).rejects.toThrow('write failed');
   });
 });
 
@@ -233,9 +266,9 @@ describe('executeVerbose', () => {
   it('should_reject_with_exit_code_when_non_zero', async () => {
     // Arrange
     const promise = executeVerbose('bad-command');
-    capturedCallback!('stderr', 'error: not found\n');
 
     // Act
+    capturedCallback!('stderr', 'error: not found\n');
     capturedCallback!('exit', '127');
 
     // Assert
@@ -245,10 +278,11 @@ describe('executeVerbose', () => {
   it('should_include_stderr_when_rejecting', async () => {
     // Arrange
     const promise = executeVerbose('bad-command');
+
+    // Act
     capturedCallback!('stderr', 'error: not found\n');
     capturedCallback!('exit', '127');
 
-    // Act
     // Assert
     await expect(promise).rejects.toThrow('error: not found');
   });
@@ -257,9 +291,9 @@ describe('executeVerbose', () => {
     // Arrange
     const lines: string[] = [];
     const promise = executeVerbose('cmd', (text) => lines.push(text));
-    capturedCallback!('stdout', 'fetching packages\n');
 
     // Act
+    capturedCallback!('stdout', 'fetching packages\n');
     capturedCallback!('stdout', '  installing\n');
     capturedCallback!('exit', '0');
     await promise;

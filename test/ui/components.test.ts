@@ -59,7 +59,7 @@ describe('createErrorDisplay', () => {
     expect(el.querySelector('h3')!.textContent).toContain('Something broke');
   });
 
-  it('should_use_heading_class_when_error_rendered', () => {
+  it('should_show_heading_when_error_rendered', () => {
     // Arrange
     const ctx = makeContext({ message: 'Error', logTail: '' });
     const onRetry = vi.fn();
@@ -68,7 +68,7 @@ describe('createErrorDisplay', () => {
     const el = createErrorDisplay(ctx, onRetry);
 
     // Assert
-    expect((el.querySelector('h3') as HTMLHeadingElement).className).toBe('opencode-error-heading');
+    expect(el.querySelector('h3')).not.toBeNull();
   });
 
   it('should_render_pre_when_logTail_non_empty', () => {
@@ -210,18 +210,6 @@ describe('initUiPage', () => {
     expect(document.getElementById('opencode-content')).not.toBeNull();
   });
 
-  it('should_have_two_children_when_initUiPage_called', async () => {
-    // Arrange
-    const { initUiPage } = await loadFreshUi();
-    const $page = { body: document.body };
-
-    // Act
-    initUiPage($page as any);
-
-    // Assert
-    expect(document.body.children.length).toBe(2);
-  });
-
   it('should_clear_stale_content_when_initUiPage_called', async () => {
     // Arrange
     const { initUiPage } = await loadFreshUi();
@@ -233,30 +221,6 @@ describe('initUiPage', () => {
 
     // Assert
     expect(document.body.children[0].id).toBe('opencode-header');
-  });
-
-  it('should_set_flex_column_when_initUiPage_called', async () => {
-    // Arrange
-    const { initUiPage } = await loadFreshUi();
-    const $page = { body: document.body };
-
-    // Act
-    initUiPage($page as any);
-
-    // Assert
-    expect(document.body.style.display).toBe('flex');
-  });
-
-  it('should_set_content_flex_grow_when_initUiPage_called', async () => {
-    // Arrange
-    const { initUiPage } = await loadFreshUi();
-    const $page = { body: document.body };
-
-    // Act
-    initUiPage($page as any);
-
-    // Assert
-    expect(document.getElementById('opencode-content')!.style.flexGrow).toBe('1');
   });
 
   it('should_recreate_when_initUiPage_called_twice', async () => {

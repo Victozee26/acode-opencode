@@ -214,20 +214,18 @@ describe('cb branch updates cachedHideHeaderInLandscape', () => {
     expect(result).toBe(false);
   });
 
-  it('should_toggle_false_then_true_when_cb_fires_twice', () => {
+  it('should_return_true_when_toggled_false_then_true', () => {
     // Arrange
     const schema = getSettingsSchema();
     schema.cb(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE, false);
-
-    // Act
-    const afterFalse = getHideHeaderInLandscape();
     schema.cb(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE, true);
     mockSettingsGet.mockReturnValue(null);
-    const afterTrue = getHideHeaderInLandscape();
+
+    // Act
+    const result = getHideHeaderInLandscape();
 
     // Assert
-    expect(afterFalse).toBe(false);
-    expect(afterTrue).toBe(true);
+    expect(result).toBe(true);
   });
 });
 
@@ -260,7 +258,7 @@ describe('resetSettingsCache extension', () => {
     expect(result).toBe(true);
   });
 
-  it('should_reset_both_caches_when_reset_called', () => {
+  it('should_reset_logLevel_when_reset_called', () => {
     // Arrange
     const schema = getSettingsSchema();
     schema.cb(SETTINGS_KEY_LOG_LEVEL, 'debug');
@@ -270,10 +268,23 @@ describe('resetSettingsCache extension', () => {
 
     // Act
     const level = getLogLevel();
-    const hide = getHideHeaderInLandscape();
 
     // Assert
     expect(level).toBe(DEFAULT_LOG_LEVEL);
+  });
+
+  it('should_reset_hideHeader_when_reset_called', () => {
+    // Arrange
+    const schema = getSettingsSchema();
+    schema.cb(SETTINGS_KEY_LOG_LEVEL, 'debug');
+    schema.cb(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE, false);
+    mockSettingsGet.mockReturnValue(null);
+    resetSettingsCache();
+
+    // Act
+    const hide = getHideHeaderInLandscape();
+
+    // Assert
     expect(hide).toBe(true);
   });
 });

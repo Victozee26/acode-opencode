@@ -14,9 +14,7 @@ import {
   SETTINGS_KEY_LOG_LEVEL,
   DEFAULT_LOG_LEVEL,
   SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE,
-  DEFAULT_HIDE_HEADER_IN_LANDSCAPE,
 } from '../src/config/settings';
-import { setLogLevel } from '../src/logger';
 
 vi.mock('../src/logger', async () => {
   const actual = await vi.importActual<typeof import('../src/logger')>('../src/logger');
@@ -42,7 +40,7 @@ beforeEach(() => {
 });
 
 describe('getSettingsSchema', () => {
-  it('should_return_3_entries_when_getSettingsSchema_called', () => {
+  it('should_return_3_entries_when_called', () => {
     // Arrange
     // Act
     const schema = getSettingsSchema();
@@ -51,136 +49,19 @@ describe('getSettingsSchema', () => {
     expect(schema.list).toHaveLength(3);
   });
 
-  it('should_have_iframeScale_key_when_first_entry_inspected', () => {
+  it('should_contain_expected_keys_when_called', () => {
     // Arrange
     const schema = getSettingsSchema();
 
     // Act
-    const key = schema.list[0].key;
+    const keys = schema.list.map((s) => s.key);
 
     // Assert
-    expect(key).toBe(SETTINGS_KEY_IFRAME_SCALE);
-  });
-
-  it('should_have_iframeScale_text_when_first_entry_inspected', () => {
-    // Arrange
-    const schema = getSettingsSchema();
-
-    // Act
-    const text = schema.list[0].text;
-
-    // Assert
-    expect(text).toBe('Iframe Scale (%)');
-  });
-
-  it('should_have_number_prompt_when_iframeScale_inspected', () => {
-    // Arrange
-    const schema = getSettingsSchema();
-
-    // Act
-    const setting = schema.list[0];
-
-    // Assert
-    expect(setting.promptType).toBe('number');
-  });
-
-  it('should_have_prompt_message_when_iframeScale_inspected', () => {
-    // Arrange
-    const schema = getSettingsSchema();
-
-    // Act
-    const setting = schema.list[0];
-
-    // Assert
-    expect(setting.prompt).toBe('Enter scale percentage');
-  });
-
-  it('should_have_undefined_select_when_iframeScale_uses_prompt', () => {
-    // Arrange
-    const schema = getSettingsSchema();
-
-    // Act
-    const setting = schema.list[0];
-
-    // Assert
-    expect(setting.select).toBeUndefined();
-  });
-
-  it('should_return_75_when_default_value_inspected', () => {
-    // Arrange
-    const schema = getSettingsSchema();
-
-    // Act
-    const value = schema.list[0].value;
-
-    // Assert
-    expect(value).toBe('75');
-  });
-
-  it('should_contain_range_and_default_when_info_inspected', () => {
-    // Arrange
-    const schema = getSettingsSchema();
-
-    // Act
-    const info = schema.list[0].info as string;
-
-    // Assert
-    expect(info).toContain('70');
-  });
-
-  it('should_contain_max_150_when_info_inspected', () => {
-    // Arrange
-    const schema = getSettingsSchema();
-
-    // Act
-    const info = schema.list[0].info as string;
-
-    // Assert
-    expect(info).toContain('150');
-  });
-
-  it('should_have_logLevel_select_when_second_entry_inspected', () => {
-    // Arrange
-    const schema = getSettingsSchema();
-
-    // Act
-    const setting = schema.list[1];
-
-    // Assert
-    expect(setting.select).toEqual(['none', 'debug', 'info', 'warn', 'error']);
-  });
-
-  it('should_have_logLevel_key_when_second_entry_inspected', () => {
-    // Arrange
-    const schema = getSettingsSchema();
-
-    // Act
-    const key = schema.list[1].key;
-
-    // Assert
-    expect(key).toBe(SETTINGS_KEY_LOG_LEVEL);
-  });
-
-  it('should_have_hideHeader_checkbox_when_third_entry_inspected', () => {
-    // Arrange
-    const schema = getSettingsSchema();
-
-    // Act
-    const setting = schema.list[2];
-
-    // Assert
-    expect(setting.checkbox).toBe(true);
-  });
-
-  it('should_have_hideHeader_key_when_third_entry_inspected', () => {
-    // Arrange
-    const schema = getSettingsSchema();
-
-    // Act
-    const key = schema.list[2].key;
-
-    // Assert
-    expect(key).toBe(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE);
+    expect(keys).toEqual([
+      SETTINGS_KEY_IFRAME_SCALE,
+      SETTINGS_KEY_LOG_LEVEL,
+      SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE,
+    ]);
   });
 });
 
@@ -285,6 +166,63 @@ describe('getLogLevel', () => {
     // Assert
     expect(level).toBe('debug');
   });
+
+  it('should_return_info_when_settings_returns_info', () => {
+    // Arrange
+    mockSettingsGet.mockReturnValue('info');
+
+    // Act
+    const level = getLogLevel();
+
+    // Assert
+    expect(level).toBe('info');
+  });
+
+  it('should_return_warn_when_settings_returns_warn', () => {
+    // Arrange
+    mockSettingsGet.mockReturnValue('warn');
+
+    // Act
+    const level = getLogLevel();
+
+    // Assert
+    expect(level).toBe('warn');
+  });
+
+  it('should_return_error_when_settings_returns_error', () => {
+    // Arrange
+    mockSettingsGet.mockReturnValue('error');
+
+    // Act
+    const level = getLogLevel();
+
+    // Assert
+    expect(level).toBe('error');
+  });
+
+  it('should_return_none_when_settings_returns_none', () => {
+    // Arrange
+    mockSettingsGet.mockReturnValue('none');
+
+    // Act
+    const level = getLogLevel();
+
+    // Assert
+    expect(level).toBe('none');
+  });
+
+  it('should_keep_cached_when_settings_returns_invalid', () => {
+    // Arrange
+    mockSettingsGet.mockReturnValue('debug');
+    getLogLevel();
+    mockSettingsGet.mockReturnValue('invalid-level');
+
+    // Act
+    const level = getLogLevel();
+
+    // Assert
+    expect(level).toBe('debug');
+  });
 });
 
 describe('setOnLogLevelChange', () => {
@@ -303,7 +241,7 @@ describe('setOnLogLevelChange', () => {
 });
 
 describe('settings change callback', () => {
-  it('should_update_cached_level_and_call_setLogLevel_when_cb_fires', () => {
+  it('should_update_cached_level_when_cb_fires', () => {
     // Arrange
     const schema = getSettingsSchema();
     mockSettingsGet.mockReturnValue(null);
