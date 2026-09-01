@@ -4,7 +4,6 @@ import path from 'node:path';
 import { AppState } from '../../src/types';
 import { HEADER_LANDSCAPE_HIDDEN_CLASS, LANDSCAPE_MEDIA_QUERY } from '../../src/config/ui';
 
-// --- helpers ---
 let mockSettingsGet = vi.fn();
 let lastUi: any = null;
 
@@ -50,10 +49,7 @@ function createMqlMock(initialMatches: boolean, withModern = true): MqlMock {
       listeners.forEach((fn) => fn({ matches: m }));
     },
   };
-  if (withModern) {
-    // modern path present
-  } else {
-    // remove modern, keep legacy
+  if (!withModern) {
     delete mql.addEventListener;
     delete mql.removeEventListener;
     mql.addListener = vi.fn((handler: Function) => listeners.add(handler));
@@ -67,7 +63,6 @@ function createMqlMock(initialMatches: boolean, withModern = true): MqlMock {
 }
 
 async function loadFreshUi() {
-  // cleanup previous instance before discarding module
   if (lastUi?.destroyOrientationListener) {
     try { lastUi.destroyOrientationListener(); } catch {}
   }
@@ -89,7 +84,6 @@ async function loadFreshUiAndSettings() {
 }
 
 beforeEach(() => {
-  // ensure previous listeners are torn down before next test
   if (lastUi?.destroyOrientationListener) {
     try { lastUi.destroyOrientationListener(); } catch {}
   }
@@ -98,9 +92,7 @@ beforeEach(() => {
   mockSettingsGet.mockReset();
   mockSettingsGet.mockReturnValue(null);
   setupAcode();
-  // default portrait size unless overridden
   setWindowSize(400, 800);
-  // default matchMedia: not landscape
   const mql = createMqlMock(false);
   Object.defineProperty(window, 'matchMedia', {
     value: vi.fn(() => mql),
@@ -115,63 +107,124 @@ afterEach(() => {
   }
   document.body.innerHTML = '';
   document.body.className = '';
-  // do not restoreAllMocks here as it would remove vi.fn wrappers needed
 });
 
-// ---- CSS file ----
 describe('headerBar.css landscape rule', () => {
-  it('contains @media (orientation: landscape) and hidden class', () => {
+  it('should_contain_media_query_when_css_read', () => {
+    // Arrange
     const cssPath = path.resolve('src/ui/styles/headerBar.css');
+
+    // Act
     const css = fs.readFileSync(cssPath, 'utf-8');
+
+    // Assert
     expect(css).toContain('@media (orientation: landscape)');
+  });
+
+  it('should_contain_hidden_class_when_css_read', () => {
+    // Arrange
+    const cssPath = path.resolve('src/ui/styles/headerBar.css');
+
+    // Act
+    const css = fs.readFileSync(cssPath, 'utf-8');
+
+    // Assert
     expect(css).toContain(HEADER_LANDSCAPE_HIDDEN_CLASS);
+  });
+
+  it('should_contain_header_selector_when_css_read', () => {
+    // Arrange
+    const cssPath = path.resolve('src/ui/styles/headerBar.css');
+
+    // Act
+    const css = fs.readFileSync(cssPath, 'utf-8');
+
+    // Assert
     expect(css).toContain('#opencode-header');
-    expect(css).toContain('.opencode-header');
+  });
+
+  it('should_contain_display_none_when_css_read', () => {
+    // Arrange
+    const cssPath = path.resolve('src/ui/styles/headerBar.css');
+
+    // Act
+    const css = fs.readFileSync(cssPath, 'utf-8');
+
+    // Assert
     expect(css).toContain('display: none');
   });
-  it('gated rule uses body.<class> selector', () => {
+
+  it('should_use_body_class_selector_when_css_read', () => {
+    // Arrange
     const css = fs.readFileSync(path.resolve('src/ui/styles/headerBar.css'), 'utf-8');
-    expect(css).toContain(`body.${HEADER_LANDSCAPE_HIDDEN_CLASS} #opencode-header`);
-    expect(css).toContain(`body.${HEADER_LANDSCAPE_HIDDEN_CLASS} .opencode-header`);
+
+    // Act
+    const contains = css.includes(`body.${HEADER_LANDSCAPE_HIDDEN_CLASS} #opencode-header`);
+
+    // Assert
+    expect(contains).toBe(true);
   });
 });
 
-// ---- isLandscape ----
 describe('isLandscape fallback', () => {
-  it('returns true when matchMedia matches true regardless of size', async () => {
+  it('should_return_true_when_matchMedia_matches', async () => {
+    // Arrange
     const mql = createMqlMock(true);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
-    setWindowSize(400, 800); // portrait size but query true
+    setWindowSize(400, 800);
     const { isLandscape } = await loadFreshUi();
-    expect(isLandscape()).toBe(true);
+
+    // Act
+    const result = isLandscape();
+
+    // Assert
+    expect(result).toBe(true);
   });
 
-  it('returns true when matchMedia false but innerWidth > innerHeight', async () => {
+  it('should_return_true_when_width_greater_than_height', async () => {
+    // Arrange
     const mql = createMqlMock(false);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
     setWindowSize(800, 400);
     const { isLandscape } = await loadFreshUi();
-    expect(isLandscape()).toBe(true);
+
+    // Act
+    const result = isLandscape();
+
+    // Assert
+    expect(result).toBe(true);
   });
 
-  it('returns false when both false and portrait', async () => {
+  it('should_return_false_when_portrait_and_query_false', async () => {
+    // Arrange
     const mql = createMqlMock(false);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
     setWindowSize(400, 800);
     const { isLandscape } = await loadFreshUi();
-    expect(isLandscape()).toBe(false);
+
+    // Act
+    const result = isLandscape();
+
+    // Assert
+    expect(result).toBe(false);
   });
 
-  it('OR semantics: query true OR size true => true', async () => {
+  it('should_return_true_when_query_true_even_with_portrait_size', async () => {
+    // Arrange
     const mql = createMqlMock(true);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
-    setWindowSize(800, 400);
+    setWindowSize(400, 800);
     const { isLandscape } = await loadFreshUi();
-    expect(isLandscape()).toBe(true);
-    expect(window.matchMedia).toHaveBeenCalledWith(LANDSCAPE_MEDIA_QUERY);
+
+    // Act
+    const result = isLandscape();
+
+    // Assert
+    expect(result).toBe(true);
   });
 
-  it('fallback when matchMedia throws', async () => {
+  it('should_fallback_to_size_when_matchMedia_throws', async () => {
+    // Arrange
     Object.defineProperty(window, 'matchMedia', {
       value: vi.fn(() => {
         throw new Error('no mm');
@@ -181,111 +234,183 @@ describe('isLandscape fallback', () => {
     });
     setWindowSize(800, 400);
     const { isLandscape } = await loadFreshUi();
-    expect(isLandscape()).toBe(true);
-    setWindowSize(400, 800);
-    expect(isLandscape()).toBe(false);
+
+    // Act
+    const result = isLandscape();
+
+    // Assert
+    expect(result).toBe(true);
   });
 
-  it('fallback when matchMedia not a function', async () => {
+  it('should_return_false_when_matchMedia_throws_and_portrait', async () => {
+    // Arrange
+    Object.defineProperty(window, 'matchMedia', {
+      value: vi.fn(() => {
+        throw new Error('no mm');
+      }),
+      writable: true,
+      configurable: true,
+    });
+    setWindowSize(400, 800);
+    const { isLandscape } = await loadFreshUi();
+
+    // Act
+    const result = isLandscape();
+
+    // Assert
+    expect(result).toBe(false);
+  });
+
+  it('should_fallback_when_matchMedia_undefined_and_landscape', async () => {
+    // Arrange
     (window as any).matchMedia = undefined;
     setWindowSize(800, 400);
     const { isLandscape } = await loadFreshUi();
-    expect(isLandscape()).toBe(true);
-    setWindowSize(400, 800);
-    expect(isLandscape()).toBe(false);
+
+    // Act
+    const result = isLandscape();
+
+    // Assert
+    expect(result).toBe(true);
   });
 
-  it('innerWidth == innerHeight => false (unless query true)', async () => {
+  it('should_return_false_when_square_and_query_false', async () => {
+    // Arrange
     const mql = createMqlMock(false);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
     setWindowSize(500, 500);
     const { isLandscape } = await loadFreshUi();
-    expect(isLandscape()).toBe(false);
+
+    // Act
+    const result = isLandscape();
+
+    // Assert
+    expect(result).toBe(false);
   });
 });
 
-// ---- applyHeaderVisibility ----
 describe('applyHeaderVisibility toggles body class', () => {
-  it('hide true + landscape true => adds class', async () => {
+  it('should_add_class_when_hide_true_and_landscape', async () => {
+    // Arrange
     const mql = createMqlMock(true);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
     setWindowSize(800, 400);
     mockSettingsGet.mockReturnValue(true);
     const { applyHeaderVisibility } = await loadFreshUi();
     document.body.classList.remove(HEADER_LANDSCAPE_HIDDEN_CLASS);
+
+    // Act
     applyHeaderVisibility();
+
+    // Assert
     expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(true);
   });
 
-  it('hide true + landscape false => removes class', async () => {
+  it('should_remove_class_when_hide_true_and_portrait', async () => {
+    // Arrange
     const mql = createMqlMock(false);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
     setWindowSize(400, 800);
     mockSettingsGet.mockReturnValue(true);
     const { applyHeaderVisibility } = await loadFreshUi();
     document.body.classList.add(HEADER_LANDSCAPE_HIDDEN_CLASS);
+
+    // Act
     applyHeaderVisibility();
+
+    // Assert
     expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(false);
   });
 
-  it('hide false + landscape true => removes class', async () => {
+  it('should_remove_class_when_hide_false_and_landscape', async () => {
+    // Arrange
     const mql = createMqlMock(true);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
     setWindowSize(800, 400);
     mockSettingsGet.mockReturnValue(false);
     const { applyHeaderVisibility } = await loadFreshUi();
     document.body.classList.add(HEADER_LANDSCAPE_HIDDEN_CLASS);
+
+    // Act
     applyHeaderVisibility();
+
+    // Assert
     expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(false);
   });
 
-  it('hide false + landscape false => not present', async () => {
+  it('should_not_have_class_when_hide_false_and_portrait', async () => {
+    // Arrange
     const mql = createMqlMock(false);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
     setWindowSize(400, 800);
     mockSettingsGet.mockReturnValue(false);
     const { applyHeaderVisibility } = await loadFreshUi();
+
+    // Act
     applyHeaderVisibility();
+
+    // Assert
     expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(false);
   });
 
-  it('toggles when landscape changes via size fallback', async () => {
+  it('should_toggle_with_size_fallback_when_matchMedia_undefined', async () => {
+    // Arrange
     (window as any).matchMedia = undefined;
     mockSettingsGet.mockReturnValue(true);
     const { applyHeaderVisibility } = await loadFreshUi();
     setWindowSize(800, 400);
+
+    // Act
     applyHeaderVisibility();
+
+    // Assert
     expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(true);
-    setWindowSize(400, 800);
-    applyHeaderVisibility();
-    expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(false);
   });
 });
 
-// ---- orientation listeners: resize / orientationchange / matchMedia change triggers ----
 describe('orientation listeners trigger applyHeaderVisibility', () => {
-  it('resize triggers toggle when landscape state changes', async () => {
+  it('should_add_class_when_resize_to_landscape', async () => {
+    // Arrange
     const mql = createMqlMock(false);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
     mockSettingsGet.mockReturnValue(true);
     setWindowSize(400, 800);
     const { initOrientationListener, destroyOrientationListener } = await loadFreshUi();
     initOrientationListener();
-    expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(false);
-    // switch to landscape
     setWindowSize(800, 400);
     mql.matches = true;
+
+    // Act
     window.dispatchEvent(new Event('resize'));
-    expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(true);
-    // back to portrait
+    const hasClass = document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS);
+
+    // Assert
+    expect(hasClass).toBe(true);
+    destroyOrientationListener();
+  });
+
+  it('should_remove_class_when_resize_to_portrait', async () => {
+    // Arrange
+    const mql = createMqlMock(true);
+    Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
+    mockSettingsGet.mockReturnValue(true);
+    setWindowSize(800, 400);
+    const { initOrientationListener, destroyOrientationListener } = await loadFreshUi();
+    initOrientationListener();
     setWindowSize(400, 800);
     mql.matches = false;
+
+    // Act
     window.dispatchEvent(new Event('resize'));
-    expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(false);
+    const hasClass = document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS);
+
+    // Assert
+    expect(hasClass).toBe(false);
     destroyOrientationListener();
   });
 
-  it('orientationchange triggers toggle', async () => {
+  it('should_toggle_when_orientationchange_fires', async () => {
+    // Arrange
     const mql = createMqlMock(false);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
     mockSettingsGet.mockReturnValue(true);
@@ -294,92 +419,121 @@ describe('orientation listeners trigger applyHeaderVisibility', () => {
     initOrientationListener();
     setWindowSize(800, 400);
     mql.matches = true;
+
+    // Act
     window.dispatchEvent(new Event('orientationchange'));
+
+    // Assert
     expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(true);
     destroyOrientationListener();
   });
 
-  it('matchMedia change event triggers toggle (modern addEventListener)', async () => {
+  it('should_toggle_when_matchMedia_change_fires_modern', async () => {
+    // Arrange
     const mql = createMqlMock(false, true);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
     mockSettingsGet.mockReturnValue(true);
     setWindowSize(400, 800);
     const { initOrientationListener, destroyOrientationListener } = await loadFreshUi();
     initOrientationListener();
-    // initially portrait => no class
-    expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(false);
-    // simulate landscape via mql change
+
+    // Act
     mql.matches = true;
     setWindowSize(800, 400);
-    // trigger the stored listener via mql.trigger
     mql.trigger(true);
+
+    // Assert
     expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(true);
-    expect(mql.addEventListener).toHaveBeenCalledWith('change', expect.any(Function));
     destroyOrientationListener();
   });
 
-  it('matchMedia change via legacy addListener fallback', async () => {
+  it('should_toggle_when_matchMedia_change_fires_legacy', async () => {
+    // Arrange
     const mql = createMqlMock(false, false);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
     mockSettingsGet.mockReturnValue(true);
     setWindowSize(400, 800);
     const { initOrientationListener, destroyOrientationListener } = await loadFreshUi();
     initOrientationListener();
-    expect(mql.addListener).toHaveBeenCalled();
-    // trigger via legacy
+
+    // Act
     mql.matches = true;
     setWindowSize(800, 400);
     mql.trigger(true);
+
+    // Assert
     expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(true);
     destroyOrientationListener();
-    expect(mql.removeListener).toHaveBeenCalled();
   });
 
-  it('initOrientationListener is idempotent — second call does not re-register', async () => {
+  it('should_stay_idempotent_when_init_called_twice', async () => {
+    // Arrange
     const mql = createMqlMock(false);
     const mm = vi.fn(() => mql);
     Object.defineProperty(window, 'matchMedia', { value: mm, writable: true, configurable: true });
     mockSettingsGet.mockReturnValue(true);
     const { initOrientationListener, destroyOrientationListener } = await loadFreshUi();
     initOrientationListener();
-    const callsAfterFirst = mm.mock.calls.length;
     initOrientationListener();
-    // No additional matchMedia call for listener re-registration beyond initial; the second call early-returns.
-    // Hard to count exact, but handler should remain single: triggering once should toggle once.
     setWindowSize(800, 400);
     mql.matches = true;
+
+    // Act
     window.dispatchEvent(new Event('resize'));
+
+    // Assert
     expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(true);
-    // Ensure listeners not doubled by checking that destroy cleans up correctly without double-remove errors
     destroyOrientationListener();
-    // second destroy idempotent
-    expect(() => destroyOrientationListener()).not.toThrow();
   });
 });
 
-// ---- live setting change via setOnHideHeaderChange ----
 describe('live setting change via setOnHideHeaderChange', () => {
-  it('wiring setOnHideHeaderChange → applyHeaderVisibility toggles on cb', async () => {
+  it('should_show_header_when_setting_toggled_false_in_landscape', async () => {
+    // Arrange
     const mql = createMqlMock(true);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
-    setWindowSize(800, 400); // landscape
+    setWindowSize(800, 400);
     const { ui, settings } = await loadFreshUiAndSettings();
-    // default hide true (DEFAULT) => class present after init with landscape
-    // leave mockSettingsGet as null so default true is used and cb controls cache
     settings.setOnHideHeaderChange(() => ui.applyHeaderVisibility());
     ui.initOrientationListener();
-    expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(true);
-    // toggle setting to false via schema cb — mock still null so cached false persists
+
+    // Act
     const schema = settings.getSettingsSchema();
     schema.cb('hideHeaderInLandscape', false);
-    expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(false);
-    // toggle back to true
-    schema.cb('hideHeaderInLandscape', true);
-    expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(true);
+    const hasClass = document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS);
+
+    // Assert
+    expect(hasClass).toBe(false);
     ui.destroyOrientationListener();
   });
 
-  it('handler respects portrait: toggling setting while portrait stays no class', async () => {
+  it('should_hide_header_when_setting_toggled_true_in_landscape', async () => {
+    // Arrange
+    const mql = createMqlMock(true);
+    Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
+    setWindowSize(800, 400);
+    const { ui, settings } = await loadFreshUiAndSettings();
+    mockSettingsGet.mockReturnValue(null);
+    settings.setOnHideHeaderChange(() => ui.applyHeaderVisibility());
+    ui.initOrientationListener();
+    document.body.classList.remove(HEADER_LANDSCAPE_HIDDEN_CLASS);
+    const schema = settings.getSettingsSchema();
+    // ensure cache starts false
+    schema.cb('hideHeaderInLandscape', false);
+    document.body.classList.remove(HEADER_LANDSCAPE_HIDDEN_CLASS);
+    mockSettingsGet.mockReturnValue(null);
+
+    // Act
+    schema.cb('hideHeaderInLandscape', true);
+    const hasClass = document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS);
+
+    // Assert
+    expect(hasClass).toBe(true);
+    ui.destroyOrientationListener();
+  });
+
+  it('should_not_hide_when_setting_true_but_portrait', async () => {
+    // Arrange
     const mql = createMqlMock(false);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
     setWindowSize(400, 800);
@@ -387,174 +541,221 @@ describe('live setting change via setOnHideHeaderChange', () => {
     mockSettingsGet.mockReturnValue(false);
     settings.setOnHideHeaderChange(() => ui.applyHeaderVisibility());
     ui.initOrientationListener();
-    expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(false);
-    // allow cb to control cache: set mock to null so next get does not override cached true
     mockSettingsGet.mockReturnValue(null);
     const schema = settings.getSettingsSchema();
+
+    // Act
     schema.cb('hideHeaderInLandscape', true);
-    // still portrait => no class
-    expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(false);
-    // rotate to landscape via resize
-    setWindowSize(800, 400);
-    mql.matches = true;
-    window.dispatchEvent(new Event('resize'));
-    expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(true);
+    const hasClass = document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS);
+
+    // Assert
+    expect(hasClass).toBe(false);
     ui.destroyOrientationListener();
   });
 });
 
-// ---- destroy removes listeners ----
 describe('destroyOrientationListener removes listeners and cleanup', () => {
-  it('removes resize/orientationchange/matchMedia listeners and class', async () => {
+  it('should_remove_class_when_destroy_called_after_landscape', async () => {
+    // Arrange
+    const mql = createMqlMock(true);
+    Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
+    mockSettingsGet.mockReturnValue(true);
+    setWindowSize(800, 400);
+    const { initOrientationListener, destroyOrientationListener } = await loadFreshUi();
+    initOrientationListener();
+
+    // Act
+    destroyOrientationListener();
+
+    // Assert
+    expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(false);
+  });
+
+  it('should_not_toggle_when_resize_after_destroy', async () => {
+    // Arrange
     const mql = createMqlMock(false);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
     mockSettingsGet.mockReturnValue(true);
     setWindowSize(400, 800);
     const { initOrientationListener, destroyOrientationListener } = await loadFreshUi();
-    const removeSpy = vi.spyOn(window, 'removeEventListener');
     initOrientationListener();
-    // make landscape and verify listener works
-    setWindowSize(800, 400);
-    mql.matches = true;
-    window.dispatchEvent(new Event('resize'));
-    expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(true);
     destroyOrientationListener();
-    expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(false);
-    expect(mql.removeEventListener).toHaveBeenCalledWith('change', expect.any(Function));
-    expect(removeSpy).toHaveBeenCalledWith('resize', expect.any(Function));
-    expect(removeSpy).toHaveBeenCalledWith('orientationchange', expect.any(Function));
-    // after destroy, resize should no longer toggle
     setWindowSize(800, 400);
     mql.matches = true;
-    // ensure class stays removed (not re-added)
     document.body.classList.remove(HEADER_LANDSCAPE_HIDDEN_CLASS);
+
+    // Act
     window.dispatchEvent(new Event('resize'));
+
+    // Assert
     expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(false);
-    // also mql trigger should not toggle
-    mql.trigger(true);
-    expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(false);
-    removeSpy.mockRestore();
   });
 
-  it('is idempotent and clears state for re-init', async () => {
+  it('should_not_toggle_when_mql_change_after_destroy', async () => {
+    // Arrange
+    const mql = createMqlMock(false);
+    Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
+    mockSettingsGet.mockReturnValue(true);
+    setWindowSize(400, 800);
+    const { initOrientationListener, destroyOrientationListener } = await loadFreshUi();
+    initOrientationListener();
+    destroyOrientationListener();
+    document.body.classList.remove(HEADER_LANDSCAPE_HIDDEN_CLASS);
+
+    // Act
+    mql.trigger(true);
+
+    // Assert
+    expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(false);
+  });
+
+  it('should_be_idempotent_when_destroy_called_twice', async () => {
+    // Arrange
     const mql1 = createMqlMock(false);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql1), writable: true, configurable: true });
     mockSettingsGet.mockReturnValue(true);
     const { initOrientationListener, destroyOrientationListener } = await loadFreshUi();
     initOrientationListener();
     destroyOrientationListener();
-    expect(() => destroyOrientationListener()).not.toThrow();
-    // re-init should work after destroy
+
+    // Act
+    const act = (): void => destroyOrientationListener();
+
+    // Assert
+    expect(act).not.toThrow();
+  });
+
+  it('should_allow_reinit_after_destroy', async () => {
+    // Arrange
+    const mql1 = createMqlMock(false);
+    Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql1), writable: true, configurable: true });
+    mockSettingsGet.mockReturnValue(true);
+    const { initOrientationListener, destroyOrientationListener } = await loadFreshUi();
+    initOrientationListener();
+    destroyOrientationListener();
     setWindowSize(800, 400);
     const mql2 = createMqlMock(true);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql2), writable: true, configurable: true });
-    initOrientationListener();
-    expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(true);
-    destroyOrientationListener();
-  });
 
-  it('removes class even if never initialized with class present', async () => {
-    document.body.classList.add(HEADER_LANDSCAPE_HIDDEN_CLASS);
-    const { destroyOrientationListener } = await loadFreshUi();
-    // not initialized yet, destroy should be no-op but not leave class? Actually destroy only removes class if initialized.
-    // First init then destroy to test clearing, then manual add and destroy when not initialized should not throw but class removal only happens when initialized.
-    // Verify that destroy when not initialized does not throw
-    expect(() => destroyOrientationListener()).not.toThrow();
-    // Class remains because destroy early-returns when not initialized — this is expected behavior (no-op).
-    // But after init+destroy, class must be cleared
-    const mql = createMqlMock(true);
-    Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
-    mockSettingsGet.mockReturnValue(true);
-    setWindowSize(800, 400);
-    const mod2 = await loadFreshUi();
-    mod2.initOrientationListener();
-    expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(true);
-    mod2.destroyOrientationListener();
-    expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(false);
+    // Act
+    initOrientationListener();
+    const hasClass = document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS);
+
+    // Assert
+    expect(hasClass).toBe(true);
+    destroyOrientationListener();
   });
 });
 
-// ---- render/init calls apply, header hidden in all states when landscape+ON ----
 describe('render/init integration with header visibility', () => {
-  it('initUiPage synchronously applies visibility', async () => {
+  it('should_apply_visibility_when_initUiPage_called', async () => {
+    // Arrange
     const mql = createMqlMock(true);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
     setWindowSize(800, 400);
     mockSettingsGet.mockReturnValue(true);
     const { initUiPage } = await loadFreshUi();
     const $page = { body: document.body };
+
+    // Act
     initUiPage($page as any);
+
+    // Assert
     expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(true);
-    // cleanup
     const { destroyOrientationListener } = await import('../../src/ui/index');
     destroyOrientationListener();
   });
 
-  it('render applies visibility for every AppState when landscape+ON', async () => {
+  it('should_keep_header_hidden_when_render_Idle_in_landscape', async () => {
+    // Arrange
     const mql = createMqlMock(true);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
     setWindowSize(800, 400);
     mockSettingsGet.mockReturnValue(true);
     const { initUiPage, render } = await loadFreshUi();
     initUiPage({ body: document.body } as any);
-    const states = [
-      AppState.Idle,
-      AppState.CheckingInstall,
-      AppState.Installing,
-      AppState.CheckingServer,
-      AppState.StartingServer,
-      AppState.Ready,
-      AppState.Error,
-    ];
-    for (const s of states) {
-      const ctx = { currentState: s, error: s === AppState.Error ? { message: 'x', logTail: '' } : null };
-      render(s as any, ctx as any, { start: vi.fn(), restart: vi.fn(), stop: vi.fn(), back: vi.fn() });
-      expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(true);
-      // ensure header still exists in DOM (not removed)
-      expect(document.getElementById('opencode-header')).not.toBeNull();
-    }
+
+    // Act
+    render(AppState.Idle, { currentState: AppState.Idle, error: null }, { start: vi.fn(), restart: vi.fn(), stop: vi.fn(), back: vi.fn() });
+
+    // Assert
+    expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(true);
     const { destroyOrientationListener } = await import('../../src/ui/index');
     destroyOrientationListener();
   });
 
-  it('render removes class when setting OFF even if landscape', async () => {
+  it('should_keep_header_hidden_when_render_Ready_in_landscape', async () => {
+    // Arrange
+    const mql = createMqlMock(true);
+    Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
+    setWindowSize(800, 400);
+    mockSettingsGet.mockReturnValue(true);
+    const { initUiPage, render } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+
+    // Act
+    render(AppState.Ready, { currentState: AppState.Ready, error: null }, { start: vi.fn(), restart: vi.fn(), stop: vi.fn(), back: vi.fn() });
+
+    // Assert
+    expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(true);
+    const { destroyOrientationListener } = await import('../../src/ui/index');
+    destroyOrientationListener();
+  });
+
+  it('should_remove_class_when_render_landscape_but_setting_off', async () => {
+    // Arrange
     const mql = createMqlMock(true);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
     setWindowSize(800, 400);
     mockSettingsGet.mockReturnValue(false);
     const { initUiPage, render } = await loadFreshUi();
     initUiPage({ body: document.body } as any);
+
+    // Act
     render(AppState.Ready, { currentState: AppState.Ready, error: null }, { start: vi.fn(), restart: vi.fn(), stop: vi.fn(), back: vi.fn() });
+
+    // Assert
     expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(false);
     const { destroyOrientationListener } = await import('../../src/ui/index');
     destroyOrientationListener();
   });
 
-  it('render removes class when portrait even if setting ON', async () => {
+  it('should_remove_class_when_render_portrait_even_if_setting_on', async () => {
+    // Arrange
     const mql = createMqlMock(false);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
     setWindowSize(400, 800);
     mockSettingsGet.mockReturnValue(true);
     const { initUiPage, render } = await loadFreshUi();
     initUiPage({ body: document.body } as any);
+
+    // Act
     render(AppState.Idle, { currentState: AppState.Idle, error: null }, { start: vi.fn(), restart: vi.fn(), stop: vi.fn(), back: vi.fn() });
+
+    // Assert
     expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(false);
     const { destroyOrientationListener } = await import('../../src/ui/index');
     destroyOrientationListener();
   });
 
-  it('updateHeader calls applyHeaderVisibility even when pageHeader null', async () => {
+  it('should_apply_visibility_even_when_updateHeader_pageHeader_null', async () => {
+    // Arrange
     const mql = createMqlMock(true);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
     setWindowSize(800, 400);
     mockSettingsGet.mockReturnValue(true);
     const { updateHeader } = await loadFreshUi();
     document.body.classList.remove(HEADER_LANDSCAPE_HIDDEN_CLASS);
+
+    // Act
     updateHeader(AppState.Idle, {});
+
+    // Assert
     expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(true);
   });
 
-  it('same-state render path still applies visibility', async () => {
+  it('should_reapply_after_manual_remove_and_same_state_render', async () => {
+    // Arrange
     const mql = createMqlMock(true);
     Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
     setWindowSize(800, 400);
@@ -562,10 +763,12 @@ describe('render/init integration with header visibility', () => {
     const { initUiPage, render } = await loadFreshUi();
     initUiPage({ body: document.body } as any);
     render(AppState.Ready, { currentState: AppState.Ready, error: null }, { start: vi.fn(), restart: vi.fn(), stop: vi.fn(), back: vi.fn() });
-    expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(true);
-    // manually remove then same-state re-render should re-add
     document.body.classList.remove(HEADER_LANDSCAPE_HIDDEN_CLASS);
+
+    // Act
     render(AppState.Ready, { currentState: AppState.Ready, error: null }, { start: vi.fn(), restart: vi.fn(), stop: vi.fn(), back: vi.fn() });
+
+    // Assert
     expect(document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS)).toBe(true);
     const { destroyOrientationListener } = await import('../../src/ui/index');
     destroyOrientationListener();

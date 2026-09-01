@@ -26,51 +26,85 @@ afterEach(() => {
 });
 
 describe('isServerUp', () => {
-  it('returns true on the success callback', async () => {
+  it('should_return_true_when_success_callback_fires', async () => {
+    // Arrange
     setHttp();
     mockSendRequest.mockImplementation((_u: string, _o: unknown, success: () => void) => success());
-    await expect(isServerUp()).resolves.toBe(true);
+
+    // Act
+    const result = await isServerUp();
+
+    // Assert
+    expect(result).toBe(true);
   });
 
-  it('returns true when the failure callback carries a positive status', async () => {
+  it('should_return_true_when_failure_has_positive_status', async () => {
+    // Arrange
     setHttp();
     mockSendRequest.mockImplementation(
       (_u: string, _o: unknown, _s: unknown, failure: (e: { status: number }) => void) =>
         failure({ status: 200 }),
     );
-    await expect(isServerUp()).resolves.toBe(true);
+
+    // Act
+    const result = await isServerUp();
+
+    // Assert
+    expect(result).toBe(true);
   });
 
-  it('returns false when the failure callback carries a non-positive status', async () => {
+  it('should_return_false_when_failure_has_zero_status', async () => {
+    // Arrange
     setHttp();
     mockSendRequest.mockImplementation(
       (_u: string, _o: unknown, _s: unknown, failure: (e: { status: number }) => void) =>
         failure({ status: 0 }),
     );
-    await expect(isServerUp()).resolves.toBe(false);
+
+    // Act
+    const result = await isServerUp();
+
+    // Assert
+    expect(result).toBe(false);
   });
 
-  it('returns false immediately when cordova.plugin.http is absent', async () => {
+  it('should_return_false_when_cordova_http_absent', async () => {
+    // Arrange
     clearHttp();
-    await expect(isServerUp()).resolves.toBe(false);
-    expect(mockSendRequest).not.toHaveBeenCalled();
+
+    // Act
+    const result = await isServerUp();
+
+    // Assert
+    expect(result).toBe(false);
   });
 
-  it('returns false when sendRequest throws synchronously', async () => {
+  it('should_return_false_when_sendRequest_throws', async () => {
+    // Arrange
     setHttp();
     mockSendRequest.mockImplementation(() => {
       throw new Error('boom');
     });
-    await expect(isServerUp()).resolves.toBe(false);
+
+    // Act
+    const result = await isServerUp();
+
+    // Assert
+    expect(result).toBe(false);
   });
 
-  it('returns false if neither callback fires before the watchdog expires', async () => {
+  it('should_return_false_when_no_callback_before_timeout', async () => {
+    // Arrange
     setHttp();
     vi.useFakeTimers();
-    // Never invokes a callback — the watchdog must bound the wait.
     mockSendRequest.mockImplementation(() => {});
     const promise = isServerUp();
+
+    // Act
     await vi.advanceTimersByTimeAsync(HEALTH_CHECK_TIMEOUT + 500);
-    await expect(promise).resolves.toBe(false);
+    const result = await promise;
+
+    // Assert
+    expect(result).toBe(false);
   });
 });

@@ -1,153 +1,183 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { HEADER_LANDSCAPE_HIDDEN_CLASS, LANDSCAPE_MEDIA_QUERY } from '../src/config/ui';
 
-const mockApplyHeaderVisibility = vi.fn();
-const mockDestroyOrientationListener = vi.fn();
-const mockInitUiPage = vi.fn();
-const mockInitUiStyles = vi.fn();
+function setWindowSize(w: number, h: number) {
+  Object.defineProperty(window, 'innerWidth', { value: w, writable: true, configurable: true });
+  Object.defineProperty(window, 'innerHeight', { value: h, writable: true, configurable: true });
+}
 
-// capture handler wired via setOnHideHeaderChange
-let capturedHideHandler: ((v: boolean) => void) | null = null;
+type MqlMock = {
+  matches: boolean;
+  media: string;
+  addEventListener: ReturnType<typeof vi.fn>;
+  removeEventListener: ReturnType<typeof vi.fn>;
+  _listeners: Set<Function>;
+  trigger: (m: boolean) => void;
+};
 
-vi.mock('../src/ui/index', () => ({
-  applyHeaderVisibility: (...args: any[]) => mockApplyHeaderVisibility(...args),
-  destroyOrientationListener: (...args: any[]) => mockDestroyOrientationListener(...args),
-  initUiPage: (...args: any[]) => mockInitUiPage(...args),
-  initUiStyles: (...args: any[]) => mockInitUiStyles(...args),
-  render: vi.fn(),
-  updateHeader: vi.fn(),
-  updateIframeScale: vi.fn(),
-  setSpinnerProgress: vi.fn(),
-}));
-
-vi.mock('../src/settings', () => ({
-  getSettingsSchema: vi.fn(() => ({ list: [] as any[], cb: vi.fn() })),
-  setOnScaleChange: vi.fn(),
-  setOnHideHeaderChange: vi.fn((h: any) => { capturedHideHandler = h; }),
-  getEnableConsoleLogs: vi.fn(() => false),
-  getLogLevel: vi.fn(() => 'info'),
-  getHideHeaderInLandscape: vi.fn(() => true),
-  getIframeScale: vi.fn(() => 1.0),
-}));
-
-vi.mock('../src/state', () => ({
-  onStateChange: vi.fn(),
-  transition: vi.fn(),
-  getState: vi.fn(() => ({ currentState: 'idle', error: null })),
-  setError: vi.fn(),
-  reset: vi.fn(),
-}));
-
-vi.mock('../src/opencode/install', () => ({
-  checkInstalled: vi.fn(),
-  installOpenCode: vi.fn(),
-  uninstallOpenCode: vi.fn(),
-}));
-
-vi.mock('../src/opencode/server', () => ({
-  startServer: vi.fn(),
-  waitForReady: vi.fn(),
-  restartServer: vi.fn(),
-  stopServer: vi.fn(),
-}));
-
-vi.mock('../src/opencode/health', () => ({
-  isServerUp: vi.fn(),
-}));
-
-vi.mock('../src/opencode/update', () => ({
-  checkForUpdates: vi.fn(() => Promise.resolve(null)),
-  installUpdate: vi.fn(),
-}));
-
-vi.mock('../plugin.json', () => ({
-  default: { id: 'acode.plugin', name: 'Plugin', main: 'main.js', version: '1.0.0' },
-}));
-
-import { AcodePlugin } from '../src/main';
-import * as settingsModule from '../src/settings';
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  capturedHideHandler = null;
-  (settingsModule.setOnHideHeaderChange as any).mockImplementation((h: any) => { capturedHideHandler = h; });
-  (globalThis as any).acode = {
-    addIcon: vi.fn(),
-    require: vi.fn().mockReturnValue(vi.fn().mockReturnValue({ show: vi.fn(), hide: vi.fn() })),
+function createMqlMock(initialMatches: boolean): MqlMock {
+  const listeners = new Set<Function>();
+  const mql: any = {
+    matches: initialMatches,
+    media: LANDSCAPE_MEDIA_QUERY,
+    _listeners: listeners,
+    addEventListener: vi.fn((event: string, handler: Function) => {
+      if (event === 'change') listeners.add(handler);
+    }),
+    removeEventListener: vi.fn((event: string, handler: Function) => {
+      if (event === 'change') listeners.delete(handler);
+    }),
+    addListener: vi.fn((handler: Function) => listeners.add(handler)),
+    removeListener: vi.fn((handler: Function) => listeners.delete(handler)),
+    trigger: (m: boolean) => {
+      mql.matches = m;
+      listeners.forEach((fn) => fn({ matches: m }));
+    },
   };
-});
-
-function makeMockPage() {
-  return {
-    on: vi.fn(),
-    off: vi.fn(),
-    hide: vi.fn(),
-    show: vi.fn(),
-    settitle: vi.fn(),
-    appendChild: vi.fn(),
-    body: { innerHTML: '' },
-    header: { innerHTML: '', style: {} as any },
-    style: {} as any,
-  };
+  return mql as MqlMock;
 }
 
 describe('AcodePlugin landscape wiring', () => {
-  it('init wires setOnHideHeaderChange → applyHeaderVisibility', async () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    document.body.className = '';
+    setWindowSize(400, 800);
+    const mql = createMqlMock(false);
+    Object.defineProperty(window, 'matchMedia', {
+      value: vi.fn(() => mql),
+      writable: true,
+      configurable: true,
+    });
+    (globalThis as any).acode = {
+      addIcon: vi.fn(),
+      setPluginInit: vi.fn(),
+      setPluginUnmount: vi.fn(),
+      require: vi.fn().mockReturnValue(vi.fn().mockReturnValue({ show: vi.fn(), hide: vi.fn() })),
+    };
+    (window as any).acode = (globalThis as any).acode;
+  });
+
+  it('should_hide_header_when_landscape_and_setting_on_after_init', async () => {
+    // Arrange
+    const acodeMock = {
+      addIcon: vi.fn(),
+      setPluginInit: vi.fn(),
+      setPluginUnmount: vi.fn(),
+      require: vi.fn(),
+    };
+    (globalThis as any).acode = acodeMock;
+    (window as any).acode = acodeMock;
+    vi.resetModules();
+    const mockSettingsGet = vi.fn().mockReturnValue(true);
+    acodeMock.require = vi.fn((name: string) => {
+      if (name === 'settings') return { get: mockSettingsGet, value: {}, update: vi.fn(() => Promise.resolve()) };
+      return vi.fn().mockReturnValue({ show: vi.fn(), hide: vi.fn() });
+    });
+    (globalThis as any).acode = acodeMock;
+    (window as any).acode = acodeMock;
+    const { AcodePlugin } = await import('../src/main');
+    const mql = createMqlMock(true);
+    Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
+    setWindowSize(800, 400);
     const plugin = new AcodePlugin();
-    const page = makeMockPage();
-    await plugin.init('https://base/', page as any, {} as any, '', null as any);
-    expect(settingsModule.setOnHideHeaderChange).toHaveBeenCalledTimes(1);
-    expect(capturedHideHandler).not.toBeNull();
-    // invoking handler should call applyHeaderVisibility
-    capturedHideHandler!(true);
-    expect(mockApplyHeaderVisibility).toHaveBeenCalledTimes(1);
-    capturedHideHandler!(false);
-    expect(mockApplyHeaderVisibility).toHaveBeenCalledTimes(2);
+    const page: any = {
+      on: vi.fn(),
+      off: vi.fn(),
+      hide: vi.fn(),
+      show: vi.fn(),
+      settitle: vi.fn(),
+      appendChild: vi.fn(),
+      body: document.body,
+      header: { innerHTML: '', style: {} as any },
+      style: {} as any,
+    };
+
+    // Act
+    await plugin.init('https://base/', page, {} as any, '', null as any);
+    const hasClass = document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS);
+
+    // Assert
+    expect(hasClass).toBe(true);
     await plugin.destroy();
   });
 
-  it('destroy calls destroyOrientationListener and clears handler', async () => {
+  it('should_remove_class_when_destroy_called_after_landscape', async () => {
+    // Arrange
+    const acodeMock = {
+      addIcon: vi.fn(),
+      setPluginInit: vi.fn(),
+      setPluginUnmount: vi.fn(),
+      require: vi.fn(),
+    };
+    (globalThis as any).acode = acodeMock;
+    (window as any).acode = acodeMock;
+    vi.resetModules();
+    const mockSettingsGet = vi.fn().mockReturnValue(true);
+    acodeMock.require = vi.fn((name: string) => {
+      if (name === 'settings') return { get: mockSettingsGet, value: {}, update: vi.fn(() => Promise.resolve()) };
+      return vi.fn().mockReturnValue({ show: vi.fn(), hide: vi.fn() });
+    });
+    (globalThis as any).acode = acodeMock;
+    (window as any).acode = acodeMock;
+    const { AcodePlugin } = await import('../src/main');
+    const mql = createMqlMock(true);
+    Object.defineProperty(window, 'matchMedia', { value: vi.fn(() => mql), writable: true, configurable: true });
+    setWindowSize(800, 400);
     const plugin = new AcodePlugin();
-    const page = makeMockPage();
-    await plugin.init('https://base/', page as any, {} as any, '', null as any);
-    const handlerBefore = capturedHideHandler;
-    expect(handlerBefore).not.toBeNull();
+    const page: any = {
+      on: vi.fn(),
+      off: vi.fn(),
+      hide: vi.fn(),
+      show: vi.fn(),
+      settitle: vi.fn(),
+      appendChild: vi.fn(),
+      body: document.body,
+      header: { innerHTML: '', style: {} as any },
+      style: {} as any,
+    };
+    await plugin.init('https://base/', page, {} as any, '', null as any);
+
+    // Act
     await plugin.destroy();
-    expect(mockDestroyOrientationListener).toHaveBeenCalledTimes(1);
-    // setOnHideHeaderChange should have been called again with noop
-    expect(settingsModule.setOnHideHeaderChange).toHaveBeenCalledTimes(2);
-    const secondCall = (settingsModule.setOnHideHeaderChange as any).mock.calls[1][0] as Function;
-    // noop should not call applyHeaderVisibility
-    secondCall(true);
-    expect(mockApplyHeaderVisibility).toHaveBeenCalledTimes(0); // only init's handler had 0 calls before destroy in this test (we did not invoke)
-    // captured handler after destroy is noop, not original
-    // verify original handler still works but is no longer wired (settings module would have replaced)
-    // To confirm wiring is cleared, we check that capturedHideHandler after destroy is noop (second call)
-    // The settings module's internal handler is now noop, so future setting changes won't trigger UI
+    const hasClass = document.body.classList.contains(HEADER_LANDSCAPE_HIDDEN_CLASS);
+
+    // Assert
+    expect(hasClass).toBe(false);
   });
 
-  it('destroy is idempotent — second destroy does not throw and calls destroyOrientationListener again', async () => {
+  it('should_not_throw_when_destroy_called_twice', async () => {
+    // Arrange
+    const acodeMock = {
+      addIcon: vi.fn(),
+      setPluginInit: vi.fn(),
+      setPluginUnmount: vi.fn(),
+      require: vi.fn().mockReturnValue(vi.fn().mockReturnValue({ show: vi.fn(), hide: vi.fn() })),
+    };
+    (globalThis as any).acode = acodeMock;
+    (window as any).acode = acodeMock;
+    vi.resetModules();
+    const { AcodePlugin } = await import('../src/main');
     const plugin = new AcodePlugin();
-    const page = makeMockPage();
-    await plugin.init('https://base/', page as any, {} as any, '', null as any);
+    const page: any = {
+      on: vi.fn(),
+      off: vi.fn(),
+      hide: vi.fn(),
+      show: vi.fn(),
+      settitle: vi.fn(),
+      appendChild: vi.fn(),
+      body: document.body,
+      header: { innerHTML: '', style: {} as any },
+      style: {} as any,
+    };
+    await plugin.init('https://base/', page, {} as any, '', null as any);
     await plugin.destroy();
-    expect(() => plugin.destroy()).not.toThrow;
-    await plugin.destroy();
-    expect(mockDestroyOrientationListener).toHaveBeenCalledTimes(2);
-  });
 
-  it('live toggle via handler respects destroy cleanup', async () => {
-    const plugin = new AcodePlugin();
-    const page = makeMockPage();
-    await plugin.init('https://base/', page as any, {} as any, '', null as any);
-    // handler before destroy should trigger apply
-    capturedHideHandler!(true);
-    expect(mockApplyHeaderVisibility).toHaveBeenCalledTimes(1);
-    await plugin.destroy();
-    // after destroy, the handler stored in settings is noop — calling captured old handler still would trigger, but the *new* handler is noop.
-    // Simulate settings cb invoking current handler: get the noop
-    const noop = (settingsModule.setOnHideHeaderChange as any).mock.calls[1][0] as Function;
-    mockApplyHeaderVisibility.mockClear();
-    noop(true);
-    expect(mockApplyHeaderVisibility).not.toHaveBeenCalled();
+    // Act
+    const act = async (): Promise<void> => {
+      await plugin.destroy();
+    };
+
+    // Assert
+    await expect(act()).resolves.toBeUndefined();
   });
 });

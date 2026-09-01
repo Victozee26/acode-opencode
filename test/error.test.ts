@@ -3,31 +3,91 @@ import { extractErrorInfo } from '../src/error';
 import { ERROR_FALLBACK_MESSAGE } from '../src/config/health';
 
 describe('extractErrorInfo', () => {
-  it('uses the first line as summary and the rest as logTail', () => {
-    const result = extractErrorInfo(new Error('headline\nline two\nline three'));
+  it('should_extract_summary_and_logTail_when_error_has_multiline_message', () => {
+    // Arrange
+    const error = new Error('headline\nline two\nline three');
 
+    // Act
+    const result = extractErrorInfo(error);
+
+    // Assert
     expect(result.summary).toBe('headline');
+  });
+
+  it('should_extract_logTail_when_error_has_multiline_message', () => {
+    // Arrange
+    const error = new Error('headline\nline two\nline three');
+
+    // Act
+    const result = extractErrorInfo(error);
+
+    // Assert
     expect(result.logTail).toBe('line two\nline three');
   });
 
-  it('returns an empty logTail for a single-line error', () => {
-    const result = extractErrorInfo(new Error('just one line'));
+  it('should_return_empty_logTail_when_error_is_single_line', () => {
+    // Arrange
+    const error = new Error('just one line');
 
+    // Act
+    const result = extractErrorInfo(error);
+
+    // Assert
+    expect(result.logTail).toBe('');
+  });
+
+  it('should_return_summary_when_error_is_single_line', () => {
+    // Arrange
+    const error = new Error('just one line');
+
+    // Act
+    const result = extractErrorInfo(error);
+
+    // Assert
     expect(result.summary).toBe('just one line');
-    expect(result.logTail).toBe('');
   });
 
-  it('coerces non-Error values to a string summary', () => {
-    const result = extractErrorInfo('plain string failure');
+  it('should_coerce_to_string_when_error_is_plain_string', () => {
+    // Arrange
+    const error = 'plain string failure';
 
+    // Act
+    const result = extractErrorInfo(error);
+
+    // Assert
     expect(result.summary).toBe('plain string failure');
+  });
+
+  it('should_return_fallback_when_error_is_empty_string', () => {
+    // Arrange
+    const error = '';
+
+    // Act
+    const result = extractErrorInfo(error);
+
+    // Assert
+    expect(result.summary).toBe(ERROR_FALLBACK_MESSAGE);
+  });
+
+  it('should_return_empty_logTail_when_error_is_non_Error_string', () => {
+    // Arrange
+    const error = 'plain string failure';
+
+    // Act
+    const result = extractErrorInfo(error);
+
+    // Assert
     expect(result.logTail).toBe('');
   });
 
-  it('falls back to ERROR_FALLBACK_MESSAGE when the error is empty/falsy', () => {
-    const result = extractErrorInfo('');
+  it('should_return_fallback_with_empty_logTail_when_error_is_empty', () => {
+    // Arrange
+    const error = '';
 
-    expect(result.summary).toBe(ERROR_FALLBACK_MESSAGE);
+    // Act
+    const result = extractErrorInfo(error);
+
+    // Assert
     expect(result.logTail).toBe('');
   });
 });

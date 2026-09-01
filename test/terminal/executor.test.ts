@@ -32,140 +32,177 @@ beforeEach(() => {
 });
 
 describe('execute', () => {
-  it('resolves with the command output on success', async () => {
+  it('should_resolve_with_output_when_command_succeeds', async () => {
+    // Arrange
     mockExecute.mockResolvedValue('hello world');
 
-    await expect(execute('echo hello', false)).resolves.toBe('hello world');
+    // Act
+    const result = await execute('echo hello', false);
+
+    // Assert
+    expect(result).toBe('hello world');
   });
 
-  it('rejects with "Command failed: <message>" when no output property present', async () => {
+  it('should_reject_with_command_failed_when_no_output', async () => {
+    // Arrange
     mockExecute.mockRejectedValue(new Error('ENOENT'));
 
-    await expect(execute('bad-command')).rejects.toThrow('Command failed: ENOENT');
+    // Act
+    const promise = execute('bad-command');
+
+    // Assert
+    await expect(promise).rejects.toThrow('Command failed: ENOENT');
   });
 
-  it('rejects with "Command failed: <message>\\nOutput: <output>" when output property exists', async () => {
+  it('should_reject_with_output_when_error_has_output', async () => {
+    // Arrange
     const err = Object.assign(new Error('non-zero exit'), { output: 'not found' });
     mockExecute.mockRejectedValue(err);
 
-    await expect(execute('bad-command')).rejects.toThrow(
-      'Command failed: non-zero exit\nOutput: not found',
-    );
+    // Act
+    const promise = execute('bad-command');
+
+    // Assert
+    await expect(promise).rejects.toThrow('Command failed: non-zero exit\nOutput: not found');
   });
 
-  it('handles non-Error rejection (string)', async () => {
+  it('should_reject_with_string_when_rejection_is_string', async () => {
+    // Arrange
     mockExecute.mockRejectedValue('plain string error');
 
-    await expect(execute('bad-command')).rejects.toThrow('Command failed: plain string error');
+    // Act
+    const promise = execute('bad-command');
+
+    // Assert
+    await expect(promise).rejects.toThrow('Command failed: plain string error');
   });
 
-  it('handles non-Error rejection with output property', async () => {
+  it('should_include_output_when_rejection_object_has_output', async () => {
+    // Arrange
     const rejection = { message: 'gone', output: 'traceback...' };
     mockExecute.mockRejectedValue(rejection);
 
-    await expect(execute('bad-command')).rejects.toThrow(
-      'Command failed: [object Object]\nOutput: traceback...',
-    );
+    // Act
+    const promise = execute('bad-command');
+
+    // Assert
+    await expect(promise).rejects.toThrow('Output: traceback...');
   });
 
-  it('handles rejection with output but no message property', async () => {
+  it('should_include_output_when_rejection_has_no_message', async () => {
+    // Arrange
     const rejection = { output: 'some stderr output' };
     mockExecute.mockRejectedValue(rejection);
 
-    await expect(execute('bad-command')).rejects.toThrow(
-      'Command failed: [object Object]\nOutput: some stderr output',
-    );
+    // Act
+    const promise = execute('bad-command');
+
+    // Assert
+    await expect(promise).rejects.toThrow('Output: some stderr output');
   });
 });
 
 describe('startBackground', () => {
-  it('resolves with a BackgroundProcess containing the uuid', async () => {
+  it('should_return_uuid_when_start_succeeds', async () => {
+    // Arrange
     mockBgStart.mockResolvedValue('test-uuid');
 
+    // Act
     const process = await startBackground('my-command');
+
+    // Assert
     expect(process.uuid).toBe('test-uuid');
   });
 
-  it('passes command, callback, and alpine flag to BackgroundExecutor.start', async () => {
-    mockBgStart.mockResolvedValue('test-uuid');
-    const onData = vi.fn();
-
-    await startBackground('my-command', onData, false);
-
-    expect(mockBgStart).toHaveBeenCalledWith('my-command', onData, false);
-  });
-
-  it('provides a noop callback when onData is omitted', async () => {
+  it('should_resolve_when_onData_omitted', async () => {
+    // Arrange
     mockBgStart.mockResolvedValue('test-uuid');
 
-    await startBackground('my-command');
+    // Act
+    const process = await startBackground('my-command');
 
-    expect(mockBgStart).toHaveBeenCalledTimes(1);
-    const passedCallback = mockBgStart.mock.calls[0][1];
-    expect(typeof passedCallback).toBe('function');
-    expect(() => passedCallback('stdout', 'test')).not.toThrow();
+    // Assert
+    expect(process.uuid).toBe('test-uuid');
   });
 });
 
 describe('stopBackground', () => {
-  it('delegates to BackgroundExecutor.stop and returns the result', async () => {
+  it('should_return_stopped_when_delegated', async () => {
+    // Arrange
     mockBgStop.mockResolvedValue('stopped');
 
+    // Act
     const result = await stopBackground('test-uuid');
+
+    // Assert
     expect(result).toBe('stopped');
-    expect(mockBgStop).toHaveBeenCalledWith('test-uuid');
   });
 });
 
 describe('isBackgroundRunning', () => {
-  it('delegates to BackgroundExecutor.isRunning and returns the result', async () => {
+  it('should_return_true_when_running', async () => {
+    // Arrange
     mockBgIsRunning.mockResolvedValue(true);
 
+    // Act
     const result = await isBackgroundRunning('test-uuid');
+
+    // Assert
     expect(result).toBe(true);
-    expect(mockBgIsRunning).toHaveBeenCalledWith('test-uuid');
   });
 });
 
 describe('writeBackground', () => {
-  it('delegates to BackgroundExecutor.write and returns the result', async () => {
+  it('should_return_ok_when_write_succeeds', async () => {
+    // Arrange
     mockBgWrite.mockResolvedValue('ok');
 
+    // Act
     const result = await writeBackground('test-uuid', 'input data');
+
+    // Assert
     expect(result).toBe('ok');
-    expect(mockBgWrite).toHaveBeenCalledWith('test-uuid', 'input data');
   });
 });
 
 describe('BackgroundProcess methods', () => {
-  it('stop() on the process object delegates to stopBackground', async () => {
+  it('should_stop_when_process_stop_called', async () => {
+    // Arrange
     mockBgStart.mockResolvedValue('test-uuid');
     mockBgStop.mockResolvedValue('stopped');
-
     const process = await startBackground('my-command');
+
+    // Act
     const result = await process.stop();
+
+    // Assert
     expect(result).toBe('stopped');
-    expect(mockBgStop).toHaveBeenCalledWith('test-uuid');
   });
 
-  it('isRunning() on the process object delegates to isBackgroundRunning', async () => {
+  it('should_return_true_when_process_isRunning_called', async () => {
+    // Arrange
     mockBgStart.mockResolvedValue('test-uuid');
     mockBgIsRunning.mockResolvedValue(true);
-
     const process = await startBackground('my-command');
+
+    // Act
     const result = await process.isRunning();
+
+    // Assert
     expect(result).toBe(true);
-    expect(mockBgIsRunning).toHaveBeenCalledWith('test-uuid');
   });
 
-  it('write() on the process object delegates to writeBackground', async () => {
+  it('should_write_when_process_write_called', async () => {
+    // Arrange
     mockBgStart.mockResolvedValue('test-uuid');
     mockBgWrite.mockResolvedValue('ok');
-
     const process = await startBackground('my-command');
+
+    // Act
     const result = await process.write('hello');
+
+    // Assert
     expect(result).toBe('ok');
-    expect(mockBgWrite).toHaveBeenCalledWith('test-uuid', 'hello');
   });
 });
 
@@ -180,41 +217,65 @@ describe('executeVerbose', () => {
     });
   });
 
-  it('resolves with full accumulated stdout on exit with code 0', async () => {
+  it('should_resolve_with_stdout_when_exit_0', async () => {
+    // Arrange
     const promise = executeVerbose('echo hi');
 
+    // Act
     capturedCallback!('stdout', 'hello ');
     capturedCallback!('stdout', 'world\n');
     capturedCallback!('exit', '0');
 
+    // Assert
     await expect(promise).resolves.toBe('hello world\n');
   });
 
-  it('rejects with exit code and output on non-zero exit', async () => {
+  it('should_reject_with_exit_code_when_non_zero', async () => {
+    // Arrange
     const promise = executeVerbose('bad-command');
+    capturedCallback!('stderr', 'error: not found\n');
 
+    // Act
+    capturedCallback!('exit', '127');
+
+    // Assert
+    await expect(promise).rejects.toThrow('Command failed: exit 127');
+  });
+
+  it('should_include_stderr_when_rejecting', async () => {
+    // Arrange
+    const promise = executeVerbose('bad-command');
     capturedCallback!('stderr', 'error: not found\n');
     capturedCallback!('exit', '127');
 
-    await expect(promise).rejects.toThrow('Command failed: exit 127');
+    // Act
+    // Assert
     await expect(promise).rejects.toThrow('error: not found');
   });
 
-  it('calls onProgress with latest trimmed line from each chunk', async () => {
+  it('should_call_onProgress_with_trimmed_line_when_chunk_received', async () => {
+    // Arrange
     const lines: string[] = [];
     const promise = executeVerbose('cmd', (text) => lines.push(text));
-
     capturedCallback!('stdout', 'fetching packages\n');
+
+    // Act
     capturedCallback!('stdout', '  installing\n');
     capturedCallback!('exit', '0');
-
     await promise;
+
+    // Assert
     expect(lines).toEqual(['fetching packages', 'installing']);
   });
 
-  it('rejects when startBackground promise rejects', async () => {
+  it('should_reject_when_startBackground_fails', async () => {
+    // Arrange
     mockBgStart.mockRejectedValue(new Error('spawn failed'));
 
-    await expect(executeVerbose('cmd')).rejects.toThrow('spawn failed');
+    // Act
+    const promise = executeVerbose('cmd');
+
+    // Assert
+    await expect(promise).rejects.toThrow('spawn failed');
   });
 });

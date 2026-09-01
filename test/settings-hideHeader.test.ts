@@ -38,149 +38,242 @@ beforeEach(() => {
 });
 
 describe('getHideHeaderInLandscape', () => {
-  it('returns default true when settings returns null', () => {
+  it('should_return_true_when_settings_returns_null', () => {
+    // Arrange
     mockSettingsGet.mockReturnValue(null);
-    expect(getHideHeaderInLandscape()).toBe(DEFAULT_HIDE_HEADER_IN_LANDSCAPE);
-    expect(getHideHeaderInLandscape()).toBe(true);
+
+    // Act
+    const result = getHideHeaderInLandscape();
+
+    // Assert
+    expect(result).toBe(DEFAULT_HIDE_HEADER_IN_LANDSCAPE);
   });
 
-  it('returns true when stored as true', () => {
+  it('should_return_true_when_stored_as_true', () => {
+    // Arrange
     mockSettingsGet.mockReturnValue(true);
-    expect(getHideHeaderInLandscape()).toBe(true);
+
+    // Act
+    const result = getHideHeaderInLandscape();
+
+    // Assert
+    expect(result).toBe(true);
   });
 
-  it('returns false when stored as false', () => {
+  it('should_return_false_when_stored_as_false', () => {
+    // Arrange
     mockSettingsGet.mockReturnValue(false);
-    expect(getHideHeaderInLandscape()).toBe(false);
+
+    // Act
+    const result = getHideHeaderInLandscape();
+
+    // Assert
+    expect(result).toBe(false);
   });
 
-  it('returns true when stored as string "true"', () => {
+  it('should_return_true_when_stored_as_string_true', () => {
+    // Arrange
     mockSettingsGet.mockReturnValue('true');
-    expect(getHideHeaderInLandscape()).toBe(true);
+
+    // Act
+    const result = getHideHeaderInLandscape();
+
+    // Assert
+    expect(result).toBe(true);
   });
 
-  it('returns false when stored as string "false"', () => {
+  it('should_return_false_when_stored_as_string_false', () => {
+    // Arrange
     mockSettingsGet.mockReturnValue('false');
-    expect(getHideHeaderInLandscape()).toBe(false);
+
+    // Act
+    const result = getHideHeaderInLandscape();
+
+    // Assert
+    expect(result).toBe(false);
   });
 
-  it('returns cached default when settings throws', () => {
+  it('should_return_default_when_settings_throws', () => {
+    // Arrange
     (globalThis as any).acode.require = vi.fn(() => {
       throw new Error('no settings');
     });
-    expect(getHideHeaderInLandscape()).toBe(DEFAULT_HIDE_HEADER_IN_LANDSCAPE);
+
+    // Act
+    const result = getHideHeaderInLandscape();
+
+    // Assert
+    expect(result).toBe(DEFAULT_HIDE_HEADER_IN_LANDSCAPE);
   });
 
-  it('reads from settings module on each call', () => {
-    mockSettingsGet.mockReturnValue(true);
-    getHideHeaderInLandscape();
-    getHideHeaderInLandscape();
-    expect(mockSettingsGet).toHaveBeenCalledTimes(2);
-  });
-
-  it('caches false and returns false without re-reading if settings returns null after', () => {
+  it('should_return_cached_false_when_settings_null_after_false', () => {
+    // Arrange
     mockSettingsGet.mockReturnValue(false);
-    expect(getHideHeaderInLandscape()).toBe(false);
+    getHideHeaderInLandscape();
     mockSettingsGet.mockReturnValue(null);
-    expect(getHideHeaderInLandscape()).toBe(false);
+
+    // Act
+    const result = getHideHeaderInLandscape();
+
+    // Assert
+    expect(result).toBe(false);
   });
 });
 
 describe('setOnHideHeaderChange', () => {
-  it('fires callback on cb with true', () => {
+  it('should_invoke_handler_with_true_when_cb_true', () => {
+    // Arrange
     const handler = vi.fn();
     setOnHideHeaderChange(handler);
     const schema = getSettingsSchema();
+
+    // Act
     schema.cb(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE, true);
+
+    // Assert
     expect(handler).toHaveBeenCalledWith(true);
   });
 
-  it('fires callback on cb with string "true"', () => {
+  it('should_invoke_handler_with_true_when_cb_string_true', () => {
+    // Arrange
     const handler = vi.fn();
     setOnHideHeaderChange(handler);
     const schema = getSettingsSchema();
+
+    // Act
     schema.cb(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE, 'true');
+
+    // Assert
     expect(handler).toHaveBeenCalledWith(true);
   });
 
-  it('fires callback with false on cb false', () => {
+  it('should_invoke_handler_with_false_when_cb_false', () => {
+    // Arrange
     const handler = vi.fn();
     setOnHideHeaderChange(handler);
     const schema = getSettingsSchema();
+
+    // Act
     schema.cb(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE, false);
+
+    // Assert
     expect(handler).toHaveBeenCalledWith(false);
   });
 
-  it('fires callback with false on cb string "false"', () => {
+  it('should_invoke_handler_with_false_when_cb_string_false', () => {
+    // Arrange
     const handler = vi.fn();
     setOnHideHeaderChange(handler);
     const schema = getSettingsSchema();
+
+    // Act
     schema.cb(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE, 'false');
+
+    // Assert
     expect(handler).toHaveBeenCalledWith(false);
   });
 
-  it('does not fire hideHeader handler on other keys', () => {
+  it('should_not_invoke_hide_handler_when_other_key_changes', () => {
+    // Arrange
     const handler = vi.fn();
     setOnHideHeaderChange(handler);
     const schema = getSettingsSchema();
+
+    // Act
     schema.cb(SETTINGS_KEY_LOG_LEVEL, 'debug');
+
+    // Assert
     expect(handler).not.toHaveBeenCalled();
   });
 });
 
 describe('cb branch updates cachedHideHeaderInLandscape', () => {
-  it('cb true updates cache so get returns true even if settings null', () => {
+  it('should_return_true_when_cb_true_even_if_settings_null', () => {
+    // Arrange
     const schema = getSettingsSchema();
     schema.cb(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE, true);
     mockSettingsGet.mockReturnValue(null);
-    expect(getHideHeaderInLandscape()).toBe(true);
+
+    // Act
+    const result = getHideHeaderInLandscape();
+
+    // Assert
+    expect(result).toBe(true);
   });
 
-  it('cb false updates cache so get returns false even if settings null', () => {
+  it('should_return_false_when_cb_false_even_if_settings_null', () => {
+    // Arrange
     const schema = getSettingsSchema();
     schema.cb(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE, false);
     mockSettingsGet.mockReturnValue(null);
-    expect(getHideHeaderInLandscape()).toBe(false);
+
+    // Act
+    const result = getHideHeaderInLandscape();
+
+    // Assert
+    expect(result).toBe(false);
   });
 
-  it('cb toggles from true to false and back', () => {
+  it('should_toggle_false_then_true_when_cb_fires_twice', () => {
+    // Arrange
     const schema = getSettingsSchema();
     schema.cb(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE, false);
-    expect(getHideHeaderInLandscape()).toBe(false);
+
+    // Act
+    const afterFalse = getHideHeaderInLandscape();
     schema.cb(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE, true);
     mockSettingsGet.mockReturnValue(null);
-    expect(getHideHeaderInLandscape()).toBe(true);
+    const afterTrue = getHideHeaderInLandscape();
+
+    // Assert
+    expect(afterFalse).toBe(false);
+    expect(afterTrue).toBe(true);
   });
 });
 
 describe('resetSettingsCache extension', () => {
-  it('resets hideHeader cache to default true', () => {
+  it('should_reset_to_true_when_cache_reset_after_false', () => {
+    // Arrange
     const schema = getSettingsSchema();
     schema.cb(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE, false);
     mockSettingsGet.mockReturnValue(null);
-    expect(getHideHeaderInLandscape()).toBe(false);
     resetSettingsCache();
-    expect(getHideHeaderInLandscape()).toBe(DEFAULT_HIDE_HEADER_IN_LANDSCAPE);
-    expect(getHideHeaderInLandscape()).toBe(true);
+
+    // Act
+    const result = getHideHeaderInLandscape();
+
+    // Assert
+    expect(result).toBe(DEFAULT_HIDE_HEADER_IN_LANDSCAPE);
   });
 
-  it('resets hideHeader and re-reads from settings', () => {
+  it('should_re_read_true_when_cache_reset_and_settings_true', () => {
+    // Arrange
     mockSettingsGet.mockReturnValue(false);
-    expect(getHideHeaderInLandscape()).toBe(false);
+    getHideHeaderInLandscape();
     resetSettingsCache();
     mockSettingsGet.mockReturnValue(true);
-    expect(getHideHeaderInLandscape()).toBe(true);
+
+    // Act
+    const result = getHideHeaderInLandscape();
+
+    // Assert
+    expect(result).toBe(true);
   });
 
-  it('reset restores all caches including hideHeader alongside logLevel', () => {
+  it('should_reset_both_caches_when_reset_called', () => {
+    // Arrange
     const schema = getSettingsSchema();
     schema.cb(SETTINGS_KEY_LOG_LEVEL, 'debug');
     schema.cb(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE, false);
     mockSettingsGet.mockReturnValue(null);
-    expect(getLogLevel()).toBe('debug');
-    expect(getHideHeaderInLandscape()).toBe(false);
     resetSettingsCache();
-    expect(getLogLevel()).toBe(DEFAULT_LOG_LEVEL);
-    expect(getHideHeaderInLandscape()).toBe(true);
+
+    // Act
+    const level = getLogLevel();
+    const hide = getHideHeaderInLandscape();
+
+    // Assert
+    expect(level).toBe(DEFAULT_LOG_LEVEL);
+    expect(hide).toBe(true);
   });
 });

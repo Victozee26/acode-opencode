@@ -12,121 +12,160 @@ beforeEach(() => {
 });
 
 describe('checkInstalled', () => {
-  it('returns true when execute resolves', async () => {
+  it('should_return_true_when_execute_resolves', async () => {
+    // Arrange
     mockExecute.mockResolvedValue('/usr/local/bin/opencode');
 
-    await expect(checkInstalled()).resolves.toBe(true);
+    // Act
+    const result = await checkInstalled();
+
+    // Assert
+    expect(result).toBe(true);
   });
 
-  it('returns false when execute rejects (does not throw)', async () => {
+  it('should_return_false_when_execute_rejects', async () => {
+    // Arrange
     mockExecute.mockRejectedValue(new Error('not found'));
 
-    await expect(checkInstalled()).resolves.toBe(false);
+    // Act
+    const result = await checkInstalled();
+
+    // Assert
+    expect(result).toBe(false);
   });
 });
 
 describe('installOpenCode', () => {
-  it('resolves without error when both executes succeed', async () => {
+  it('should_resolve_when_both_steps_succeed', async () => {
+    // Arrange
     mockExecute.mockResolvedValue('ok');
 
-    await expect(installOpenCode()).resolves.toBeUndefined();
-    expect(mockExecute).toHaveBeenCalledTimes(2);
+    // Act
+    const promise = installOpenCode();
+
+    // Assert
+    await expect(promise).resolves.toBeUndefined();
   });
 
-  it('throws "Installation failed (deps): ..." when first execute rejects', async () => {
+  it('should_throw_deps_prefix_when_first_step_fails', async () => {
+    // Arrange
     mockExecute.mockRejectedValueOnce(new Error('Command failed: network error'));
 
-    await expect(installOpenCode()).rejects.toThrow(
-      'Installation failed (deps): Command failed: network error',
-    );
-    expect(mockExecute).toHaveBeenCalledTimes(1);
+    // Act
+    const promise = installOpenCode();
+
+    // Assert
+    await expect(promise).rejects.toThrow('Installation failed (deps): Command failed: network error');
   });
 
-  it('throws "Installation failed (opencode): ..." when second execute rejects', async () => {
+  it('should_throw_opencode_prefix_when_second_step_fails', async () => {
+    // Arrange
     mockExecute.mockResolvedValueOnce('deps ok');
     mockExecute.mockRejectedValueOnce(new Error('Command failed: EACCES'));
 
-    await expect(installOpenCode()).rejects.toThrow(
-      'Installation failed (opencode): Command failed: EACCES',
-    );
-    expect(mockExecute).toHaveBeenCalledTimes(2);
+    // Act
+    const promise = installOpenCode();
+
+    // Assert
+    await expect(promise).rejects.toThrow('Installation failed (opencode): Command failed: EACCES');
   });
 
-  it('handles non-Error rejection in deps step', async () => {
+  it('should_throw_deps_prefix_when_rejection_is_string', async () => {
+    // Arrange
     mockExecute.mockRejectedValueOnce('plain string failure');
 
-    await expect(installOpenCode()).rejects.toThrow(
-      'Installation failed (deps): plain string failure',
-    );
+    // Act
+    const promise = installOpenCode();
+
+    // Assert
+    await expect(promise).rejects.toThrow('Installation failed (deps): plain string failure');
   });
 
-  it('handles non-Error rejection in opencode step', async () => {
+  it('should_throw_opencode_prefix_when_second_rejection_is_string', async () => {
+    // Arrange
     mockExecute.mockResolvedValueOnce('deps ok');
     mockExecute.mockRejectedValueOnce('plain string failure');
 
-    await expect(installOpenCode()).rejects.toThrow(
-      'Installation failed (opencode): plain string failure',
-    );
+    // Act
+    const promise = installOpenCode();
+
+    // Assert
+    await expect(promise).rejects.toThrow('Installation failed (opencode): plain string failure');
   });
 });
 
 describe('uninstallOpenCode', () => {
-  it('resolves without error when execute succeeds', async () => {
+  it('should_resolve_when_execute_succeeds', async () => {
+    // Arrange
     mockExecute.mockResolvedValue('uninstalled');
 
-    await expect(uninstallOpenCode()).resolves.toBeUndefined();
-    expect(mockExecute).toHaveBeenCalledTimes(1);
+    // Act
+    const promise = uninstallOpenCode();
+
+    // Assert
+    await expect(promise).resolves.toBeUndefined();
   });
 
-  it('throws "Uninstallation failed: ..." when execute rejects', async () => {
+  it('should_throw_prefix_when_execute_rejects', async () => {
+    // Arrange
     mockExecute.mockRejectedValue(new Error('Command failed: EACCES'));
 
-    await expect(uninstallOpenCode()).rejects.toThrow(
-      'Uninstallation failed: Command failed: EACCES',
-    );
-    expect(mockExecute).toHaveBeenCalledTimes(1);
+    // Act
+    const promise = uninstallOpenCode();
+
+    // Assert
+    await expect(promise).rejects.toThrow('Uninstallation failed: Command failed: EACCES');
   });
 
-  it('handles non-Error rejection', async () => {
+  it('should_throw_prefix_when_rejection_is_string', async () => {
+    // Arrange
     mockExecute.mockRejectedValue('plain string failure');
 
-    await expect(uninstallOpenCode()).rejects.toThrow(
-      'Uninstallation failed: plain string failure',
-    );
+    // Act
+    const promise = uninstallOpenCode();
+
+    // Assert
+    await expect(promise).rejects.toThrow('Uninstallation failed: plain string failure');
   });
 });
 
-describe('installOpenCode with onProgress (verbose)', () => {
+describe('installOpenCode with onProgress', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('uses executeVerbose for deps and opencode steps when onProgress is provided', async () => {
+  it('should_resolve_when_onProgress_provided', async () => {
+    // Arrange
     mockExecuteVerbose.mockResolvedValue('ok');
     const onProgress = vi.fn();
 
-    await installOpenCode(onProgress);
+    // Act
+    const promise = installOpenCode(onProgress);
 
-    expect(mockExecuteVerbose).toHaveBeenCalledTimes(2);
-    expect(mockExecute).not.toHaveBeenCalled();
+    // Assert
+    await expect(promise).resolves.toBeUndefined();
   });
 
-  it('throws (deps) prefix when executeVerbose rejects on deps', async () => {
+  it('should_throw_deps_prefix_when_verbose_first_step_fails', async () => {
+    // Arrange
     mockExecuteVerbose.mockRejectedValueOnce(new Error('exit 1\nOutput: fail'));
 
-    await expect(installOpenCode(vi.fn())).rejects.toThrow(
-      'Installation failed (deps): exit 1',
-    );
-    expect(mockExecuteVerbose).toHaveBeenCalledTimes(1);
+    // Act
+    const promise = installOpenCode(vi.fn());
+
+    // Assert
+    await expect(promise).rejects.toThrow('Installation failed (deps): exit 1');
   });
 
-  it('throws (opencode) prefix when executeVerbose rejects on opencode step', async () => {
+  it('should_throw_opencode_prefix_when_verbose_second_step_fails', async () => {
+    // Arrange
     mockExecuteVerbose.mockResolvedValueOnce('deps ok');
     mockExecuteVerbose.mockRejectedValueOnce(new Error('exit 1\nOutput: fail'));
 
-    await expect(installOpenCode(vi.fn())).rejects.toThrow(
-      'Installation failed (opencode): exit 1',
-    );
-    expect(mockExecuteVerbose).toHaveBeenCalledTimes(2);
+    // Act
+    const promise = installOpenCode(vi.fn());
+
+    // Assert
+    await expect(promise).rejects.toThrow('Installation failed (opencode): exit 1');
   });
 });

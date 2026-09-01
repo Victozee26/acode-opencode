@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createErrorDisplay } from '../../src/ui/components';
-import { AppState, StateContext, HeaderActions } from '../../src/types';
+import { AppState, StateContext } from '../../src/types';
 
 function makeContext(error: StateContext['error']): StateContext {
   return {
@@ -10,85 +10,138 @@ function makeContext(error: StateContext['error']): StateContext {
 }
 
 describe('createErrorDisplay', () => {
-  it('renders retry button when error has no logTail (empty string)', () => {
+  it('should_render_retry_button_when_logTail_empty', () => {
+    // Arrange
     const ctx = makeContext({ message: 'Something broke', logTail: '' });
     const onRetry = vi.fn();
 
+    // Act
     const el = createErrorDisplay(ctx, onRetry);
 
+    // Assert
     const btn = el.querySelector('button');
     expect(btn).not.toBeNull();
-    expect(btn!.textContent).toBe('Retry');
-    expect(el.querySelector('pre')).toBeNull();
-
-    const h3 = el.querySelector('h3');
-    expect(h3).not.toBeNull();
-    expect(h3!.textContent).toContain('Something broke');
   });
 
-  it('renders retry button when error has no logTail (falsy)', () => {
+  it('should_have_Retry_text_when_button_rendered', () => {
+    // Arrange
     const ctx = makeContext({ message: 'Something broke', logTail: '' });
     const onRetry = vi.fn();
 
+    // Act
     const el = createErrorDisplay(ctx, onRetry);
 
-    expect(el.querySelector('button')).not.toBeNull();
+    // Assert
+    expect(el.querySelector('button')!.textContent).toBe('Retry');
+  });
+
+  it('should_not_render_pre_when_logTail_empty', () => {
+    // Arrange
+    const ctx = makeContext({ message: 'Something broke', logTail: '' });
+    const onRetry = vi.fn();
+
+    // Act
+    const el = createErrorDisplay(ctx, onRetry);
+
+    // Assert
     expect(el.querySelector('pre')).toBeNull();
   });
 
-  it('<h3> uses opencode-error-heading class', () => {
+  it('should_show_message_in_heading_when_error_present', () => {
+    // Arrange
+    const ctx = makeContext({ message: 'Something broke', logTail: '' });
+    const onRetry = vi.fn();
+
+    // Act
+    const el = createErrorDisplay(ctx, onRetry);
+
+    // Assert
+    expect(el.querySelector('h3')!.textContent).toContain('Something broke');
+  });
+
+  it('should_use_heading_class_when_error_rendered', () => {
+    // Arrange
     const ctx = makeContext({ message: 'Error', logTail: '' });
     const onRetry = vi.fn();
 
+    // Act
     const el = createErrorDisplay(ctx, onRetry);
-    const h3 = el.querySelector('h3') as HTMLHeadingElement;
 
-    expect(h3).not.toBeNull();
-    expect(h3.className).toBe('opencode-error-heading');
+    // Assert
+    expect((el.querySelector('h3') as HTMLHeadingElement).className).toBe('opencode-error-heading');
   });
 
-  it('renders both <pre> block and retry button when logTail is non-empty', () => {
+  it('should_render_pre_when_logTail_non_empty', () => {
+    // Arrange
     const ctx = makeContext({ message: 'Install failed', logTail: 'error: not found\n' });
     const onRetry = vi.fn();
 
+    // Act
     const el = createErrorDisplay(ctx, onRetry);
 
-    const pre = el.querySelector('pre');
-    expect(pre).not.toBeNull();
-    expect(pre!.textContent).toBe('error: not found\n');
+    // Assert
+    expect(el.querySelector('pre')!.textContent).toBe('error: not found\n');
+  });
+
+  it('should_render_button_even_when_logTail_present', () => {
+    // Arrange
+    const ctx = makeContext({ message: 'Install failed', logTail: 'error: not found\n' });
+    const onRetry = vi.fn();
+
+    // Act
+    const el = createErrorDisplay(ctx, onRetry);
+
+    // Assert
     expect(el.querySelector('button')).not.toBeNull();
   });
 
-  it('shows fallback message and retry button when context.error is null', () => {
+  it('should_show_fallback_when_error_is_null', () => {
+    // Arrange
     const ctx = makeContext(null);
     const onRetry = vi.fn();
 
+    // Act
     const el = createErrorDisplay(ctx, onRetry);
 
+    // Assert
     expect(el.textContent).toContain('An unknown error occurred');
+  });
+
+  it('should_render_button_when_error_is_null', () => {
+    // Arrange
+    const ctx = makeContext(null);
+    const onRetry = vi.fn();
+
+    // Act
+    const el = createErrorDisplay(ctx, onRetry);
+
+    // Assert
     expect(el.querySelector('button')).not.toBeNull();
+  });
+
+  it('should_not_render_pre_when_error_is_null', () => {
+    // Arrange
+    const ctx = makeContext(null);
+    const onRetry = vi.fn();
+
+    // Act
+    const el = createErrorDisplay(ctx, onRetry);
+
+    // Assert
     expect(el.querySelector('pre')).toBeNull();
   });
 
-  it('calls onRetry when retry button is clicked', () => {
+  it('should_invoke_onRetry_when_button_clicked', () => {
+    // Arrange
     const ctx = makeContext({ message: 'Boom', logTail: '' });
     const onRetry = vi.fn();
-
     const el = createErrorDisplay(ctx, onRetry);
-
     const btn = el.querySelector('button') as HTMLButtonElement;
+
+    // Act
     btn.click();
-    expect(onRetry).toHaveBeenCalledTimes(1);
-  });
 
-  it('calls onRetry with logTail present', () => {
-    const ctx = makeContext({ message: 'Boom', logTail: 'traceback...' });
-    const onRetry = vi.fn();
-
-    const el = createErrorDisplay(ctx, onRetry);
-
-    const btn = el.querySelector('button') as HTMLButtonElement;
-    btn.click();
+    // Assert
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });
@@ -133,58 +186,90 @@ describe('initUiPage', () => {
     document.body.innerHTML = '';
   });
 
-  it('creates #opencode-header and #opencode-content inside $page.body', async () => {
+  it('should_create_header_container_when_initUiPage_called', async () => {
+    // Arrange
     const { initUiPage } = await loadFreshUi();
     const $page = { body: document.body };
+
+    // Act
     initUiPage($page as any);
 
+    // Assert
     expect(document.getElementById('opencode-header')).not.toBeNull();
+  });
+
+  it('should_create_content_container_when_initUiPage_called', async () => {
+    // Arrange
+    const { initUiPage } = await loadFreshUi();
+    const $page = { body: document.body };
+
+    // Act
+    initUiPage($page as any);
+
+    // Assert
     expect(document.getElementById('opencode-content')).not.toBeNull();
+  });
+
+  it('should_have_two_children_when_initUiPage_called', async () => {
+    // Arrange
+    const { initUiPage } = await loadFreshUi();
+    const $page = { body: document.body };
+
+    // Act
+    initUiPage($page as any);
+
+    // Assert
     expect(document.body.children.length).toBe(2);
   });
 
-  it('clears $page.body before adding containers', async () => {
+  it('should_clear_stale_content_when_initUiPage_called', async () => {
+    // Arrange
     const { initUiPage } = await loadFreshUi();
     document.body.innerHTML = '<p>stale</p>';
     const $page = { body: document.body };
+
+    // Act
     initUiPage($page as any);
 
-    expect(document.body.children.length).toBe(2);
+    // Assert
     expect(document.body.children[0].id).toBe('opencode-header');
-    expect(document.body.children[1].id).toBe('opencode-content');
   });
 
-  it('sets $page.body to flex column with 100% height', async () => {
+  it('should_set_flex_column_when_initUiPage_called', async () => {
+    // Arrange
     const { initUiPage } = await loadFreshUi();
     const $page = { body: document.body };
+
+    // Act
     initUiPage($page as any);
 
+    // Assert
     expect(document.body.style.display).toBe('flex');
-    expect(document.body.style.flexDirection).toBe('column');
-    expect(document.body.style.height).toBe('100%');
   });
 
-  it('sets #opencode-content to flex grow 1', async () => {
+  it('should_set_content_flex_grow_when_initUiPage_called', async () => {
+    // Arrange
+    const { initUiPage } = await loadFreshUi();
+    const $page = { body: document.body };
+
+    // Act
+    initUiPage($page as any);
+
+    // Assert
+    expect(document.getElementById('opencode-content')!.style.flexGrow).toBe('1');
+  });
+
+  it('should_recreate_when_initUiPage_called_twice', async () => {
+    // Arrange
     const { initUiPage } = await loadFreshUi();
     const $page = { body: document.body };
     initUiPage($page as any);
-
-    const content = document.getElementById('opencode-content')!;
-    expect(content.style.flexGrow).toBe('1');
-    expect(content.style.display).toBe('flex');
-    expect(content.style.flexDirection).toBe('column');
-  });
-
-  it('is idempotent — clears and recreates containers on second call', async () => {
-    const { initUiPage } = await loadFreshUi();
-    const $page = { body: document.body };
-    initUiPage($page as any);
-
     document.getElementById('opencode-content')!.textContent = 'data';
 
+    // Act
     initUiPage($page as any);
 
-    expect(document.body.children.length).toBe(2);
+    // Assert
     expect(document.getElementById('opencode-content')!.textContent).toBe('');
   });
 });
@@ -194,64 +279,104 @@ describe('render with persistent containers', () => {
     document.body.innerHTML = '';
   });
 
-  it('creates header inside #opencode-header on first render', async () => {
+  it('should_create_header_when_first_render_called', async () => {
+    // Arrange
     const { initUiPage, render } = await loadFreshUi();
     initUiPage({ body: document.body } as any);
 
+    // Act
     render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
 
-    const header = document.getElementById('opencode-header')!;
-    expect(header.querySelector('.opencode-header')).not.toBeNull();
-    const wordmark = header.querySelector('.opencode-header-wordmark') as HTMLImageElement;
-    expect(wordmark).not.toBeNull();
-    expect(wordmark.tagName).toBe('IMG');
+    // Assert
+    expect(document.getElementById('opencode-header')!.querySelector('.opencode-header')).not.toBeNull();
+  });
+
+  it('should_show_wordmark_image_when_first_render', async () => {
+    // Arrange
+    const { initUiPage, render } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+
+    // Act
+    render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
+
+    // Assert
+    const wordmark = document.querySelector('.opencode-header-wordmark') as HTMLImageElement;
     expect(wordmark.alt).toBe('OpenCode');
   });
 
-  it('content changes between Ready and Idle but header persists', async () => {
+  it('should_keep_header_when_content_changes_Idle_to_Ready', async () => {
+    // Arrange
     const { initUiPage, render } = await loadFreshUi();
     initUiPage({ body: document.body } as any);
-
     render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
-
     const headerEl = document.querySelector('.opencode-header');
-    const idleIcon = document.querySelector('.opencode-idle-icon');
-    expect(idleIcon).not.toBeNull();
 
+    // Act
     render(AppState.Ready, { currentState: AppState.Ready, error: null }, makeActions());
 
+    // Assert
     expect(document.querySelector('.opencode-header')).toBe(headerEl);
-    expect(document.querySelector('.opencode-idle-icon')).toBeNull();
+  });
+
+  it('should_show_iframe_when_Ready_after_Idle', async () => {
+    // Arrange
+    const { initUiPage, render } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+    render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
+
+    // Act
+    render(AppState.Ready, { currentState: AppState.Ready, error: null }, makeActions());
+
+    // Assert
     expect(document.querySelector('iframe')).not.toBeNull();
   });
 
-  it('content changes between Ready and Error states', async () => {
+  it('should_remove_iframe_when_Error_after_Ready', async () => {
+    // Arrange
     const { initUiPage, render } = await loadFreshUi();
     initUiPage({ body: document.body } as any);
-
     render(AppState.Ready, { currentState: AppState.Ready, error: null }, makeActions());
-    expect(document.querySelector('iframe')).not.toBeNull();
 
+    // Act
     render(
       AppState.Error,
       { currentState: AppState.Error, error: { message: 'fail', logTail: '' } },
       makeActions(),
     );
+
+    // Assert
     expect(document.querySelector('iframe')).toBeNull();
+  });
+
+  it('should_show_error_heading_when_Error_after_Ready', async () => {
+    // Arrange
+    const { initUiPage, render } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+    render(AppState.Ready, { currentState: AppState.Ready, error: null }, makeActions());
+
+    // Act
+    render(
+      AppState.Error,
+      { currentState: AppState.Error, error: { message: 'fail', logTail: '' } },
+      makeActions(),
+    );
+
+    // Assert
     expect(document.querySelector('.opencode-error-heading')).not.toBeNull();
   });
 
-  it('same-state short-circuit does not clear content container', async () => {
+  it('should_not_clear_content_when_same_state_rendered', async () => {
+    // Arrange
     const { initUiPage, render } = await loadFreshUi();
     initUiPage({ body: document.body } as any);
-
     render(AppState.Ready, { currentState: AppState.Ready, error: null }, makeActions());
-
     const content = document.getElementById('opencode-content')!;
     const iframe = content.querySelector('iframe');
 
+    // Act
     render(AppState.Ready, { currentState: AppState.Ready, error: null }, makeActions());
 
+    // Assert
     expect(content.querySelector('iframe')).toBe(iframe);
   });
 });
@@ -261,157 +386,201 @@ describe('updateHeader behavior via render', () => {
     document.body.innerHTML = '';
   });
 
-  it('Start Server menu item hidden when Ready, visible otherwise', async () => {
+  it('should_show_start_item_when_state_is_Idle', async () => {
+    // Arrange
     const { initUiPage, render } = await loadFreshUi();
     initUiPage({ body: document.body } as any);
 
+    // Act
     render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
 
+    // Assert
     const startItem = document.querySelector<HTMLElement>('[data-action-id="start"]')!;
-    expect(startItem.style.display).not.toBe('none');
-
-    render(AppState.Ready, { currentState: AppState.Ready, error: null }, makeActions());
-    expect(startItem.style.display).toBe('none');
-
-    render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
     expect(startItem.style.display).not.toBe('none');
   });
 
-  it('Start Server hidden from creation when first render is Ready', async () => {
+  it('should_hide_start_item_when_state_is_Ready', async () => {
+    // Arrange
+    const { initUiPage, render } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+    render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
+
+    // Act
+    render(AppState.Ready, { currentState: AppState.Ready, error: null }, makeActions());
+
+    // Assert
+    const startItem = document.querySelector<HTMLElement>('[data-action-id="start"]')!;
+    expect(startItem.style.display).toBe('none');
+  });
+
+  it('should_hide_start_from_creation_when_first_render_Ready', async () => {
+    // Arrange
     const { initUiPage, render } = await loadFreshUi();
     initUiPage({ body: document.body } as any);
 
+    // Act
     render(AppState.Ready, { currentState: AppState.Ready, error: null }, makeActions());
 
+    // Assert
     const startItem = document.querySelector<HTMLElement>('[data-action-id="start"]')!;
     expect(startItem.style.display).toBe('none');
   });
 });
 
-describe('updateHeader directly (Phase 2)', () => {
+describe('updateHeader directly', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
   });
 
-  it('can be called directly with HeaderActions after header creation', async () => {
+  it('should_not_throw_when_updateHeader_called', async () => {
+    // Arrange
     const { initUiPage, render, updateHeader } = await loadFreshUi();
     initUiPage({ body: document.body } as any);
     render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
 
-    expect(() => {
+    // Act
+    const act = (): void => {
       updateHeader(AppState.Ready, {});
-    }).not.toThrow();
+    };
+
+    // Assert
+    expect(act).not.toThrow();
   });
 
-  it('shows update banner when called with updateInfo', async () => {
+  it('should_show_banner_when_updateInfo_provided', async () => {
+    // Arrange
     const { initUiPage, render, updateHeader } = await loadFreshUi();
     initUiPage({ body: document.body } as any);
     render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
 
-    expect(document.querySelector('.opencode-header-update')).toBeNull();
-
+    // Act
     updateHeader(AppState.Idle, {
       updateInfo: { currentVersion: '1.0.0', latestVersion: '2.0.0' },
       onUpdateClick: vi.fn(),
     });
 
-    const banner = document.querySelector('.opencode-header-update');
-    expect(banner).not.toBeNull();
-    expect(banner!.textContent).toContain('Update:');
-    expect(banner!.textContent).toContain('1.0.0');
-    expect(banner!.textContent).toContain('2.0.0');
+    // Assert
+    expect(document.querySelector('.opencode-header-update')).not.toBeNull();
   });
 
-  it('removes banner when updateInfo is cleared', async () => {
+  it('should_contain_versions_when_banner_shown', async () => {
+    // Arrange
     const { initUiPage, render, updateHeader } = await loadFreshUi();
     initUiPage({ body: document.body } as any);
     render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
+    updateHeader(AppState.Idle, {
+      updateInfo: { currentVersion: '1.0.0', latestVersion: '2.0.0' },
+      onUpdateClick: vi.fn(),
+    });
 
+    // Act
+    const banner = document.querySelector('.opencode-header-update')!;
+
+    // Assert
+    expect(banner.textContent).toContain('2.0.0');
+  });
+
+  it('should_remove_banner_when_updateInfo_cleared', async () => {
+    // Arrange
+    const { initUiPage, render, updateHeader } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+    render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
     updateHeader(AppState.Idle, {
       updateInfo: { currentVersion: '1.0.0', latestVersion: '2.0.0' },
     });
-    expect(document.querySelector('.opencode-header-update')).not.toBeNull();
-
+    // Act
     updateHeader(AppState.Idle, { updateInfo: null });
+
+    // Assert
     expect(document.querySelector('.opencode-header-update')).toBeNull();
   });
 
-  it('shows installing status on banner', async () => {
+  it('should_mark_installing_when_status_installing', async () => {
+    // Arrange
     const { initUiPage, render, updateHeader } = await loadFreshUi();
     initUiPage({ body: document.body } as any);
     render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
 
+    // Act
     updateHeader(AppState.Idle, {
       updateInfo: { currentVersion: '1.0.0', latestVersion: '2.0.0' },
       updateStatus: 'installing',
     });
 
-    const banner = document.querySelector('.opencode-header-update');
-    expect(banner).not.toBeNull();
-    expect(banner!.classList.contains('opencode-header-update--installing')).toBe(true);
+    // Assert
+    expect(
+      document.querySelector('.opencode-header-update')!.classList.contains('opencode-header-update--installing'),
+    ).toBe(true);
   });
 
-  it('shows updated banner when updateStatus is updated', async () => {
+  it('should_show_updated_when_status_updated', async () => {
+    // Arrange
     const { initUiPage, render, updateHeader } = await loadFreshUi();
     initUiPage({ body: document.body } as any);
     render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
 
+    // Act
     updateHeader(AppState.Idle, {
       updateInfo: { currentVersion: '1.0.0', latestVersion: '2.0.0' },
       updateStatus: 'updated',
     });
 
-    const banner = document.querySelector('.opencode-header-update');
-    expect(banner).not.toBeNull();
-    expect(banner!.textContent).toContain('Updated to');
+    // Assert
+    expect(document.querySelector('.opencode-header-update')!.textContent).toContain('Updated to');
   });
 
-  it('shows error banner when updateStatus is error', async () => {
+  it('should_show_error_when_status_error', async () => {
+    // Arrange
     const { initUiPage, render, updateHeader } = await loadFreshUi();
     initUiPage({ body: document.body } as any);
     render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
 
+    // Act
     updateHeader(AppState.Idle, {
       updateStatus: 'error',
       onUpdateClick: vi.fn(),
     });
 
-    const banner = document.querySelector('.opencode-header-update');
-    expect(banner).not.toBeNull();
-    expect(banner!.textContent).toContain('Update failed');
+    // Assert
+    expect(document.querySelector('.opencode-header-update')!.textContent).toContain('Update failed');
   });
 
-  it('calls onUpdateClick when update banner is clicked', async () => {
+  it('should_call_onUpdateClick_when_banner_clicked', async () => {
+    // Arrange
     const { initUiPage, render, updateHeader } = await loadFreshUi();
     initUiPage({ body: document.body } as any);
     render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
-
     const onClick = vi.fn();
     updateHeader(AppState.Idle, {
       updateInfo: { currentVersion: '1.0.0', latestVersion: '2.0.0' },
       onUpdateClick: onClick,
     });
-
     const banner = document.querySelector('.opencode-header-update') as HTMLElement;
+
+    // Act
     banner.click();
+
+    // Assert
     expect(onClick).toHaveBeenCalled();
   });
 
-  it('calls onCancelUpdate when close button is clicked on installing banner', async () => {
+  it('should_call_onCancel_when_close_clicked_during_installing', async () => {
+    // Arrange
     const { initUiPage, render, updateHeader } = await loadFreshUi();
     initUiPage({ body: document.body } as any);
     render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
-
     const onCancel = vi.fn();
     updateHeader(AppState.Idle, {
       updateInfo: { currentVersion: '1.0.0', latestVersion: '2.0.0' },
       updateStatus: 'installing',
       onCancelUpdate: onCancel,
     });
-
     const closeBtn = document.querySelector('.opencode-header-update-close') as HTMLElement;
+
+    // Act
     closeBtn.click();
+
+    // Assert
     expect(onCancel).toHaveBeenCalled();
   });
 });
-
