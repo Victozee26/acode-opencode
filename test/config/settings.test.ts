@@ -3,7 +3,7 @@ import {
   SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE,
   DEFAULT_HIDE_HEADER_IN_LANDSCAPE,
   SETTINGS_KEY_IFRAME_SCALE,
-  SETTINGS_KEY_AUTO_START,
+  SETTINGS_KEY_ENABLE_CONSOLE_LOGS,
   SETTINGS_KEY_LOG_LEVEL,
 } from '../../src/config/settings';
 import * as barrel from '../../src/config';
@@ -19,7 +19,7 @@ describe('settings config constants', () => {
 
   it('key is distinct from other settings keys', () => {
     expect(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE).not.toBe(SETTINGS_KEY_IFRAME_SCALE);
-    expect(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE).not.toBe(SETTINGS_KEY_AUTO_START);
+    expect(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE).not.toBe(SETTINGS_KEY_ENABLE_CONSOLE_LOGS);
     expect(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE).not.toBe(SETTINGS_KEY_LOG_LEVEL);
   });
 

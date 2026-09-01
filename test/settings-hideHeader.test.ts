@@ -4,14 +4,13 @@ import {
   getHideHeaderInLandscape,
   setOnHideHeaderChange,
   resetSettingsCache,
-  getAutoStart,
   getLogLevel,
 } from '../src/settings';
 import {
   SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE,
   DEFAULT_HIDE_HEADER_IN_LANDSCAPE,
-  SETTINGS_KEY_AUTO_START,
   SETTINGS_KEY_LOG_LEVEL,
+  SETTINGS_KEY_ENABLE_CONSOLE_LOGS,
 } from '../src/config/settings';
 
 vi.mock('../src/logger', async () => {
@@ -24,7 +23,7 @@ const mockSettingsGet = vi.fn();
 function setupAcode(): void {
   (globalThis as any).acode = {
     require: vi.fn((name: string) => {
-      if (name === 'settings') return { get: mockSettingsGet };
+      if (name === 'settings') return { get: mockSettingsGet, value: {}, update: vi.fn(() => Promise.resolve()) };
       return {};
     }),
   };
@@ -39,15 +38,15 @@ beforeEach(() => {
 });
 
 describe('getSettingsSchema hideHeader entry', () => {
-  it('list has 4 entries and hideHeader is fourth', () => {
+  it('list has 4 entries and hideHeader is third', () => {
     const schema = getSettingsSchema();
-    expect(schema.list).toHaveLength(5);
-    expect(schema.list[3].key).toBe(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE);
+    expect(schema.list).toHaveLength(4);
+    expect(schema.list[2].key).toBe(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE);
   });
 
   it('hideHeader entry is checkbox with default true', () => {
     const schema = getSettingsSchema();
-    const entry = schema.list[3];
+    const entry = schema.list[2];
     expect(entry.checkbox).toBe(true);
     expect(entry.value).toBe(DEFAULT_HIDE_HEADER_IN_LANDSCAPE);
     expect(entry.value).toBe(true);
@@ -55,7 +54,7 @@ describe('getSettingsSchema hideHeader entry', () => {
 
   it('hideHeader entry has correct text and info', () => {
     const schema = getSettingsSchema();
-    const entry = schema.list[3];
+    const entry = schema.list[2];
     expect(entry.text).toBe('Hide header in landscape');
     expect(entry.info).toContain('landscape');
     expect(entry.info.toLowerCase()).toContain('header');
@@ -63,7 +62,7 @@ describe('getSettingsSchema hideHeader entry', () => {
 
   it('hideHeader entry has no select/promptType', () => {
     const schema = getSettingsSchema();
-    const entry = schema.list[3] as any;
+    const entry = schema.list[2] as any;
     expect(entry.select).toBeUndefined();
     expect(entry.promptType).toBeUndefined();
   });
@@ -155,7 +154,7 @@ describe('setOnHideHeaderChange', () => {
     const handler = vi.fn();
     setOnHideHeaderChange(handler);
     const schema = getSettingsSchema();
-    schema.cb(SETTINGS_KEY_AUTO_START, true);
+    schema.cb(SETTINGS_KEY_ENABLE_CONSOLE_LOGS, true);
     schema.cb(SETTINGS_KEY_LOG_LEVEL, 'debug');
     expect(handler).not.toHaveBeenCalled();
   });
@@ -205,17 +204,14 @@ describe('resetSettingsCache extension', () => {
     expect(getHideHeaderInLandscape()).toBe(true);
   });
 
-  it('reset restores all caches including hideHeader alongside autoStart/logLevel', () => {
+  it('reset restores all caches including hideHeader alongside logLevel', () => {
     const schema = getSettingsSchema();
-    schema.cb(SETTINGS_KEY_AUTO_START, false);
     schema.cb(SETTINGS_KEY_LOG_LEVEL, 'debug');
     schema.cb(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE, false);
     mockSettingsGet.mockReturnValue(null);
-    expect(getAutoStart()).toBe(false);
     expect(getLogLevel()).toBe('debug');
     expect(getHideHeaderInLandscape()).toBe(false);
     resetSettingsCache();
-    expect(getAutoStart()).toBe(true);
     expect(getLogLevel()).toBe('info');
     expect(getHideHeaderInLandscape()).toBe(true);
   });

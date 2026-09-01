@@ -5,10 +5,6 @@ export const IFRAME_SCALE_MIN = 0.7;
 export const IFRAME_SCALE_MAX = 1.5;
 export const IFRAME_SCALE_STEP = 0.1;
 
-// Auto-start setting constants.
-export const SETTINGS_KEY_AUTO_START = 'autoStart';
-export const DEFAULT_AUTO_START = true;
-
 // Console log enable/disable setting constants.
 export const SETTINGS_KEY_ENABLE_CONSOLE_LOGS = 'enableConsoleLogs';
 export const DEFAULT_ENABLE_CONSOLE_LOGS = false;

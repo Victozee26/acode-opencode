@@ -3,9 +3,7 @@ import {
   getSettingsSchema,
   getIframeScale,
   resetSettingsCache,
-  getAutoStart,
   getLogLevel,
-  setOnAutoStartChange,
   setOnLogLevelChange,
 } from '../src/settings';
 import {
@@ -13,12 +11,12 @@ import {
   IFRAME_SCALE_MIN,
   IFRAME_SCALE_MAX,
   SETTINGS_KEY_IFRAME_SCALE,
-  SETTINGS_KEY_AUTO_START,
-  DEFAULT_AUTO_START,
   SETTINGS_KEY_LOG_LEVEL,
   DEFAULT_LOG_LEVEL,
   SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE,
   DEFAULT_HIDE_HEADER_IN_LANDSCAPE,
+  SETTINGS_KEY_ENABLE_CONSOLE_LOGS,
+  DEFAULT_ENABLE_CONSOLE_LOGS,
 } from '../src/config/settings';
 import { setLogLevel } from '../src/logger';
 
@@ -32,7 +30,7 @@ const mockSettingsGet = vi.fn();
 function setupAcode(): void {
   (globalThis as any).acode = {
     require: vi.fn((name: string) => {
-      if (name === 'settings') return { get: mockSettingsGet };
+      if (name === 'settings') return { get: mockSettingsGet, value: {}, update: vi.fn(() => Promise.resolve()) };
       return {};
     }),
   };
@@ -49,7 +47,7 @@ describe('getSettingsSchema', () => {
   it('returns settings list with iframeScale key', () => {
     const schema = getSettingsSchema();
 
-    expect(schema.list).toHaveLength(5);
+    expect(schema.list).toHaveLength(4);
     expect(schema.list[0].key).toBe(SETTINGS_KEY_IFRAME_SCALE);
     expect(schema.list[0].text).toBe('Iframe Scale (%)');
   });
@@ -75,32 +73,32 @@ describe('getSettingsSchema', () => {
     expect(schema.list[0].info).toContain('75');
   });
 
-  it('has autoStart setting with checkbox', () => {
-    const schema = getSettingsSchema();
-    const setting = schema.list[1];
-
-    expect(setting.key).toBe(SETTINGS_KEY_AUTO_START);
-    expect(setting.checkbox).toBe(true);
-    expect(setting.value).toBe(DEFAULT_AUTO_START);
-  });
-
   it('has logLevel setting with select dropdown', () => {
     const schema = getSettingsSchema();
-    const setting = schema.list[2];
+    const setting = schema.list[1];
 
     expect(setting.key).toBe(SETTINGS_KEY_LOG_LEVEL);
     expect(setting.select).toEqual(['debug', 'info', 'warn', 'error']);
     expect(setting.value).toBe(DEFAULT_LOG_LEVEL);
   });
 
-  it('has hideHeaderInLandscape setting as fourth entry with checkbox', () => {
+  it('has hideHeaderInLandscape setting as third entry with checkbox', () => {
     const schema = getSettingsSchema();
-    const setting = schema.list[3];
+    const setting = schema.list[2];
 
     expect(setting.key).toBe(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE);
     expect(setting.text).toBe('Hide header in landscape');
     expect(setting.checkbox).toBe(true);
     expect(setting.value).toBe(DEFAULT_HIDE_HEADER_IN_LANDSCAPE);
+  });
+
+  it('has enableConsoleLogs setting with checkbox', () => {
+    const schema = getSettingsSchema();
+    const setting = schema.list[3];
+
+    expect(setting.key).toBe(SETTINGS_KEY_ENABLE_CONSOLE_LOGS);
+    expect(setting.checkbox).toBe(DEFAULT_ENABLE_CONSOLE_LOGS);
+    expect(setting.value).toBe(DEFAULT_ENABLE_CONSOLE_LOGS);
   });
 });
 
@@ -145,26 +143,6 @@ describe('getIframeScale', () => {
   });
 });
 
-describe('getAutoStart', () => {
-  it('returns default when settings module returns null', () => {
-    mockSettingsGet.mockReturnValue(null);
-
-    expect(getAutoStart()).toBe(DEFAULT_AUTO_START);
-  });
-
-  it('returns true when stored as true', () => {
-    mockSettingsGet.mockReturnValue(true);
-
-    expect(getAutoStart()).toBe(true);
-  });
-
-  it('returns false when stored as false', () => {
-    mockSettingsGet.mockReturnValue(false);
-
-    expect(getAutoStart()).toBe(false);
-  });
-});
-
 describe('getLogLevel', () => {
   it('returns default when settings module returns null', () => {
     mockSettingsGet.mockReturnValue(null);
@@ -176,18 +154,6 @@ describe('getLogLevel', () => {
     mockSettingsGet.mockReturnValue('debug');
 
     expect(getLogLevel()).toBe('debug');
-  });
-});
-
-describe('setOnAutoStartChange', () => {
-  it('registers a callback that fires on autoStart change', () => {
-    const handler = vi.fn();
-    setOnAutoStartChange(handler);
-
-    const schema = getSettingsSchema();
-    schema.cb(SETTINGS_KEY_AUTO_START, true);
-
-    expect(handler).toHaveBeenCalledWith(true);
   });
 });
 
@@ -204,14 +170,6 @@ describe('setOnLogLevelChange', () => {
 });
 
 describe('settings change callback', () => {
-  it('passes through autoStart changes to cachedAutoStart', () => {
-    const schema = getSettingsSchema();
-    schema.cb(SETTINGS_KEY_AUTO_START, false);
-    mockSettingsGet.mockReturnValue(null);
-
-    expect(getAutoStart()).toBe(false);
-  });
-
   it('passes through logLevel changes to cachedLogLevel and calls setLogLevel', () => {
     const schema = getSettingsSchema();
     schema.cb(SETTINGS_KEY_LOG_LEVEL, 'debug');
@@ -234,18 +192,15 @@ describe('resetSettingsCache', () => {
     expect(getIframeScale()).toBe(0.9);
   });
 
-  it('resets auto-start and log-level caches to defaults', () => {
+  it('resets log-level cache to defaults', () => {
     const schema = getSettingsSchema();
-    schema.cb(SETTINGS_KEY_AUTO_START, false);
     schema.cb(SETTINGS_KEY_LOG_LEVEL, 'debug');
     mockSettingsGet.mockReturnValue(null);
 
-    expect(getAutoStart()).toBe(false);
     expect(getLogLevel()).toBe('debug');
 
     resetSettingsCache();
 
-    expect(getAutoStart()).toBe(DEFAULT_AUTO_START);
     expect(getLogLevel()).toBe(DEFAULT_LOG_LEVEL);
   });
 });

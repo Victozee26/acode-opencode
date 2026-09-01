@@ -4,8 +4,6 @@ import {
   IFRAME_SCALE_MIN,
   IFRAME_SCALE_MAX,
   SETTINGS_KEY_IFRAME_SCALE,
-  SETTINGS_KEY_AUTO_START,
-  DEFAULT_AUTO_START,
   SETTINGS_KEY_ENABLE_CONSOLE_LOGS,
   DEFAULT_ENABLE_CONSOLE_LOGS,
   SETTINGS_KEY_LOG_LEVEL,
@@ -23,12 +21,10 @@ let cachedScale = DEFAULT_IFRAME_SCALE;
 
 let onScaleChange: ((scale: number) => void) | null = null;
 
-let cachedAutoStart = DEFAULT_AUTO_START;
 let cachedEnableConsoleLogs = DEFAULT_ENABLE_CONSOLE_LOGS;
 let cachedLogLevel: string = DEFAULT_LOG_LEVEL;
 let cachedHideHeaderInLandscape = DEFAULT_HIDE_HEADER_IN_LANDSCAPE;
 
-let onAutoStartChange: ((value: boolean) => void) | null = null;
 let onEnableConsoleLogsChange: ((value: boolean) => void) | null = null;
 let onLogLevelChange: ((level: string) => void) | null = null;
 let onHideHeaderChange: ((value: boolean) => void) | null = null;
@@ -78,13 +74,6 @@ export function getSettingsSchema(): Acode.PluginSettings {
         value: (rec[SETTINGS_KEY_IFRAME_SCALE] as string) ?? `${Math.round(DEFAULT_IFRAME_SCALE * 100)}`,
       },
       {
-        key: SETTINGS_KEY_AUTO_START,
-        text: 'Auto-start server',
-        info: 'Automatically start the OpenCode server when the plugin page opens',
-        checkbox: (rec[SETTINGS_KEY_AUTO_START] as boolean) ?? DEFAULT_AUTO_START,
-        value: (rec[SETTINGS_KEY_AUTO_START] as boolean) ?? DEFAULT_AUTO_START,
-      },
-      {
         key: SETTINGS_KEY_LOG_LEVEL,
         text: 'Log Level',
         info: 'Verbosity of plugin log output (debug < info < warn < error)',
@@ -115,12 +104,6 @@ export function getSettingsSchema(): Acode.PluginSettings {
           log.info(`iframe scale changed to ${cachedScale}`);
           onScaleChange?.(cachedScale);
         }
-      } else if (_key === SETTINGS_KEY_AUTO_START) {
-        const boolVal = value === true || value === 'true';
-        cachedAutoStart = boolVal;
-        persist(_key, boolVal);
-        log.info(`auto-start set to ${boolVal}`);
-        onAutoStartChange?.(boolVal);
       } else if (_key === SETTINGS_KEY_ENABLE_CONSOLE_LOGS) {
         const boolVal = value === true || value === 'true';
         cachedEnableConsoleLogs = boolVal;
@@ -180,28 +163,6 @@ export function getIframeScale(): number {
 }
 
 /**
- * Read the auto-start preference from Acode's settings module.
- * Falls back to the default if unset.
- */
-export function getAutoStart(): boolean {
-  try {
-    let raw: unknown = getPluginRecord()[SETTINGS_KEY_AUTO_START];
-    if (raw == null) {
-      try {
-        const s = acode.require('settings') as any;
-        if (typeof s.get === 'function') raw = s.get(SETTINGS_KEY_AUTO_START);
-      } catch {}
-    }
-    if (raw != null) {
-      cachedAutoStart = raw === true || raw === 'true';
-    }
-  } catch {
-    // settings module not available — use cached default
-  }
-  return cachedAutoStart;
-}
-
-/**
  * Read the log level from Acode's settings module.
  * Falls back to the default if unset.
  */
@@ -224,10 +185,6 @@ export function getLogLevel(): string {
     // settings module not available — use cached default
   }
   return cachedLogLevel;
-}
-
-export function setOnAutoStartChange(handler: (value: boolean) => void): void {
-  onAutoStartChange = handler;
 }
 
 export function setOnEnableConsoleLogsChange(
@@ -290,7 +247,6 @@ export function getHideHeaderInLandscape(): boolean {
 
 export function resetSettingsCache(): void {
   cachedScale = DEFAULT_IFRAME_SCALE;
-  cachedAutoStart = DEFAULT_AUTO_START;
   cachedEnableConsoleLogs = DEFAULT_ENABLE_CONSOLE_LOGS;
   cachedLogLevel = DEFAULT_LOG_LEVEL;
   cachedHideHeaderInLandscape = DEFAULT_HIDE_HEADER_IN_LANDSCAPE;

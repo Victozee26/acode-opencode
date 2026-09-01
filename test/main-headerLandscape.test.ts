@@ -23,7 +23,6 @@ vi.mock('../src/settings', () => ({
   getSettingsSchema: vi.fn(() => ({ list: [] as any[], cb: vi.fn() })),
   setOnScaleChange: vi.fn(),
   setOnHideHeaderChange: vi.fn((h: any) => { capturedHideHandler = h; }),
-  getAutoStart: vi.fn(() => false),
   getEnableConsoleLogs: vi.fn(() => false),
   getLogLevel: vi.fn(() => 'info'),
   getHideHeaderInLandscape: vi.fn(() => true),

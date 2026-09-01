@@ -24,7 +24,6 @@ import {
   getSettingsSchema,
   setOnScaleChange,
   setOnHideHeaderChange,
-  getAutoStart,
   getEnableConsoleLogs,
   getLogLevel,
 } from './settings';
@@ -145,7 +144,7 @@ export class AcodePlugin {
 
     // Lazy start: only run the flow the first time the page is shown.
     this.handleShow = () => {
-      if (!this.isRunning && getAutoStart()) {
+      if (!this.isRunning) {
         this.startFlow();
       }
     };
