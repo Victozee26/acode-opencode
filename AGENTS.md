@@ -136,6 +136,6 @@ When the user requests a durable behavior change, record it here or in the relev
 - `docs/SPEC.md` — Technical specification and architecture documentation.
 - `docs/BUILD_PLAN.md` — Phased build/implementation plan.
 - `docs/plans/` — Phase-level implementation plans (phases 2–4).
-- `test/` — Vitest + jsdom suite mirroring `src/` (e.g. `test/opencode/server.test.ts`), imports from `../src/...` / `../../src/...`; stubs `window.cordova.plugin.http` for health probes (no `fetch` fallback). No `test/AGENTS.md`.
+- `test/` — Vitest + jsdom suite mirroring `src/` (e.g. `test/opencode/server.test.ts`, `test/ui/headerLandscape.test.ts`, `test/main-headerLandscape.test.ts`), imports from `../src/...` / `../../src/...`; stubs `window.cordova.plugin.http` for health probes (no `fetch` fallback), `window.matchMedia`/`innerWidth`/`innerHeight` for landscape, and `acode.require('settings')` for header visibility. No `test/AGENTS.md`.
 - `docs/acode-plugin-api-reference.md` — Acode plugin API reference relevant to this project.
 - `docs/acode-plugin-development-guide.md` — Practical Acode plugin development guidance for this project.

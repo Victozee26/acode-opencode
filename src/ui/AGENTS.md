@@ -69,7 +69,7 @@ Owned by the root AGENTS.md. Three subdirectories:
 
 ## Verification
 
-`npm test` runs Vitest with jsdom. Test file: `test/ui/components.test.ts`. Covers `createErrorDisplay` retry button and error detail rendering, `initUiPage` container creation, `render` persistent container behavior (header persists across transitions, content swaps), `updateHeader` in-place updates (Start Server visibility, same-state short-circuit).
+`npm test` runs Vitest with jsdom. Test files: `test/ui/components.test.ts` and `test/ui/headerLandscape.test.ts`. `components.test.ts` covers `createErrorDisplay` retry button and error detail rendering, `initUiPage` container creation, `render` persistent container behavior (header persists across transitions, content swaps), `updateHeader` in-place updates (Start Server visibility, same-state short-circuit). `headerLandscape.test.ts` covers landscape header visibility: `HEADER_LANDSCAPE_HIDDEN_CLASS`/`LANDSCAPE_MEDIA_QUERY` constants & barrel re-export, `headerBar.css` `@media (orientation: landscape)` gated rule, `isLandscape()` fallback (matchMedia + `innerWidth`/`innerHeight`), `applyHeaderVisibility()` toggling `body` class by `getHideHeaderInLandscape()`+landscape, `initOrientationListener()`/`destroyOrientationListener()` idempotent lifecycle (`matchMedia` `change` via `addEventListener`/`addListener` fallback + `resize`/`orientationchange`), live toggle via `setOnHideHeaderChange` → `applyHeaderVisibility()`, and `initUiPage`/`render`/`updateHeader` integration (header hidden in all `AppState` when landscape+ON). Stubs `window.matchMedia` (with trigger), `window.innerWidth`/`innerHeight`, and `acode.require('settings')`.
 
 ## Child DOX Index
 
