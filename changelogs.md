@@ -1,5 +1,9 @@
 # Changelogs
 
+## 0.2.2
+- Added auto-hide header in landscape orientation to maximize content area in fullscreen view.
+- Added native plugin setting to toggle landscape header behavior on or off.
+
 ## 0.2.1
 - Renamed the plugin from "OpenCode Web" to "OpenCode AI".
 - Handled blocking errors that could prevent the plugin from launching.
