@@ -103,7 +103,7 @@ and a retry action. `restart` (user-triggered) re-enters at
 | `config/` | All named constants (port, URLs, commands, timeouts), split by domain (`server`, `opencode`, `health`, `ui`, `app`) + barrel `index.ts` |
 | `types.ts` | `AppState` enum, `StateContext`, `ErrorInfo`, `StateListener` |
 | `state.ts` | State machine: `transition()`, `onStateChange()`, `setError()`, `reset()` |
-| `logger.ts` | Leveled logging: `createLogger()`, `setLogEnabled()`, `setLogLevel()`, `getLogLevel()` |
+| `logger.ts` | Leveled logging: `createLogger()`, `setLogLevel()`, `getLogLevel()` (`none` disables) |
 | `error.ts` | `extractErrorInfo()` — normalizes unknown errors into `{ summary, logTail }` |
 | `terminal/executor.ts` | Thin wrapper around `acode.require('terminal').Executor` (`execute(command, alpine)`) |
 | `opencode/install.ts` | `checkInstalled()`, `installOpenCode()` — npm-based installation into Alpine |

@@ -65,7 +65,7 @@ src/
   main.ts               # plugin init/destroy, flow orchestration
   types.ts              # AppState enum, StateContext, ErrorInfo
   state.ts              # state machine (transition, onStateChange, reset)
-  logger.ts             # leveled logging (createLogger, setLogEnabled, setLogLevel)
+  logger.ts             # leveled logging (createLogger, setLogLevel)
   error.ts              # extractErrorInfo() — normalizes unknown errors
   config/               # named constants, split by domain
   terminal/executor.ts  # thin wrapper over global Executor

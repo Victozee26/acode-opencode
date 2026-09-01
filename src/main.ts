@@ -18,15 +18,9 @@ import { checkInstalled, installOpenCode, uninstallOpenCode } from './opencode/i
 import { startServer, waitForReady, restartServer, stopServer } from './opencode/server';
 import { isServerUp } from './opencode/health';
 import { checkForUpdates, installUpdate } from './opencode/update';
-import { createLogger, setLogEnabled, setLogLevel } from './logger';
+import { createLogger, setLogLevel } from './logger';
 import { extractErrorInfo } from './error';
-import {
-  getSettingsSchema,
-  setOnScaleChange,
-  setOnHideHeaderChange,
-  getEnableConsoleLogs,
-  getLogLevel,
-} from './settings';
+import { getSettingsSchema, setOnScaleChange, setOnHideHeaderChange, getLogLevel } from './settings';
 import { HEALTH_PROBE_INTERVAL } from './config/health';
 
 const log = createLogger('main');
@@ -73,8 +67,7 @@ export class AcodePlugin {
     _cacheFileUrl: string,
     ctx: Acode.PluginContext | null,
   ): Promise<void> {
-    setLogEnabled(getEnableConsoleLogs());
-    setLogLevel(getLogLevel() as 'debug' | 'info' | 'warn' | 'error');
+    setLogLevel(getLogLevel() as 'none' | 'debug' | 'info' | 'warn' | 'error');
     log.info('init: plugin initializing');
     initUiStyles(baseUrl);
     setOnScaleChange((scale) => updateIframeScale(scale));
