@@ -5,12 +5,14 @@ import {
   SETTINGS_KEY_IFRAME_SCALE,
   SETTINGS_KEY_AUTO_START,
   DEFAULT_AUTO_START,
+  SETTINGS_KEY_ENABLE_CONSOLE_LOGS,
+  DEFAULT_ENABLE_CONSOLE_LOGS,
   SETTINGS_KEY_LOG_LEVEL,
   DEFAULT_LOG_LEVEL,
   SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE,
   DEFAULT_HIDE_HEADER_IN_LANDSCAPE,
 } from './config/settings';
-import { createLogger, setLogLevel } from './logger';
+import { createLogger, setLogEnabled, setLogLevel } from './logger';
 
 const log = createLogger('settings');
 
@@ -19,10 +21,12 @@ let cachedScale = DEFAULT_IFRAME_SCALE;
 let onScaleChange: ((scale: number) => void) | null = null;
 
 let cachedAutoStart = DEFAULT_AUTO_START;
+let cachedEnableConsoleLogs = DEFAULT_ENABLE_CONSOLE_LOGS;
 let cachedLogLevel: string = DEFAULT_LOG_LEVEL;
 let cachedHideHeaderInLandscape = DEFAULT_HIDE_HEADER_IN_LANDSCAPE;
 
 let onAutoStartChange: ((value: boolean) => void) | null = null;
+let onEnableConsoleLogsChange: ((value: boolean) => void) | null = null;
 let onLogLevelChange: ((level: string) => void) | null = null;
 let onHideHeaderChange: ((value: boolean) => void) | null = null;
 
@@ -66,6 +70,13 @@ export function getSettingsSchema(): Acode.PluginSettings {
         checkbox: true,
         value: DEFAULT_HIDE_HEADER_IN_LANDSCAPE,
       },
+      {
+        key: SETTINGS_KEY_ENABLE_CONSOLE_LOGS,
+        text: 'Enable console logs',
+        info: 'Enable plugin console output (when off, no logs are printed regardless of log level)',
+        checkbox: true,
+        value: DEFAULT_ENABLE_CONSOLE_LOGS,
+      },
     ],
     cb(_key: string, value: unknown) {
       if (_key === SETTINGS_KEY_IFRAME_SCALE) {
@@ -80,6 +91,14 @@ export function getSettingsSchema(): Acode.PluginSettings {
         cachedAutoStart = boolVal;
         log.info(`auto-start set to ${boolVal}`);
         onAutoStartChange?.(boolVal);
+      } else if (_key === SETTINGS_KEY_ENABLE_CONSOLE_LOGS) {
+        const boolVal = value === true || value === 'true';
+        cachedEnableConsoleLogs = boolVal;
+        setLogEnabled(boolVal);
+        // Note: when disabling, this info line is suppressed because
+        // logging is now off — which is the desired quiet behaviour.
+        log.info(`console logs ${boolVal ? 'enabled' : 'disabled'}`);
+        onEnableConsoleLogsChange?.(boolVal);
       } else if (_key === SETTINGS_KEY_LOG_LEVEL) {
         const strVal = String(value);
         if (['debug', 'info', 'warn', 'error'].includes(strVal)) {
@@ -163,12 +182,35 @@ export function setOnAutoStartChange(handler: (value: boolean) => void): void {
   onAutoStartChange = handler;
 }
 
+export function setOnEnableConsoleLogsChange(
+  handler: (value: boolean) => void,
+): void {
+  onEnableConsoleLogsChange = handler;
+}
+
 export function setOnLogLevelChange(handler: (level: string) => void): void {
   onLogLevelChange = handler;
 }
 
 export function setOnHideHeaderChange(handler: (value: boolean) => void): void {
   onHideHeaderChange = handler;
+}
+
+/**
+ * Read the console-logs enable preference from Acode's settings module.
+ * Falls back to the default if unset.
+ */
+export function getEnableConsoleLogs(): boolean {
+  try {
+    const settings = acode.require('settings') as any;
+    const raw = settings.get(SETTINGS_KEY_ENABLE_CONSOLE_LOGS);
+    if (raw != null) {
+      cachedEnableConsoleLogs = raw === true || raw === 'true';
+    }
+  } catch {
+    // settings module not available — use cached default
+  }
+  return cachedEnableConsoleLogs;
 }
 
 /**
@@ -191,6 +233,7 @@ export function getHideHeaderInLandscape(): boolean {
 export function resetSettingsCache(): void {
   cachedScale = DEFAULT_IFRAME_SCALE;
   cachedAutoStart = DEFAULT_AUTO_START;
+  cachedEnableConsoleLogs = DEFAULT_ENABLE_CONSOLE_LOGS;
   cachedLogLevel = DEFAULT_LOG_LEVEL;
   cachedHideHeaderInLandscape = DEFAULT_HIDE_HEADER_IN_LANDSCAPE;
 }

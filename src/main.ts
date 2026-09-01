@@ -19,13 +19,13 @@ import { startServer, waitForReady, restartServer, stopServer } from './opencode
 import { isServerUp } from './opencode/health';
 import { checkForUpdates, installUpdate } from './opencode/update';
 import { createLogger, setLogEnabled, setLogLevel } from './logger';
-import { DEBUG } from './config/app';
 import { extractErrorInfo } from './error';
 import {
   getSettingsSchema,
   setOnScaleChange,
   setOnHideHeaderChange,
   getAutoStart,
+  getEnableConsoleLogs,
   getLogLevel,
 } from './settings';
 import { HEALTH_PROBE_INTERVAL } from './config/health';
@@ -74,7 +74,7 @@ export class AcodePlugin {
     _cacheFileUrl: string,
     ctx: Acode.PluginContext | null,
   ): Promise<void> {
-    setLogEnabled(DEBUG);
+    setLogEnabled(getEnableConsoleLogs());
     setLogLevel(getLogLevel() as 'debug' | 'info' | 'warn' | 'error');
     log.info('init: plugin initializing');
     initUiStyles(baseUrl);

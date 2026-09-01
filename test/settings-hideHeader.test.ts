@@ -41,7 +41,7 @@ beforeEach(() => {
 describe('getSettingsSchema hideHeader entry', () => {
   it('list has 4 entries and hideHeader is fourth', () => {
     const schema = getSettingsSchema();
-    expect(schema.list).toHaveLength(4);
+    expect(schema.list).toHaveLength(5);
     expect(schema.list[3].key).toBe(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE);
   });
 

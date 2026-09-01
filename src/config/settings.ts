@@ -9,6 +9,10 @@ export const IFRAME_SCALE_STEP = 0.1;
 export const SETTINGS_KEY_AUTO_START = 'autoStart';
 export const DEFAULT_AUTO_START = true;
 
+// Console log enable/disable setting constants.
+export const SETTINGS_KEY_ENABLE_CONSOLE_LOGS = 'enableConsoleLogs';
+export const DEFAULT_ENABLE_CONSOLE_LOGS = false;
+
 // Log level setting constants.
 export const SETTINGS_KEY_LOG_LEVEL = 'logLevel';
 export const DEFAULT_LOG_LEVEL = 'info';
