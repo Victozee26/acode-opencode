@@ -7,6 +7,8 @@ import {
   DEFAULT_AUTO_START,
   SETTINGS_KEY_LOG_LEVEL,
   DEFAULT_LOG_LEVEL,
+  SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE,
+  DEFAULT_HIDE_HEADER_IN_LANDSCAPE,
 } from './config/settings';
 import { createLogger, setLogLevel } from './logger';
 
@@ -18,9 +20,11 @@ let onScaleChange: ((scale: number) => void) | null = null;
 
 let cachedAutoStart = DEFAULT_AUTO_START;
 let cachedLogLevel: string = DEFAULT_LOG_LEVEL;
+let cachedHideHeaderInLandscape = DEFAULT_HIDE_HEADER_IN_LANDSCAPE;
 
 let onAutoStartChange: ((value: boolean) => void) | null = null;
 let onLogLevelChange: ((level: string) => void) | null = null;
+let onHideHeaderChange: ((value: boolean) => void) | null = null;
 
 function clampScale(value: number): number {
   return Math.min(IFRAME_SCALE_MAX, Math.max(IFRAME_SCALE_MIN, value));
@@ -55,6 +59,13 @@ export function getSettingsSchema(): Acode.PluginSettings {
         select: ['debug', 'info', 'warn', 'error'] as const,
         value: DEFAULT_LOG_LEVEL,
       },
+      {
+        key: SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE,
+        text: 'Hide header in landscape',
+        info: 'Automatically hide header in landscape orientation to maximize content area',
+        checkbox: true,
+        value: DEFAULT_HIDE_HEADER_IN_LANDSCAPE,
+      },
     ],
     cb(_key: string, value: unknown) {
       if (_key === SETTINGS_KEY_IFRAME_SCALE) {
@@ -77,6 +88,11 @@ export function getSettingsSchema(): Acode.PluginSettings {
           log.info(`log level set to ${strVal}`);
           onLogLevelChange?.(strVal);
         }
+      } else if (_key === SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE) {
+        const boolVal = value === true || value === 'true';
+        cachedHideHeaderInLandscape = boolVal;
+        log.info(`hideHeaderInLandscape set to ${boolVal}`);
+        onHideHeaderChange?.(boolVal);
       }
     },
   };
@@ -151,8 +167,30 @@ export function setOnLogLevelChange(handler: (level: string) => void): void {
   onLogLevelChange = handler;
 }
 
+export function setOnHideHeaderChange(handler: (value: boolean) => void): void {
+  onHideHeaderChange = handler;
+}
+
+/**
+ * Read the hide-header-in-landscape preference from Acode's settings module.
+ * Falls back to the default if unset.
+ */
+export function getHideHeaderInLandscape(): boolean {
+  try {
+    const settings = acode.require('settings') as any;
+    const raw = settings.get(SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE);
+    if (raw != null) {
+      cachedHideHeaderInLandscape = raw === true || raw === 'true';
+    }
+  } catch {
+    // settings module not available — use cached default
+  }
+  return cachedHideHeaderInLandscape;
+}
+
 export function resetSettingsCache(): void {
   cachedScale = DEFAULT_IFRAME_SCALE;
   cachedAutoStart = DEFAULT_AUTO_START;
   cachedLogLevel = DEFAULT_LOG_LEVEL;
+  cachedHideHeaderInLandscape = DEFAULT_HIDE_HEADER_IN_LANDSCAPE;
 }

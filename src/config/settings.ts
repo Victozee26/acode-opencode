@@ -12,3 +12,7 @@ export const DEFAULT_AUTO_START = true;
 // Log level setting constants.
 export const SETTINGS_KEY_LOG_LEVEL = 'logLevel';
 export const DEFAULT_LOG_LEVEL = 'info';
+
+// Hide header in landscape setting constants.
+export const SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE = 'hideHeaderInLandscape';
+export const DEFAULT_HIDE_HEADER_IN_LANDSCAPE = true;
