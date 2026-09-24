@@ -1,5 +1,13 @@
-import { AppState, StateContext, UpdateInfo, UpdateStatus, HeaderActions } from '../types';
+import {
+  AppState,
+  StateContext,
+  UpdateInfo,
+  UpdateStatus,
+  HeaderActions,
+  RuntimeVersions,
+} from '../types';
 import { BASE_URL } from '../config/server';
+import { formatDiagnostics } from '../error';
 import {
   HEADER_CONTAINER_ID,
   CONTENT_CONTAINER_ID,
@@ -35,6 +43,11 @@ const log = createLogger('ui');
 
 let activeSpinner: SpinnerElement | null = null;
 let activeIframe: HTMLIFrameElement | null = null;
+
+// Mounted error diagnostics block plus the log tail it was built from, so the
+// async runtime-version probe can fill the versions in without a re-render.
+let activeErrorLog: HTMLPreElement | null = null;
+let activeErrorLogTail = '';
 
 let pageHeader: HTMLElement | null = null;
 let pageContent: HTMLElement | null = null;
@@ -210,6 +223,8 @@ export function render(
 
   pageContent!.innerHTML = '';
   pageContent!.style.overflow = '';
+  activeErrorLog = null;
+  activeErrorLogTail = '';
 
   switch (state) {
     case AppState.Idle:
@@ -299,7 +314,22 @@ function renderError(
   context: StateContext,
   actions: RenderActions,
 ): void {
-  container.appendChild(createErrorDisplay(context, actions.start));
+  activeErrorLogTail = context.error?.logTail ?? '';
+  const display = createErrorDisplay(context, actions.start);
+  activeErrorLog = display.querySelector<HTMLPreElement>('.opencode-error-log');
+  container.appendChild(display);
+}
+
+/**
+ * Fill the mounted error diagnostics block with the probed node/npm versions.
+ * Called asynchronously from `main.ts` once `getRuntimeVersions()` answers —
+ * the error view renders immediately with pending placeholders, and this swaps
+ * in the real values (or `?`). No-op when no error view is mounted, so a probe
+ * that finishes after the user recovered cannot touch a stale element.
+ */
+export function setErrorVersions(versions: RuntimeVersions): void {
+  if (!activeErrorLog) return;
+  activeErrorLog.textContent = formatDiagnostics(activeErrorLogTail, versions);
 }
 
 function buildUpdateBanner(actions: HeaderActions): UpdateBannerConfig | null {

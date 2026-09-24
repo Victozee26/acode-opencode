@@ -1,5 +1,10 @@
 # Changelogs
 
+## 0.2.3
+- Install now checks the npm version and uses `--allow-scripts=opencode-ai` on npm 11.16.0+.
+- Error view now shows the node and npm versions in its diagnostics block.
+- Updated project documentation.
+
 ## 0.2.2
 - Added auto-hide header in landscape orientation to maximize content area in fullscreen view.
 - Added setting to toggle landscape header behavior.

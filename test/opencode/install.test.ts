@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { checkInstalled, installOpenCode, uninstallOpenCode } from '../../src/opencode/install';
 import * as executorModule from '../../src/terminal/executor';
+import {
+  INSTALL_DEPS_COMMAND,
+  INSTALL_OPENCODE_COMMAND,
+  INSTALL_OPENCODE_COMMAND_ALLOW_SCRIPTS,
+  NPM_VERSION_COMMAND,
+} from '../../src/config/opencode';
 
 vi.mock('../../src/terminal/executor');
 
@@ -8,7 +14,7 @@ const mockExecute = vi.mocked(executorModule.execute);
 const mockExecuteVerbose = vi.mocked(executorModule.executeVerbose);
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
 });
 
 describe('checkInstalled', () => {
@@ -36,15 +42,46 @@ describe('checkInstalled', () => {
 });
 
 describe('installOpenCode', () => {
-  it('should_resolve_when_both_steps_succeed', async () => {
+  it('should_resolve_when_all_steps_succeed', async () => {
     // Arrange
-    mockExecute.mockResolvedValue('ok');
+    mockExecute.mockResolvedValue('11.16.0');
 
     // Act
     const promise = installOpenCode();
 
     // Assert
     await expect(promise).resolves.toBeUndefined();
+    expect(mockExecute).toHaveBeenNthCalledWith(1, INSTALL_DEPS_COMMAND);
+    expect(mockExecute).toHaveBeenNthCalledWith(2, NPM_VERSION_COMMAND);
+    expect(mockExecute).toHaveBeenNthCalledWith(3, INSTALL_OPENCODE_COMMAND_ALLOW_SCRIPTS);
+  });
+
+  it('should_use_plain_command_when_npm_is_below_minimum', async () => {
+    // Arrange
+    mockExecute.mockResolvedValueOnce('deps ok');
+    mockExecute.mockResolvedValueOnce('11.15.9');
+    mockExecute.mockResolvedValueOnce('installed');
+
+    // Act
+    const promise = installOpenCode();
+
+    // Assert
+    await expect(promise).resolves.toBeUndefined();
+    expect(mockExecute).toHaveBeenNthCalledWith(3, INSTALL_OPENCODE_COMMAND);
+  });
+
+  it('should_use_plain_command_when_npm_probe_fails', async () => {
+    // Arrange
+    mockExecute.mockResolvedValueOnce('deps ok');
+    mockExecute.mockRejectedValueOnce(new Error('npm: not found'));
+    mockExecute.mockResolvedValueOnce('installed');
+
+    // Act
+    const promise = installOpenCode();
+
+    // Assert
+    await expect(promise).resolves.toBeUndefined();
+    expect(mockExecute).toHaveBeenNthCalledWith(3, INSTALL_OPENCODE_COMMAND);
   });
 
   it('should_throw_deps_prefix_when_first_step_fails', async () => {
@@ -58,9 +95,10 @@ describe('installOpenCode', () => {
     await expect(promise).rejects.toThrow('Installation failed (deps): Command failed: network error');
   });
 
-  it('should_throw_opencode_prefix_when_second_step_fails', async () => {
+  it('should_throw_opencode_prefix_when_install_step_fails', async () => {
     // Arrange
     mockExecute.mockResolvedValueOnce('deps ok');
+    mockExecute.mockResolvedValueOnce('11.16.0');
     mockExecute.mockRejectedValueOnce(new Error('Command failed: EACCES'));
 
     // Act
@@ -68,6 +106,7 @@ describe('installOpenCode', () => {
 
     // Assert
     await expect(promise).rejects.toThrow('Installation failed (opencode): Command failed: EACCES');
+    expect(mockExecute).toHaveBeenNthCalledWith(3, INSTALL_OPENCODE_COMMAND_ALLOW_SCRIPTS);
   });
 
   it('should_throw_deps_prefix_when_rejection_is_string', async () => {
@@ -81,9 +120,10 @@ describe('installOpenCode', () => {
     await expect(promise).rejects.toThrow('Installation failed (deps): plain string failure');
   });
 
-  it('should_throw_opencode_prefix_when_second_rejection_is_string', async () => {
+  it('should_throw_opencode_prefix_when_install_rejection_is_string', async () => {
     // Arrange
     mockExecute.mockResolvedValueOnce('deps ok');
+    mockExecute.mockResolvedValueOnce('11.16.0');
     mockExecute.mockRejectedValueOnce('plain string failure');
 
     // Act
@@ -131,11 +171,12 @@ describe('uninstallOpenCode', () => {
 
 describe('installOpenCode with onProgress', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
   it('should_resolve_when_onProgress_provided', async () => {
     // Arrange
+    mockExecute.mockResolvedValue('11.16.0');
     mockExecuteVerbose.mockResolvedValue('ok');
     const onProgress = vi.fn();
 
@@ -144,6 +185,12 @@ describe('installOpenCode with onProgress', () => {
 
     // Assert
     await expect(promise).resolves.toBeUndefined();
+    expect(mockExecuteVerbose).toHaveBeenNthCalledWith(1, INSTALL_DEPS_COMMAND, onProgress);
+    expect(mockExecuteVerbose).toHaveBeenNthCalledWith(
+      2,
+      INSTALL_OPENCODE_COMMAND_ALLOW_SCRIPTS,
+      onProgress,
+    );
   });
 
   it('should_throw_deps_prefix_when_verbose_first_step_fails', async () => {
@@ -157,8 +204,9 @@ describe('installOpenCode with onProgress', () => {
     await expect(promise).rejects.toThrow('Installation failed (deps): exit 1');
   });
 
-  it('should_throw_opencode_prefix_when_verbose_second_step_fails', async () => {
+  it('should_throw_opencode_prefix_when_verbose_install_step_fails', async () => {
     // Arrange
+    mockExecute.mockResolvedValue('11.16.0');
     mockExecuteVerbose.mockResolvedValueOnce('deps ok');
     mockExecuteVerbose.mockRejectedValueOnce(new Error('exit 1\nOutput: fail'));
 
@@ -167,5 +215,10 @@ describe('installOpenCode with onProgress', () => {
 
     // Assert
     await expect(promise).rejects.toThrow('Installation failed (opencode): exit 1');
+    expect(mockExecuteVerbose).toHaveBeenNthCalledWith(
+      2,
+      INSTALL_OPENCODE_COMMAND_ALLOW_SCRIPTS,
+      expect.any(Function),
+    );
   });
 });

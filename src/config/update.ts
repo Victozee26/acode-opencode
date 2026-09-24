@@ -6,3 +6,9 @@ export const LATEST_VERSION_COMMAND = 'npm view opencode-ai version';
 
 // Command to install (or update) the opencode-ai npm package globally.
 export const INSTALL_UPDATE_COMMAND = 'npm install -g opencode-ai';
+
+// Same update for npm builds that gate dependency lifecycle scripts behind an
+// explicit opt-in (`--allow-scripts`, npm >= NPM_ALLOW_SCRIPTS_MIN_VERSION in
+// `config/opencode.ts`).
+export const INSTALL_UPDATE_COMMAND_ALLOW_SCRIPTS =
+  'npm install -g --allow-scripts=opencode-ai opencode-ai';

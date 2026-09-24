@@ -42,6 +42,14 @@ export interface UpdateInfo {
   latestVersion: string;
 }
 
+// Runtime toolchain versions shown as error diagnostics. Values are the raw
+// `node -v` / `npm -v` output (e.g. 'v26.8.2', '11.19.1'), VERSION_PENDING
+// while the probe is in flight, or VERSION_UNKNOWN when it failed.
+export interface RuntimeVersions {
+  node: string;
+  npm: string;
+}
+
 // Tracks the progress of a user-initiated opencode-ai update install.
 // 'installing' shows a pulsing animation + cancel button; 'updated' shows a
 // green success banner; 'error' shows a clickable failure state; null (or

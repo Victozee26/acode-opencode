@@ -8,12 +8,12 @@ Single source of truth for every named constant in the plugin: network/server va
 
 Owned by the root AGENTS.md. Ten files:
 - `server.ts` — network/server core: `PORT`, `HOSTNAME`, `BASE_URL` (leaf, imports nothing).
-- `opencode.ts` — OpenCode lifecycle: install/start/stop/readiness commands and timeouts (`INSTALL_DEPS_COMMAND`, `INSTALL_OPENCODE_COMMAND`, `CHECK_COMMAND`, `UNINSTALL_COMMAND`, `READY_POLL_INTERVAL`, `READY_TIMEOUT`, `SERVER_LOG_LINES`, `KILL_COMMAND`, `HARD_KILL_COMMAND`, `PROCESS_CHECK_COMMAND`, `STOP_POLL_TIMEOUT`, `STOP_POLL_INTERVAL`).
+- `opencode.ts` — OpenCode lifecycle: install/start/stop/readiness commands and timeouts (`NPM_VERSION_COMMAND`, `NODE_VERSION_COMMAND`, `RUNTIME_VERSION_PROBE_TIMEOUT`, `VERSION_PENDING`, `VERSION_UNKNOWN`, `NPM_ALLOW_SCRIPTS_MIN_VERSION`, `INSTALL_DEPS_COMMAND`, `INSTALL_OPENCODE_COMMAND`, `INSTALL_OPENCODE_COMMAND_ALLOW_SCRIPTS`, `CHECK_COMMAND`, `UNINSTALL_COMMAND`, `READY_POLL_INTERVAL`, `READY_TIMEOUT`, `SERVER_LOG_LINES`, `KILL_COMMAND`, `HARD_KILL_COMMAND`, `PROCESS_CHECK_COMMAND`, `STOP_POLL_TIMEOUT`, `STOP_POLL_INTERVAL`).
 - `health.ts` — health probe + diagnostics: `HEALTH_CHECK_URL` (derives from `BASE_URL` in `server.ts`), `HEALTH_CHECK_TIMEOUT`, `ERROR_FALLBACK_MESSAGE`.
 - `ui.ts` — rendering constants: `SPINNER_DEG_PER_SEC`, `SPINNER_FPS`, `FLOATING_BUTTON_IDLE_OPACITY_TIMEOUT`, `FAB_SCRIM_BACKGROUND`, `FAB_SCRIM_BLUR`, `FAB_SCRIM_Z_INDEX`, `FAB_Z_INDEX`, `HEADER_CONTAINER_ID`, `CONTENT_CONTAINER_ID`, `HEADER_LANDSCAPE_HIDDEN_CLASS`, `LANDSCAPE_MEDIA_QUERY`.
 - `app.ts` — legacy global debug master switch: `DEBUG` (kept for backward compat; runtime control is via `logLevel` setting, `none` disables).
 - `settings.ts` — iframe scale, log-level, and hide-header-in-landscape setting constants: `SETTINGS_KEY_IFRAME_SCALE`, `DEFAULT_IFRAME_SCALE`, `IFRAME_SCALE_MIN`, `IFRAME_SCALE_MAX`, `IFRAME_SCALE_STEP`, `SETTINGS_KEY_LOG_LEVEL`, `DEFAULT_LOG_LEVEL`, `SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE`, `DEFAULT_HIDE_HEADER_IN_LANDSCAPE`.
-- `update.ts` — update commands: `VERSION_CHECK_COMMAND` (`opencode --version`), `LATEST_VERSION_COMMAND` (`npm view opencode-ai version`), `INSTALL_UPDATE_COMMAND` (`npm install -g opencode-ai`).
+- `update.ts` — update commands: `VERSION_CHECK_COMMAND` (`opencode --version`), `LATEST_VERSION_COMMAND` (`npm view opencode-ai version`), `INSTALL_UPDATE_COMMAND` (`npm install -g opencode-ai`), `INSTALL_UPDATE_COMMAND_ALLOW_SCRIPTS` (`npm install -g --allow-scripts=opencode-ai opencode-ai`).
 - `index.ts` — barrel re-exporting every sub-module (`export *`). Convenience for tests; source consumers import the specific sub-module directly.
 
 ## Local Contracts

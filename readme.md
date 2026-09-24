@@ -4,7 +4,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-0.2.2-blue.svg)
+![Version](https://img.shields.io/badge/version-0.2.3-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Acode](https://img.shields.io/badge/Acode-Compatible-orange.svg)
 
@@ -46,6 +46,11 @@ apk add --no-cache nodejs npm
 3. Search for **"OpenCode AI"**
 4. Tap **Install**
 5. Restart
+
+### Having trouble?
+
+If the automatic install fails, you can run the installation commands manually in terminal
+make ur research just incase
 
 ### How It Works
 

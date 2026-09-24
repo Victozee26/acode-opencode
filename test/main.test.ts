@@ -6,12 +6,14 @@ import * as serverModule from '../src/opencode/server';
 import * as healthModule from '../src/opencode/health';
 import * as settingsModule from '../src/settings';
 import * as updateModule from '../src/opencode/update';
+import * as diagnosticsModule from '../src/opencode/diagnostics';
 
 vi.mock('../src/opencode/install');
 vi.mock('../src/opencode/server');
 vi.mock('../src/opencode/health');
 vi.mock('../src/settings');
 vi.mock('../src/opencode/update');
+vi.mock('../src/opencode/diagnostics');
 vi.mock('../src/ui/index');
 vi.mock('../plugin.json', () => ({
   default: { id: 'acode.plugin', name: 'Plugin', main: 'main.js', version: '1.0.0' },
@@ -24,6 +26,7 @@ const mockStartServer = vi.mocked(serverModule.startServer);
 const mockWaitForReady = vi.mocked(serverModule.waitForReady);
 const mockRestartServer = vi.mocked(serverModule.restartServer);
 const mockGetSettingsSchema = vi.mocked(settingsModule.getSettingsSchema);
+const mockGetRuntimeVersions = vi.mocked(diagnosticsModule.getRuntimeVersions);
 
 import { AcodePlugin } from '../src/main';
 
@@ -32,6 +35,7 @@ beforeEach(() => {
   stateModule.reset();
   mockGetSettingsSchema.mockReturnValue({ list: [] } as any);
   (updateModule.checkForUpdates as any).mockResolvedValue(null);
+  mockGetRuntimeVersions.mockResolvedValue({ node: '?', npm: '?' });
 });
 
 function makePlugin(): AcodePlugin {

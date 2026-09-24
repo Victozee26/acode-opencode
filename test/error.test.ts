@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractErrorInfo } from '../src/error';
+import { extractErrorInfo, formatDiagnostics } from '../src/error';
 import { ERROR_FALLBACK_MESSAGE } from '../src/config/health';
 
 describe('extractErrorInfo', () => {
@@ -111,5 +111,31 @@ describe('extractErrorInfo', () => {
 
     // Assert
     expect(result.summary).toBe('undefined');
+  });
+});
+
+describe('formatDiagnostics', () => {
+  it('should_render_version_block_only_when_logTail_empty', () => {
+    // Act
+    const result = formatDiagnostics('', { node: 'v26.8.2', npm: '11.19.1' });
+
+    // Assert
+    expect(result).toBe('node: v26.8.2\nnpm: 11.19.1');
+  });
+
+  it('should_append_versions_after_logTail_when_logTail_present', () => {
+    // Act
+    const result = formatDiagnostics('install failed', { node: 'v26.8.2', npm: '11.19.1' });
+
+    // Assert
+    expect(result).toBe('install failed\n\nnode: v26.8.2\nnpm: 11.19.1');
+  });
+
+  it('should_trim_trailing_newlines_from_logTail', () => {
+    // Act
+    const result = formatDiagnostics('install failed\n\n', { node: '?', npm: '?' });
+
+    // Assert
+    expect(result).toBe('install failed\n\nnode: ?\nnpm: ?');
   });
 });

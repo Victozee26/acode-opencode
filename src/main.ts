@@ -11,6 +11,7 @@ import {
   setSpinnerProgress,
   applyHeaderVisibility,
   destroyOrientationListener,
+  setErrorVersions,
 } from './ui/index';
 import type { RenderActions } from './ui/index';
 import type { HeaderActions } from './types';
@@ -18,6 +19,7 @@ import { checkInstalled, installOpenCode, uninstallOpenCode } from './opencode/i
 import { startServer, waitForReady, restartServer, stopServer } from './opencode/server';
 import { isServerUp } from './opencode/health';
 import { checkForUpdates, installUpdate } from './opencode/update';
+import { getRuntimeVersions } from './opencode/diagnostics';
 import { createLogger, setLogLevel } from './logger';
 import { extractErrorInfo } from './error';
 import { getSettingsSchema, setOnScaleChange, setOnHideHeaderChange, getLogLevel } from './settings';
@@ -132,6 +134,9 @@ export class AcodePlugin {
           onReinstall: () => this.handleReinstall(),
         };
         render(state, context, actions);
+        if (state === AppState.Error) {
+          this.probeRuntimeVersions();
+        }
       }
     });
 
@@ -425,6 +430,22 @@ export class AcodePlugin {
     log.error(`${stage}: failed`, err);
     const { summary, logTail } = extractErrorInfo(err);
     setError(summary, logTail);
+  }
+
+  /**
+   * Fire-and-forget companion to the error render: probes the node and npm
+   * versions and pushes them into the error view's diagnostics block. The
+   * error screen renders immediately with pending placeholders and is filled
+   * in once the probe answers (`?` on failure). Hooked to the state listener
+   * rather than handleError() so every setError() entry point is covered, and
+   * bounded in getRuntimeVersions() so it can never hang the UI.
+   */
+  private probeRuntimeVersions(): void {
+    getRuntimeVersions()
+      .then(setErrorVersions)
+      .catch((err: unknown) => {
+        log.warn('probeRuntimeVersions: failed', err);
+      });
   }
 
   private manageHealthProbe(state: AppState): void {

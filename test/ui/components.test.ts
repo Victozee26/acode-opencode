@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createErrorDisplay } from '../../src/ui/components';
 import { AppState, StateContext } from '../../src/types';
+import { VERSION_PENDING } from '../../src/config/opencode';
 
 function makeContext(error: StateContext['error']): StateContext {
   return {
@@ -35,7 +36,7 @@ describe('createErrorDisplay', () => {
     expect(el.querySelector('button')!.textContent).toBe('Retry');
   });
 
-  it('should_not_render_pre_when_logTail_empty', () => {
+  it('should_render_pre_with_pending_versions_when_logTail_empty', () => {
     // Arrange
     const ctx = makeContext({ message: 'Something broke', logTail: '' });
     const onRetry = vi.fn();
@@ -44,7 +45,9 @@ describe('createErrorDisplay', () => {
     const el = createErrorDisplay(ctx, onRetry);
 
     // Assert
-    expect(el.querySelector('pre')).toBeNull();
+    const pre = el.querySelector('pre');
+    expect(pre).not.toBeNull();
+    expect(pre!.textContent).toBe(`node: ${VERSION_PENDING}\nnpm: ${VERSION_PENDING}`);
   });
 
   it('should_show_message_in_heading_when_error_present', () => {
@@ -80,7 +83,9 @@ describe('createErrorDisplay', () => {
     const el = createErrorDisplay(ctx, onRetry);
 
     // Assert
-    expect(el.querySelector('pre')!.textContent).toBe('error: not found\n');
+    expect(el.querySelector('pre')!.textContent).toBe(
+      `error: not found\n\nnode: ${VERSION_PENDING}\nnpm: ${VERSION_PENDING}`,
+    );
   });
 
   it('should_render_button_even_when_logTail_present', () => {
@@ -119,7 +124,7 @@ describe('createErrorDisplay', () => {
     expect(el.querySelector('button')).not.toBeNull();
   });
 
-  it('should_not_render_pre_when_error_is_null', () => {
+  it('should_render_pre_with_pending_versions_when_error_is_null', () => {
     // Arrange
     const ctx = makeContext(null);
     const onRetry = vi.fn();
@@ -128,7 +133,9 @@ describe('createErrorDisplay', () => {
     const el = createErrorDisplay(ctx, onRetry);
 
     // Assert
-    expect(el.querySelector('pre')).toBeNull();
+    expect(el.querySelector('pre')!.textContent).toBe(
+      `node: ${VERSION_PENDING}\nnpm: ${VERSION_PENDING}`,
+    );
   });
 
   it('should_invoke_onRetry_when_button_clicked', () => {
@@ -143,6 +150,80 @@ describe('createErrorDisplay', () => {
 
     // Assert
     expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it('should_copy_message_and_diagnostics_including_pending_versions', () => {
+    // Arrange
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const ctx = makeContext({ message: 'Install failed', logTail: 'error: not found' });
+    const el = createErrorDisplay(ctx, vi.fn());
+
+    // Act
+    (el.querySelector('.opencode-error-copy') as HTMLButtonElement).click();
+
+    // Assert
+    expect(writeText).toHaveBeenCalledWith(
+      `Install failed\nerror: not found\n\nnode: ${VERSION_PENDING}\nnpm: ${VERSION_PENDING}`,
+    );
+  });
+});
+
+describe('setErrorVersions', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('should_replace_pending_versions_when_error_view_mounted', async () => {
+    // Arrange
+    const { initUiPage, render, setErrorVersions } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+    render(
+      AppState.Error,
+      { currentState: AppState.Error, error: { message: 'fail', logTail: 'boom' } },
+      makeActions(),
+    );
+
+    // Act
+    setErrorVersions({ node: 'v26.8.2', npm: '11.19.1' });
+
+    // Assert
+    expect(document.querySelector('.opencode-error-log')!.textContent).toBe(
+      'boom\n\nnode: v26.8.2\nnpm: 11.19.1',
+    );
+  });
+
+  it('should_noop_when_no_error_view_mounted', async () => {
+    // Arrange
+    const { initUiPage, render, setErrorVersions } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+    render(AppState.Idle, { currentState: AppState.Idle, error: null }, makeActions());
+
+    // Act
+    setErrorVersions({ node: 'v26.8.2', npm: '11.19.1' });
+
+    // Assert
+    expect(document.querySelector('.opencode-error-log')).toBeNull();
+  });
+
+  it('should_copy_filled_versions_when_copy_clicked_after_probe', async () => {
+    // Arrange
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const { initUiPage, render, setErrorVersions } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+    render(
+      AppState.Error,
+      { currentState: AppState.Error, error: { message: 'fail', logTail: 'boom' } },
+      makeActions(),
+    );
+
+    // Act
+    setErrorVersions({ node: 'v26.8.2', npm: '11.19.1' });
+    (document.querySelector('.opencode-error-copy') as HTMLButtonElement).click();
+
+    // Assert
+    expect(writeText).toHaveBeenCalledWith('fail\nboom\n\nnode: v26.8.2\nnpm: 11.19.1');
   });
 });
 

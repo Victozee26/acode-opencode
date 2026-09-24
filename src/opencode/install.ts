@@ -1,5 +1,12 @@
 import { execute, executeVerbose } from '../terminal/executor';
-import { CHECK_COMMAND, INSTALL_DEPS_COMMAND, INSTALL_OPENCODE_COMMAND, UNINSTALL_COMMAND } from '../config/opencode';
+import {
+  CHECK_COMMAND,
+  INSTALL_DEPS_COMMAND,
+  INSTALL_OPENCODE_COMMAND,
+  INSTALL_OPENCODE_COMMAND_ALLOW_SCRIPTS,
+  UNINSTALL_COMMAND,
+} from '../config/opencode';
+import { selectNpmCommand } from './npm';
 import { createLogger } from '../logger';
 
 const log = createLogger('install');
@@ -24,13 +31,21 @@ export async function checkInstalled(): Promise<boolean> {
 }
 
 /**
- * Installs OpenCode by running two sequential commands: OS package dependencies
- * first, then the global npm package.
+ * Installs OpenCode by running three sequential commands: OS package
+ * dependencies first (`apk add nodejs npm`), then an `npm -v` probe to pick the
+ * matching install command, then the global npm package itself.
  *
- * When `onProgress` is provided the commands are launched via
+ * The probe selects `INSTALL_OPENCODE_COMMAND_ALLOW_SCRIPTS` on npm >= 11.16.0
+ * (which gates dependency scripts behind `--allow-scripts`) and the plain
+ * `INSTALL_OPENCODE_COMMAND` otherwise. It never fails the install — see
+ * {@link selectNpmCommand}.
+ *
+ * When `onProgress` is provided the two real steps are launched via
  * {@link executeVerbose} so stdout lines stream to the callback in real-time
- * for live UI display. Without `onProgress` the blocking {@link execute} is
- * used (backward-compatible path for callers that don't need streaming output).
+ * for live UI display (the silent `npm -v` probe always uses the blocking
+ * {@link execute}). Without `onProgress` the blocking `execute` is used
+ * throughout (backward-compatible path for callers that don't need streaming
+ * output).
  *
  * Failures are re-thrown with a distinct prefix — `(deps)` for the apk step and
  * `(opencode)` for the npm step — so the UI layer can tell the user exactly
@@ -48,12 +63,16 @@ export async function installOpenCode(onProgress?: (text: string) => void): Prom
     const message = err instanceof Error ? err.message : String(err);
     throw new Error(`Installation failed (deps): ${message}`);
   }
-  log.info('installOpenCode: installing opencode-ai');
+  const installCommand = await selectNpmCommand(
+    INSTALL_OPENCODE_COMMAND_ALLOW_SCRIPTS,
+    INSTALL_OPENCODE_COMMAND,
+  );
+  log.info(`installOpenCode: installing opencode-ai via "${installCommand}"`);
   try {
     if (onProgress) {
-      await executeVerbose(INSTALL_OPENCODE_COMMAND, onProgress);
+      await executeVerbose(installCommand, onProgress);
     } else {
-      await execute(INSTALL_OPENCODE_COMMAND);
+      await execute(installCommand);
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
