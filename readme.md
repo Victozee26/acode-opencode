@@ -2,9 +2,11 @@
   <img src="https://raw.githubusercontent.com/Victozee26/acode-opencode/main/asset/opencode-wordmark-dark.png" alt="OpenCode wordmark" width="100%"/>
 </div>
 
+> **Note on OpenCode v2:** OpenCode v2 is now out, but this plugin currently targets OpenCode v1. Changes in v2 prevent the plugin from working properly, so migration from v1 to v2 is on hold until an upstream update resolves them. This note will be removed once v2 is supported.
+
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-0.2.3-blue.svg)
+![Version](https://img.shields.io/badge/version-0.2.4-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Acode](https://img.shields.io/badge/Acode-Compatible-orange.svg)
 

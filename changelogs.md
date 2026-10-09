@@ -1,5 +1,8 @@
 # Changelogs
 
+## 0.2.4
+- Added a readme note that OpenCode v2 is out but the plugin stays on v1 until an upstream update unblocks v2 support.
+
 ## 0.2.3
 - Install now checks the npm version and uses `--allow-scripts=opencode-ai` on npm 11.16.0+.
 - Error view now shows the node and npm versions in its diagnostics block.
