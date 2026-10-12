@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { startServer, stopServer, waitForReady } from '../../src/opencode/server';
+import { startServer, stopServer, waitForReady, getServerLog } from '../../src/opencode/server';
 import * as executorModule from '../../src/terminal/executor';
 import {
   STOP_POLL_INTERVAL,
@@ -61,6 +61,30 @@ describe('startServer', () => {
 
     // Assert
     await expect(promise).rejects.toThrow('spawn failed');
+  });
+
+  it('should_drop_proot_warnings_but_keep_proot_info_in_server_log', async () => {
+    // Arrange
+    mockStartBackground.mockImplementation((_command, onData) => {
+      onData?.(
+        'stdout',
+        'proot warning: can\'t sanitize binding "/proc/self/fd/0": No such file or directory\n' +
+          'Warning: OPENCODE_SERVER_PASSWORD is not set; server is unsecured.\n' +
+          'proot info: vpid 1: terminated with signal 9\n' +
+          'opencode server listening on http://127.0.0.1:4096',
+      );
+      return Promise.resolve({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
+    });
+
+    // Act
+    await startServer();
+
+    // Assert
+    expect(getServerLog()).toBe(
+      'Warning: OPENCODE_SERVER_PASSWORD is not set; server is unsecured.\n' +
+        'proot info: vpid 1: terminated with signal 9\n' +
+        'opencode server listening on http://127.0.0.1:4096',
+    );
   });
 });
 

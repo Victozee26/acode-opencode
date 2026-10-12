@@ -16,14 +16,14 @@ import {
 import type { RenderActions } from './ui/index';
 import type { HeaderActions } from './types';
 import { checkInstalled, installOpenCode, uninstallOpenCode } from './opencode/install';
-import { startServer, waitForReady, restartServer, stopServer } from './opencode/server';
-import { isServerUp } from './opencode/health';
+import { startServer, waitForReady, restartServer, stopServer, getServerLog } from './opencode/server';
+import { isServerUp, isServerDownConfirmed } from './opencode/health';
 import { checkForUpdates, installUpdate } from './opencode/update';
 import { getRuntimeVersions } from './opencode/diagnostics';
 import { createLogger, setLogLevel } from './logger';
 import { extractErrorInfo } from './error';
 import { getSettingsSchema, setOnScaleChange, setOnHideHeaderChange, getLogLevel } from './settings';
-import { HEALTH_PROBE_INTERVAL } from './config/health';
+import { HEALTH_PROBE_INTERVAL, HEALTH_CONNECTION_LOST_MESSAGE } from './config/health';
 
 const log = createLogger('main');
 
@@ -51,6 +51,8 @@ export class AcodePlugin {
   private updateInfo: UpdateInfo | null = null;
   private updateStatus: UpdateStatus | null = null;
   private healthProbeTimer: ReturnType<typeof setInterval> | null = null;
+  private healthCheckInProgress = false;
+  private healthProbeEpoch = 0;
   private ctx: Acode.PluginContext | null = null;
 
   /**
@@ -344,6 +346,7 @@ export class AcodePlugin {
 
   private async handleStop(): Promise<void> {
     log.info('handleStop: stopping server');
+    this.stopHealthProbe();
     try {
       await stopServer();
       log.info('handleStop: server stopped');
@@ -451,17 +454,32 @@ export class AcodePlugin {
   private manageHealthProbe(state: AppState): void {
     if (state === AppState.Ready && !this.healthProbeTimer) {
       this.healthProbeTimer = setInterval(async () => {
-        const up = await isServerUp();
-        if (!up) {
-          this.stopHealthProbe();
-          try {
-            acode.pushNotification('OpenCode', 'Server connection lost', {
-              type: 'error',
-            });
-          } catch {
-            // pushNotification not available — not critical
+        if (this.healthCheckInProgress) {
+          return;
+        }
+        const epoch = this.healthProbeEpoch;
+        this.healthCheckInProgress = true;
+        try {
+          const down = await isServerDownConfirmed();
+          if (epoch !== this.healthProbeEpoch) {
+            return;
           }
-          setError('Server connection lost', '');
+          if (down) {
+            if (getState().currentState !== AppState.Ready) {
+              return;
+            }
+            this.stopHealthProbe();
+            try {
+              acode.pushNotification('OpenCode', HEALTH_CONNECTION_LOST_MESSAGE, {
+                type: 'error',
+              });
+            } catch {
+              // pushNotification not available — not critical
+            }
+            setError(HEALTH_CONNECTION_LOST_MESSAGE, getServerLog());
+          }
+        } finally {
+          this.healthCheckInProgress = false;
         }
       }, HEALTH_PROBE_INTERVAL);
     } else if (state !== AppState.Ready && this.healthProbeTimer) {
@@ -482,6 +500,7 @@ export class AcodePlugin {
 
   private stopHealthProbe(): void {
     if (this.healthProbeTimer) {
+      this.healthProbeEpoch++;
       clearInterval(this.healthProbeTimer);
       this.healthProbeTimer = null;
     }

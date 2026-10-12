@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { isServerUp } from '../../src/opencode/health';
-import { HEALTH_CHECK_TIMEOUT } from '../../src/config/health';
+import { isServerUp, isServerDownConfirmed } from '../../src/opencode/health';
+import {
+  HEALTH_CHECK_TIMEOUT,
+  HEALTH_CRASH_CONFIRM_ATTEMPTS,
+  HEALTH_CRASH_RETRY_INTERVAL,
+} from '../../src/config/health';
 
 const mockSendRequest = vi.fn();
 
@@ -106,5 +110,89 @@ describe('isServerUp', () => {
 
     // Assert
     expect(result).toBe(false);
+  });
+});
+
+describe('isServerDownConfirmed', () => {
+  it('should_return_false_immediately_when_first_probe_up', async () => {
+    // Arrange
+    setHttp();
+    mockSendRequest.mockImplementation((_u: string, _o: unknown, success: () => void) => success());
+
+    // Act
+    const result = await isServerDownConfirmed();
+
+    // Assert
+    expect(result).toBe(false);
+    expect(mockSendRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it('should_return_true_when_all_probes_down', async () => {
+    // Arrange
+    setHttp();
+    vi.useFakeTimers();
+    mockSendRequest.mockImplementation(
+      (_u: string, _o: unknown, _s: unknown, failure: (e: { status: number }) => void) =>
+        failure({ status: 0 }),
+    );
+    const promise = isServerDownConfirmed();
+
+    // Act
+    await vi.advanceTimersByTimeAsync(
+      HEALTH_CRASH_RETRY_INTERVAL * (HEALTH_CRASH_CONFIRM_ATTEMPTS - 1),
+    );
+    const result = await promise;
+
+    // Assert
+    expect(result).toBe(true);
+    expect(mockSendRequest).toHaveBeenCalledTimes(HEALTH_CRASH_CONFIRM_ATTEMPTS);
+  });
+
+  it('should_return_false_when_server_recovers_on_second_probe', async () => {
+    // Arrange
+    setHttp();
+    vi.useFakeTimers();
+    mockSendRequest
+      .mockImplementationOnce(
+        (_u: string, _o: unknown, _s: unknown, failure: (e: { status: number }) => void) =>
+          failure({ status: 0 }),
+      )
+      .mockImplementation((_u: string, _o: unknown, success: () => void) => success());
+    const promise = isServerDownConfirmed();
+
+    // Act
+    await vi.advanceTimersByTimeAsync(HEALTH_CRASH_RETRY_INTERVAL);
+    const result = await promise;
+
+    // Assert
+    expect(result).toBe(false);
+    expect(mockSendRequest).toHaveBeenCalledTimes(2);
+  });
+
+  it('should_return_false_when_server_recovers_on_last_probe', async () => {
+    // Arrange
+    setHttp();
+    vi.useFakeTimers();
+    mockSendRequest
+      .mockImplementationOnce(
+        (_u: string, _o: unknown, _s: unknown, failure: (e: { status: number }) => void) =>
+          failure({ status: 0 }),
+      )
+      .mockImplementationOnce(
+        (_u: string, _o: unknown, _s: unknown, failure: (e: { status: number }) => void) =>
+          failure({ status: 0 }),
+      )
+      .mockImplementation((_u: string, _o: unknown, success: () => void) => success());
+    const promise = isServerDownConfirmed();
+
+    // Act
+    await vi.advanceTimersByTimeAsync(
+      HEALTH_CRASH_RETRY_INTERVAL * (HEALTH_CRASH_CONFIRM_ATTEMPTS - 1),
+    );
+    const result = await promise;
+
+    // Assert
+    expect(result).toBe(false);
+    expect(mockSendRequest).toHaveBeenCalledTimes(HEALTH_CRASH_CONFIRM_ATTEMPTS);
   });
 });

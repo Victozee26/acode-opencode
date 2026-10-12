@@ -52,6 +52,12 @@ export const READY_TIMEOUT = 30000;
 // diagnostics (shown on startup failure / timeout).
 export const SERVER_LOG_LINES = 40;
 
+// Server output lines starting with one of these prefixes are container
+// environment noise (proot sandbox warnings), not OpenCode output. They are
+// dropped from the ring buffer so error diagnostics stay readable.
+// `proot info:` lines are kept — they can carry useful process state.
+export const SERVER_LOG_NOISE_PREFIXES = ['proot warning:'];
+
 // Graceful and forced shutdown of any running server instance.
 export const KILL_COMMAND = 'pkill -f "opencode serve"';
 export const HARD_KILL_COMMAND = 'pkill -9 -f "opencode serve"';

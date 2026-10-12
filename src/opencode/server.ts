@@ -3,6 +3,7 @@ import {
   READY_POLL_INTERVAL,
   READY_TIMEOUT,
   SERVER_LOG_LINES,
+  SERVER_LOG_NOISE_PREFIXES,
   KILL_COMMAND,
   HARD_KILL_COMMAND,
   PROCESS_CHECK_COMMAND,
@@ -24,6 +25,10 @@ function feedLog(line: string): void {
   if (ringBuffer.length > SERVER_LOG_LINES) {
     ringBuffer.shift();
   }
+}
+
+function isNoiseLine(line: string): boolean {
+  return SERVER_LOG_NOISE_PREFIXES.some((prefix) => line.startsWith(prefix));
 }
 
 export function getServerLog(): string {
@@ -51,7 +56,7 @@ export async function startServer(): Promise<void> {
       const lines = data.split('\n');
       for (const line of lines) {
         const t = line.trim();
-        if (t) feedLog(t);
+        if (t && !isNoiseLine(t)) feedLog(t);
       }
     },
     true,

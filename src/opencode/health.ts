@@ -1,4 +1,9 @@
-import { HEALTH_CHECK_URL, HEALTH_CHECK_TIMEOUT } from '../config/health';
+import {
+  HEALTH_CHECK_URL,
+  HEALTH_CHECK_TIMEOUT,
+  HEALTH_CRASH_CONFIRM_ATTEMPTS,
+  HEALTH_CRASH_RETRY_INTERVAL,
+} from '../config/health';
 import { createLogger } from '../logger';
 
 const log = createLogger('health');
@@ -78,4 +83,26 @@ export async function isServerUp(): Promise<boolean> {
       settle(false);
     }
   });
+}
+
+/**
+ * Confirms a Ready-state crash by probing up to
+ * HEALTH_CRASH_CONFIRM_ATTEMPTS times. Returns true only when every probe
+ * reports down; a single up means the earlier miss was transient.
+ *
+ * Never rejects (each probe is bounded by isServerUp's own watchdog).
+ */
+export async function isServerDownConfirmed(): Promise<boolean> {
+  for (let attempt = 1; attempt <= HEALTH_CRASH_CONFIRM_ATTEMPTS; attempt++) {
+    const up = await isServerUp();
+    if (up) {
+      log.info(`isServerDownConfirmed: up on attempt ${attempt}, not down`);
+      return false;
+    }
+    log.info(`isServerDownConfirmed: down on attempt ${attempt}`);
+    if (attempt < HEALTH_CRASH_CONFIRM_ATTEMPTS) {
+      await new Promise((resolve) => setTimeout(resolve, HEALTH_CRASH_RETRY_INTERVAL));
+    }
+  }
+  return true;
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AppState } from '../src/types';
 import * as stateModule from '../src/state';
 import * as installModule from '../src/opencode/install';
@@ -7,6 +7,10 @@ import * as healthModule from '../src/opencode/health';
 import * as settingsModule from '../src/settings';
 import * as updateModule from '../src/opencode/update';
 import * as diagnosticsModule from '../src/opencode/diagnostics';
+import {
+  HEALTH_PROBE_INTERVAL,
+  HEALTH_CONNECTION_LOST_MESSAGE,
+} from '../src/config/health';
 
 vi.mock('../src/opencode/install');
 vi.mock('../src/opencode/server');
@@ -22,9 +26,12 @@ vi.mock('../plugin.json', () => ({
 const mockCheckInstalled = vi.mocked(installModule.checkInstalled);
 const mockInstallOpenCode = vi.mocked(installModule.installOpenCode);
 const mockIsServerUp = vi.mocked(healthModule.isServerUp);
+const mockIsServerDownConfirmed = vi.mocked(healthModule.isServerDownConfirmed);
 const mockStartServer = vi.mocked(serverModule.startServer);
 const mockWaitForReady = vi.mocked(serverModule.waitForReady);
 const mockRestartServer = vi.mocked(serverModule.restartServer);
+const mockStopServer = vi.mocked(serverModule.stopServer);
+const mockGetServerLog = vi.mocked(serverModule.getServerLog);
 const mockGetSettingsSchema = vi.mocked(settingsModule.getSettingsSchema);
 const mockGetRuntimeVersions = vi.mocked(diagnosticsModule.getRuntimeVersions);
 
@@ -32,10 +39,16 @@ import { AcodePlugin } from '../src/main';
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.useRealTimers();
   stateModule.reset();
   mockGetSettingsSchema.mockReturnValue({ list: [] } as any);
   (updateModule.checkForUpdates as any).mockResolvedValue(null);
   mockGetRuntimeVersions.mockResolvedValue({ node: '?', npm: '?' });
+  (globalThis as any).acode = { pushNotification: vi.fn() };
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 function makePlugin(): AcodePlugin {
@@ -215,6 +228,154 @@ describe('handleRestart', () => {
 
     // Assert
     expect(stateModule.getState().currentState).toBe(AppState.Error);
+  });
+});
+
+describe('manageHealthProbe', () => {
+  it('should_set_error_with_logs_when_crash_confirmed', async () => {
+    // Arrange
+    vi.useFakeTimers();
+    mockIsServerDownConfirmed.mockResolvedValue(true);
+    mockGetServerLog.mockReturnValue('tail logs');
+    stateModule.transition(AppState.Ready);
+    const plugin = makePlugin();
+    (plugin as any).manageHealthProbe(AppState.Ready);
+
+    // Act
+    await vi.advanceTimersByTimeAsync(HEALTH_PROBE_INTERVAL);
+
+    // Assert
+    expect(stateModule.getState().currentState).toBe(AppState.Error);
+    expect(stateModule.getState().error?.message).toBe(HEALTH_CONNECTION_LOST_MESSAGE);
+    expect(stateModule.getState().error?.logTail).toBe('tail logs');
+    (plugin as any).stopHealthProbe();
+  });
+
+  it('should_stay_Ready_when_crash_not_confirmed', async () => {
+    // Arrange
+    vi.useFakeTimers();
+    mockIsServerDownConfirmed.mockResolvedValue(false);
+    stateModule.transition(AppState.Ready);
+    const plugin = makePlugin();
+    (plugin as any).manageHealthProbe(AppState.Ready);
+
+    // Act
+    await vi.advanceTimersByTimeAsync(HEALTH_PROBE_INTERVAL);
+
+    // Assert
+    expect(stateModule.getState().currentState).toBe(AppState.Ready);
+    expect(stateModule.getState().error).toBeNull();
+    (plugin as any).stopHealthProbe();
+  });
+
+  it('should_run_only_one_check_when_ticks_overlap', async () => {
+    // Arrange
+    vi.useFakeTimers();
+    mockIsServerDownConfirmed.mockImplementation(() => new Promise<boolean>(() => {}));
+    stateModule.transition(AppState.Ready);
+    const plugin = makePlugin();
+    (plugin as any).manageHealthProbe(AppState.Ready);
+
+    // Act
+    await vi.advanceTimersByTimeAsync(HEALTH_PROBE_INTERVAL * 2);
+
+    // Assert
+    expect(mockIsServerDownConfirmed).toHaveBeenCalledTimes(1);
+    (plugin as any).stopHealthProbe();
+  });
+
+  it('should_not_error_when_left_Ready_before_confirm_resolves', async () => {
+    // Arrange
+    vi.useFakeTimers();
+    mockIsServerDownConfirmed.mockImplementation(async () => {
+      stateModule.transition(AppState.Idle);
+      return true;
+    });
+    stateModule.transition(AppState.Ready);
+    const plugin = makePlugin();
+    (plugin as any).manageHealthProbe(AppState.Ready);
+
+    // Act
+    await vi.advanceTimersByTimeAsync(HEALTH_PROBE_INTERVAL);
+
+    // Assert
+    expect(stateModule.getState().currentState).toBe(AppState.Idle);
+    expect(stateModule.getState().error).toBeNull();
+    (plugin as any).stopHealthProbe();
+  });
+
+  it('should_ignore_stale_check_from_previous_Ready_session', async () => {
+    // Arrange
+    vi.useFakeTimers();
+    let resolveCheck!: (value: boolean) => void;
+    mockIsServerDownConfirmed.mockImplementation(
+      () => new Promise<boolean>((resolve) => void (resolveCheck = resolve)),
+    );
+    stateModule.transition(AppState.Ready);
+    const plugin = makePlugin();
+    (plugin as any).manageHealthProbe(AppState.Ready);
+    await vi.advanceTimersByTimeAsync(HEALTH_PROBE_INTERVAL);
+    expect(mockIsServerDownConfirmed).toHaveBeenCalledTimes(1);
+
+    // Act: leave Ready (stops probe, bumps epoch), re-enter, resolve stale check
+    (plugin as any).manageHealthProbe(AppState.Idle);
+    stateModule.transition(AppState.Ready);
+    (plugin as any).manageHealthProbe(AppState.Ready);
+    resolveCheck(true);
+    await Promise.resolve();
+
+    // Assert
+    expect(stateModule.getState().currentState).toBe(AppState.Ready);
+    expect(stateModule.getState().error).toBeNull();
+    (plugin as any).stopHealthProbe();
+  });
+
+  it('should_set_error_when_pushNotification_throws', async () => {
+    // Arrange
+    vi.useFakeTimers();
+    (globalThis as any).acode = {
+      pushNotification: vi.fn(() => {
+        throw new Error('nope');
+      }),
+    };
+    mockIsServerDownConfirmed.mockResolvedValue(true);
+    mockGetServerLog.mockReturnValue('tail logs');
+    stateModule.transition(AppState.Ready);
+    const plugin = makePlugin();
+    (plugin as any).manageHealthProbe(AppState.Ready);
+
+    // Act
+    await vi.advanceTimersByTimeAsync(HEALTH_PROBE_INTERVAL);
+
+    // Assert
+    expect(stateModule.getState().currentState).toBe(AppState.Error);
+    expect(stateModule.getState().error?.message).toBe(HEALTH_CONNECTION_LOST_MESSAGE);
+    (plugin as any).stopHealthProbe();
+  });
+});
+
+describe('handleStop', () => {
+  it('should_stop_probe_before_stopServer_resolves', async () => {
+    // Arrange
+    vi.useFakeTimers();
+    stateModule.transition(AppState.Ready);
+    const plugin = makePlugin();
+    (plugin as any).manageHealthProbe(AppState.Ready);
+    let resolveStop!: (value: string) => void;
+    mockStopServer.mockImplementation(
+      () => new Promise<string>((resolve) => void (resolveStop = resolve)),
+    );
+    const stopPromise = (plugin as any).handleStop();
+
+    // Act
+    await Promise.resolve();
+    const timerArmed = (plugin as any).healthProbeTimer !== null;
+
+    // Assert
+    expect(timerArmed).toBe(false);
+    resolveStop('stopped');
+    await stopPromise;
+    expect(stateModule.getState().currentState).toBe(AppState.Idle);
   });
 });
 

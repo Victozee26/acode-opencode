@@ -1,5 +1,10 @@
 # Changelogs
 
+## 0.2.5
+- Server crash check now confirms multiple times before showing an error.
+- Better logging on crash (proot warning noise filtered out).
+- Fixed false crash reports when stopping the server or restarting mid-check.
+
 ## 0.2.4
 - Added a readme note that OpenCode v2 is out but the plugin stays on v1 until an upstream update unblocks v2 support.
 
