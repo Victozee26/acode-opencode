@@ -2,7 +2,7 @@
 
 ## 0.3.0
 - V2 compactable and still backward compactable with V1
-- V1 installs keep working unchanged pressing Update migrates V1 to V2 in a single press.
+- V1 installs keep working unchanged pressing Update migrates V1 to V2.
 - Fresh installs and updates now use the `@opencode/cli` (v2) npm package.
 - Update now removes the legacy `opencode-ai` (v1) package when migrating to V2.
 - Plugin port moved 4096 → 4123 (dedicated port, no clash with manual servers; kill patterns scoped to it).

@@ -2,8 +2,6 @@
   <img src="https://raw.githubusercontent.com/Victozee26/acode-opencode/main/asset/opencode-wordmark-dark.png" alt="OpenCode wordmark" width="100%"/>
 </div>
 
-> **Note on OpenCode v2:** OpenCode v2 is now out, but this plugin currently targets OpenCode v1. Changes in v2 prevent the plugin from working properly, so migration from v1 to v2 is on hold until an upstream update resolves them. This note will be removed once v2 is supported.
-
 <div align="center">
 
 ![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)
@@ -39,7 +37,9 @@ apk add --no-cache nodejs npm
 ## Features
 
 - **Local OpenCode server.** Runs OpenCode as a background HTTP server inside Acode's Alpine terminal — no external machine required.
-- **Automatic install.** Detects whether OpenCode is present and installs it on demand (`npm install -g opencode-ai`).
+- **Automatic install.** Detects whether OpenCode is present and installs it on demand (`npm install -g @opencode/cli`).
+- **V2 ready with automatic sign-in.** V2 servers start password-protected and the embedded UI signs in on its own; V1 installs keep working, and updating migrates V1 → V2.
+- **Dedicated port.** Serves on `127.0.0.1:4123`, so it never clashes with a manually started server.
 
 ## Installation
 
@@ -61,7 +61,7 @@ The plugin follows a **Check → Install → Serve → Render** workflow:
 | Stage               | Responsibility                                                            |
 | ------------------- | ------------------------------------------------------------------------- |
 | **Check**           | Verify OpenCode is installed and whether the server is already running    |
-| **Install**         | Install OpenCode via `npm install -g opencode-ai` if missing              |
+| **Install**         | Install OpenCode via `npm install -g @opencode/cli` if missing             |
 | **Serve**           | Start `opencode serve --port 4123 --hostname 127.0.0.1` in the background |
 | **Render**          | Embed the web UI in an iframe and reactively reflect the current state    |
 
@@ -78,7 +78,9 @@ src/
   terminal/executor.ts  # thin wrapper over global Executor
   opencode/
     install.ts          # checkInstalled, installOpenCode
-    server.ts           # isServerUp, startServer, stopServer, restartServer
+    server.ts           # startServer, stopServer, restartServer
+    auth.ts             # per-launch password, auth_token iframe sign-in
+    update.ts           # checkForUpdates, installUpdate
     health.ts           # loopback health probe via cordova.plugin.http
   ui/
     index.ts            # render orchestrator, one render func per state
