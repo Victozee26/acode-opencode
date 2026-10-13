@@ -32,6 +32,7 @@ export interface RenderActions {
   restart: () => void;
   stop: () => void;
   back: () => void;
+  iframeUrl?: string;
   updateInfo?: UpdateInfo | null;
   updateStatus?: UpdateStatus | null;
   onUpdateClick?: () => void;
@@ -240,7 +241,7 @@ export function render(
       break;
 
     case AppState.Ready:
-      renderReady(pageContent!);
+      renderReady(pageContent!, actions.iframeUrl ?? BASE_URL);
       break;
 
     case AppState.Error:
@@ -284,11 +285,11 @@ function renderLoading(container: HTMLElement, state: AppState): void {
   container.appendChild(activeSpinner);
 }
 
-function renderReady(container: HTMLElement): void {
+function renderReady(container: HTMLElement, src: string): void {
   container.style.overflow = 'hidden';
   const wrapper = document.createElement('div');
   wrapper.className = 'opencode-ready-wrapper';
-  activeIframe = createIframe(BASE_URL, getIframeScale());
+  activeIframe = createIframe(src, getIframeScale());
   wrapper.appendChild(activeIframe);
   container.appendChild(wrapper);
 }

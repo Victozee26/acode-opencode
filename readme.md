@@ -6,7 +6,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-0.2.5-blue.svg)
+![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Acode](https://img.shields.io/badge/Acode-Compatible-orange.svg)
 
@@ -62,7 +62,7 @@ The plugin follows a **Check → Install → Serve → Render** workflow:
 | ------------------- | ------------------------------------------------------------------------- |
 | **Check**           | Verify OpenCode is installed and whether the server is already running    |
 | **Install**         | Install OpenCode via `npm install -g opencode-ai` if missing              |
-| **Serve**           | Start `opencode serve --port 4096 --hostname 127.0.0.1` in the background |
+| **Serve**           | Start `opencode serve --port 4123 --hostname 127.0.0.1` in the background |
 | **Render**          | Embed the web UI in an iframe and reactively reflect the current state    |
 
 ## Project Structure

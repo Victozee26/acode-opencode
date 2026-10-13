@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { installUpdate } from '../../src/opencode/update';
+import { installUpdate, getInstalledVersion } from '../../src/opencode/update';
 import * as executorModule from '../../src/terminal/executor';
 import {
   INSTALL_UPDATE_COMMAND,
   INSTALL_UPDATE_COMMAND_ALLOW_SCRIPTS,
+  UNINSTALL_V1_COMMAND,
 } from '../../src/config/update';
 import { NPM_VERSION_COMMAND } from '../../src/config/opencode';
 
@@ -24,12 +25,14 @@ describe('installUpdate', () => {
     await installUpdate();
 
     // Assert
-    expect(mockExecute).toHaveBeenNthCalledWith(1, NPM_VERSION_COMMAND);
-    expect(mockExecute).toHaveBeenNthCalledWith(2, INSTALL_UPDATE_COMMAND_ALLOW_SCRIPTS);
+    expect(mockExecute).toHaveBeenNthCalledWith(1, UNINSTALL_V1_COMMAND);
+    expect(mockExecute).toHaveBeenNthCalledWith(2, NPM_VERSION_COMMAND);
+    expect(mockExecute).toHaveBeenNthCalledWith(3, INSTALL_UPDATE_COMMAND_ALLOW_SCRIPTS);
   });
 
   it('should_use_plain_command_when_npm_is_below_minimum', async () => {
     // Arrange
+    mockExecute.mockResolvedValueOnce('removed');
     mockExecute.mockResolvedValueOnce('11.15.9');
     mockExecute.mockResolvedValueOnce('installed');
 
@@ -37,11 +40,12 @@ describe('installUpdate', () => {
     await installUpdate();
 
     // Assert
-    expect(mockExecute).toHaveBeenNthCalledWith(2, INSTALL_UPDATE_COMMAND);
+    expect(mockExecute).toHaveBeenNthCalledWith(3, INSTALL_UPDATE_COMMAND);
   });
 
   it('should_use_plain_command_when_npm_probe_fails', async () => {
     // Arrange
+    mockExecute.mockResolvedValueOnce('removed');
     mockExecute.mockRejectedValueOnce(new Error('npm: not found'));
     mockExecute.mockResolvedValueOnce('installed');
 
@@ -49,11 +53,12 @@ describe('installUpdate', () => {
     await installUpdate();
 
     // Assert
-    expect(mockExecute).toHaveBeenNthCalledWith(2, INSTALL_UPDATE_COMMAND);
+    expect(mockExecute).toHaveBeenNthCalledWith(3, INSTALL_UPDATE_COMMAND);
   });
 
   it('should_propagate_install_failure', async () => {
     // Arrange
+    mockExecute.mockResolvedValueOnce('removed');
     mockExecute.mockResolvedValueOnce('11.16.0');
     mockExecute.mockRejectedValueOnce(new Error('Command failed: EACCES'));
 
@@ -62,5 +67,53 @@ describe('installUpdate', () => {
 
     // Assert
     await expect(promise).rejects.toThrow('Command failed: EACCES');
+  });
+
+  it('should_proceed_when_v1_uninstall_fails', async () => {
+    // Arrange
+    mockExecute.mockRejectedValueOnce(new Error('not installed'));
+    mockExecute.mockResolvedValue('11.16.0');
+
+    // Act
+    const promise = installUpdate();
+
+    // Assert
+    await expect(promise).resolves.toBeUndefined();
+    expect(mockExecute).toHaveBeenLastCalledWith(INSTALL_UPDATE_COMMAND_ALLOW_SCRIPTS);
+  });
+});
+
+describe('getInstalledVersion', () => {
+  it('should_return_version_when_probe_succeeds', async () => {
+    // Arrange
+    mockExecute.mockResolvedValue('opencode v2.0.27');
+
+    // Act
+    const version = await getInstalledVersion();
+
+    // Assert
+    expect(version).toBe('2.0.27');
+  });
+
+  it('should_return_null_when_unparseable', async () => {
+    // Arrange
+    mockExecute.mockResolvedValue('no version here');
+
+    // Act
+    const version = await getInstalledVersion();
+
+    // Assert
+    expect(version).toBeNull();
+  });
+
+  it('should_return_null_when_probe_rejects', async () => {
+    // Arrange
+    mockExecute.mockRejectedValue(new Error('not found'));
+
+    // Act
+    const version = await getInstalledVersion();
+
+    // Assert
+    expect(version).toBeNull();
   });
 });

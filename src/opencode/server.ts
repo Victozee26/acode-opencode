@@ -10,13 +10,22 @@ import {
   STOP_POLL_TIMEOUT,
   STOP_POLL_INTERVAL,
 } from '../config/opencode';
-import { PORT, HOSTNAME } from '../config/server';
+import { PORT, HOSTNAME, SERVER_PASSWORD_ENV } from '../config/server';
 import { createLogger } from '../logger';
 import { isServerUp } from './health';
+import { generatePassword, getInstalledMajor, needsPairing } from './auth';
 
 const log = createLogger('server');
 
 let serverUuid: string | null = null;
+
+// Per-launch V2 serve password (null on V1 servers, which run without auth).
+// Generated fresh on every start, kept in memory only, cleared on stop.
+let serverPassword: string | null = null;
+
+// Major version of the CLI that launched the current server (null when the
+// probe failed or no server is running). Drives the V1/V2 behavior branch.
+let serverMajor: number | null = null;
 
 const ringBuffer: string[] = [];
 
@@ -35,35 +44,74 @@ export function getServerLog(): string {
   return ringBuffer.join('\n');
 }
 
-export function buildStartCommand(): string {
-  return `opencode serve --port ${PORT} --hostname ${HOSTNAME}`;
+/**
+ * Returns the current server password, or null when the server runs without
+ * auth (V1) or no server was started by this plugin.
+ */
+export function getServerPassword(): string | null {
+  return serverPassword;
+}
+
+/**
+ * Returns true when the plugin-managed server is V2: a stored password (only
+ * ever set for V2 launches) or a known V2+ major. False when no server is
+ * running or the server is V1.
+ */
+export function isV2Server(): boolean {
+  return serverPassword !== null || (serverMajor !== null && needsPairing(serverMajor));
+}
+
+function clearServerAuth(): void {
+  serverPassword = null;
+  serverMajor = null;
+}
+
+export function buildStartCommand(password: string | null): string {
+  const serve = `opencode serve --port ${PORT} --hostname ${HOSTNAME}`;
+  // NOTE: `env(1)`, not a shell `VAR=x` prefix — BackgroundExecutor hands the
+  // command to the Alpine launcher without shell assignment parsing (a `VAR=x`
+  // prefix fails with "not found" / exit 127). `env` works either way.
+  return password ? `env ${SERVER_PASSWORD_ENV}=${password} ${serve}` : serve;
 }
 
 export async function startServer(): Promise<void> {
   log.info('startServer: launching via BackgroundExecutor');
-  const command = buildStartCommand();
+  const major = await getInstalledMajor();
+  serverMajor = major;
+  serverPassword = needsPairing(major) ? generatePassword() : null;
+  log.info(
+    serverPassword
+      ? `startServer: V2 auth enabled (major=${major ?? 'unknown'})`
+      : `startServer: no auth (major=${major ?? 'unknown'})`,
+  );
+  const command = buildStartCommand(serverPassword);
   ringBuffer.length = 0;
 
-  const bg = await startBackground(
-    command,
-    (type, data) => {
-      const trimmed = data.trim();
-      if (type === 'stdout') {
-        log.info(`server[stdout]: ${trimmed}`);
-      } else if (type === 'stderr') {
-        log.warn(`server[stderr]: ${trimmed}`);
-      }
-      const lines = data.split('\n');
-      for (const line of lines) {
-        const t = line.trim();
-        if (t && !isNoiseLine(t)) feedLog(t);
-      }
-    },
-    true,
-  );
+  try {
+    const bg = await startBackground(
+      command,
+      (type, data) => {
+        const trimmed = data.trim();
+        if (type === 'stdout') {
+          log.info(`server[stdout]: ${trimmed}`);
+        } else if (type === 'stderr') {
+          log.warn(`server[stderr]: ${trimmed}`);
+        }
+        const lines = data.split('\n');
+        for (const line of lines) {
+          const t = line.trim();
+          if (t && !isNoiseLine(t)) feedLog(t);
+        }
+      },
+      true,
+    );
 
-  serverUuid = bg.uuid;
-  log.info(`startServer: BackgroundExecutor started, uuid=${serverUuid}`);
+    serverUuid = bg.uuid;
+    log.info(`startServer: BackgroundExecutor started, uuid=${serverUuid}`);
+  } catch (err) {
+    clearServerAuth();
+    throw err;
+  }
 }
 
 export async function waitForReady(): Promise<void> {
@@ -138,6 +186,7 @@ export async function stopServer(): Promise<void> {
   if (softDown) {
     log.info('stopServer: server stopped');
     serverUuid = null;
+    clearServerAuth();
     ringBuffer.length = 0;
     return;
   }
@@ -151,6 +200,7 @@ export async function stopServer(): Promise<void> {
 
   const hardDown = await pollUntilDown(STOP_POLL_TIMEOUT);
   serverUuid = null;
+  clearServerAuth();
   ringBuffer.length = 0;
 
   if (hardDown) {
@@ -158,7 +208,7 @@ export async function stopServer(): Promise<void> {
     return;
   }
 
-  throw new Error('Cannot stop server: port 4096 still occupied after SIGKILL');
+  throw new Error(`Cannot stop server: port ${PORT} still occupied after SIGKILL`);
 }
 
 export async function restartServer(): Promise<void> {

@@ -11,6 +11,8 @@ import {
   HEALTH_PROBE_INTERVAL,
   HEALTH_CONNECTION_LOST_MESSAGE,
 } from '../src/config/health';
+import { BASE_URL } from '../src/config/server';
+import { buildAuthTokenUrl } from '../src/opencode/auth';
 
 vi.mock('../src/opencode/install');
 vi.mock('../src/opencode/server');
@@ -32,6 +34,7 @@ const mockWaitForReady = vi.mocked(serverModule.waitForReady);
 const mockRestartServer = vi.mocked(serverModule.restartServer);
 const mockStopServer = vi.mocked(serverModule.stopServer);
 const mockGetServerLog = vi.mocked(serverModule.getServerLog);
+const mockGetServerPassword = vi.mocked(serverModule.getServerPassword);
 const mockGetSettingsSchema = vi.mocked(settingsModule.getSettingsSchema);
 const mockGetRuntimeVersions = vi.mocked(diagnosticsModule.getRuntimeVersions);
 
@@ -166,6 +169,72 @@ describe('startFlow', () => {
     // Assert
     expect(stateModule.getState().error?.message).toBe('plain string error');
   });
+
+  it('should_use_auth_token_url_when_server_started', async () => {
+    // Arrange
+    mockCheckInstalled.mockResolvedValue(true);
+    mockIsServerUp.mockResolvedValue(false);
+    mockStartServer.mockResolvedValueOnce(undefined);
+    mockWaitForReady.mockResolvedValue(undefined);
+    mockGetServerPassword.mockReturnValueOnce('pw');
+    const plugin = makePlugin();
+
+    // Act
+    await (plugin as any).startFlow();
+
+    // Assert
+    expect(stateModule.getState().currentState).toBe(AppState.Ready);
+    expect((plugin as any).iframeUrl).toBe(buildAuthTokenUrl('pw'));
+  });
+
+  it('should_prompt_for_password_when_server_already_running', async () => {
+    // Arrange
+    mockCheckInstalled.mockResolvedValue(true);
+    mockIsServerUp.mockResolvedValue(true);
+    const promptMock = vi.fn().mockResolvedValue('typed-pw');
+    (globalThis as any).acode.prompt = promptMock;
+    const plugin = makePlugin();
+
+    // Act
+    await (plugin as any).startFlow();
+
+    // Assert
+    expect(stateModule.getState().currentState).toBe(AppState.Ready);
+    expect(promptMock).toHaveBeenCalledTimes(1);
+    expect((plugin as any).iframeUrl).toBe(buildAuthTokenUrl('typed-pw'));
+  });
+
+  it('should_fall_back_to_base_url_when_prompt_cancelled', async () => {
+    // Arrange
+    mockCheckInstalled.mockResolvedValue(true);
+    mockIsServerUp.mockResolvedValue(true);
+    (globalThis as any).acode.prompt = vi.fn().mockResolvedValue(null);
+    const plugin = makePlugin();
+
+    // Act
+    await (plugin as any).startFlow();
+
+    // Assert
+    expect(stateModule.getState().currentState).toBe(AppState.Ready);
+    expect((plugin as any).iframeUrl).toBe(BASE_URL);
+  });
+
+  it('should_reuse_held_password_without_prompting', async () => {
+    // Arrange
+    mockCheckInstalled.mockResolvedValue(true);
+    mockIsServerUp.mockResolvedValue(true);
+    mockGetServerPassword.mockReturnValueOnce('held-pw');
+    const promptMock = vi.fn();
+    (globalThis as any).acode.prompt = promptMock;
+    const plugin = makePlugin();
+
+    // Act
+    await (plugin as any).startFlow();
+
+    // Assert
+    expect(promptMock).not.toHaveBeenCalled();
+    expect((plugin as any).iframeUrl).toBe(buildAuthTokenUrl('held-pw'));
+  });
 });
 
 describe('destroy', () => {
@@ -206,6 +275,20 @@ describe('destroy', () => {
 });
 
 describe('handleRestart', () => {
+  it('should_rebuild_auth_token_url_when_restart_succeeds', async () => {
+    // Arrange
+    mockWaitForReady.mockResolvedValue(undefined);
+    mockGetServerPassword.mockReturnValueOnce('pw2');
+    const plugin = makePlugin();
+
+    // Act
+    await (plugin as any).handleRestart();
+
+    // Assert
+    expect(stateModule.getState().currentState).toBe(AppState.Ready);
+    expect((plugin as any).iframeUrl).toBe(buildAuthTokenUrl('pw2'));
+  });
+
   it('should_reach_Ready_when_restart_succeeds', async () => {
     // Arrange
     mockWaitForReady.mockResolvedValue(undefined);
@@ -355,6 +438,22 @@ describe('manageHealthProbe', () => {
 });
 
 describe('handleStop', () => {
+  it('should_reset_iframe_url_when_stopped', async () => {
+    // Arrange
+    mockStopServer.mockResolvedValueOnce('stopped');
+    const plugin = makePlugin();
+    (plugin as any).iframeUrl = 'http://127.0.0.1:4123/auth/connect/old';
+    (plugin as any).enteredPassword = 'typed-pw';
+
+    // Act
+    await (plugin as any).handleStop();
+
+    // Assert
+    expect((plugin as any).iframeUrl).toBe(BASE_URL);
+    expect((plugin as any).enteredPassword).toBeNull();
+    expect(stateModule.getState().currentState).toBe(AppState.Idle);
+  });
+
   it('should_stop_probe_before_stopServer_resolves', async () => {
     // Arrange
     vi.useFakeTimers();
@@ -376,6 +475,58 @@ describe('handleStop', () => {
     resolveStop('stopped');
     await stopPromise;
     expect(stateModule.getState().currentState).toBe(AppState.Idle);
+  });
+});
+
+describe('handleUpdateClick', () => {
+  it('should_show_new_version_when_update_succeeds', async () => {
+    // Arrange
+    (updateModule.installUpdate as any).mockResolvedValueOnce(undefined);
+    (updateModule.checkForUpdates as any).mockResolvedValueOnce(null);
+    (updateModule.getInstalledVersion as any).mockResolvedValueOnce('2.0.28');
+    const plugin = makePlugin();
+    (plugin as any).updateInfo = { currentVersion: '1.19.0', latestVersion: '2.0.28' };
+
+    // Act
+    await (plugin as any).handleUpdateClick();
+
+    // Assert
+    expect((plugin as any).updateStatus).toBe('updated');
+    expect((plugin as any).updateInfo).toEqual({
+      currentVersion: '2.0.28',
+      latestVersion: '2.0.28',
+    });
+  });
+
+  it('should_keep_fresh_info_when_update_still_available', async () => {
+    // Arrange
+    (updateModule.installUpdate as any).mockResolvedValueOnce(undefined);
+    (updateModule.checkForUpdates as any).mockResolvedValueOnce({
+      currentVersion: '2.0.27',
+      latestVersion: '2.0.28',
+    });
+    const plugin = makePlugin();
+
+    // Act
+    await (plugin as any).handleUpdateClick();
+
+    // Assert
+    expect((plugin as any).updateInfo).toEqual({
+      currentVersion: '2.0.27',
+      latestVersion: '2.0.28',
+    });
+  });
+
+  it('should_show_error_when_install_fails', async () => {
+    // Arrange
+    (updateModule.installUpdate as any).mockRejectedValueOnce(new Error('EACCES'));
+    const plugin = makePlugin();
+
+    // Act
+    await (plugin as any).handleUpdateClick();
+
+    // Assert
+    expect((plugin as any).updateStatus).toBe('error');
   });
 });
 

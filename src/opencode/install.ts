@@ -67,7 +67,7 @@ export async function installOpenCode(onProgress?: (text: string) => void): Prom
     INSTALL_OPENCODE_COMMAND_ALLOW_SCRIPTS,
     INSTALL_OPENCODE_COMMAND,
   );
-  log.info(`installOpenCode: installing opencode-ai via "${installCommand}"`);
+  log.info(`installOpenCode: installing opencode via "${installCommand}"`);
   try {
     if (onProgress) {
       await executeVerbose(installCommand, onProgress);

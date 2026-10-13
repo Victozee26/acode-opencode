@@ -1,3 +1,5 @@
+import { PORT } from './server';
+
 // Alpine package install for the runtime (node/npm) OpenCode needs.
 export const INSTALL_DEPS_COMMAND = 'apk add --no-cache --verbose nodejs npm';
 
@@ -23,20 +25,24 @@ export const VERSION_UNKNOWN = '?';
 export const NPM_ALLOW_SCRIPTS_MIN_VERSION = '11.16.0';
 
 // Global install of the OpenCode CLI itself (npm older than the minimum above).
-export const INSTALL_OPENCODE_COMMAND = 'npm install -g --loglevel verbose opencode-ai';
+// Tracks the V2 package: fresh installs and updates land on V2 directly, and
+// the update button migrates V1 (opencode-ai) installs in a single press.
+export const INSTALL_OPENCODE_COMMAND = 'npm install -g --loglevel verbose @opencode/cli';
 
 // Same install for npm >= NPM_ALLOW_SCRIPTS_MIN_VERSION: dependency lifecycle
-// scripts are opt-in there, so opencode-ai must be allow-listed explicitly for
+// scripts are opt-in there, so the package must be allow-listed explicitly for
 // its own install scripts to run. `--loglevel verbose` feeds the install
 // progress UI.
 export const INSTALL_OPENCODE_COMMAND_ALLOW_SCRIPTS =
-  'npm install -g --loglevel verbose --allow-scripts=opencode-ai opencode-ai';
+  'npm install -g --loglevel verbose --allow-scripts=@opencode/cli @opencode/cli';
 
 // Presence check for the opencode binary.
 export const CHECK_COMMAND = 'which opencode';
 
-// Uninstall the opencode-ai npm package.
-export const UNINSTALL_COMMAND = 'npm uninstall -g opencode-ai';
+// Uninstall every known OpenCode npm package (V1 opencode-ai and V2
+// @opencode/cli) so reinstalls and V1→V2 migrations never leave the old
+// package behind. Exits 0 when neither is present.
+export const UNINSTALL_COMMAND = 'npm uninstall -g opencode-ai @opencode/cli';
 
 // Polling cadence while waiting for the server to become Ready.
 export const READY_POLL_INTERVAL = 1000;
@@ -58,13 +64,15 @@ export const SERVER_LOG_LINES = 40;
 // `proot info:` lines are kept — they can carry useful process state.
 export const SERVER_LOG_NOISE_PREFIXES = ['proot warning:'];
 
-// Graceful and forced shutdown of any running server instance.
-export const KILL_COMMAND = 'pkill -f "opencode serve"';
-export const HARD_KILL_COMMAND = 'pkill -9 -f "opencode serve"';
+// Graceful and forced shutdown of any running server instance. Scoped to the
+// plugin's own port so a manually started `opencode serve` (e.g. on the
+// default 4096) is never killed as collateral.
+export const KILL_COMMAND = `pkill -f "opencode serve --port ${PORT}"`;
+export const HARD_KILL_COMMAND = `pkill -9 -f "opencode serve --port ${PORT}"`;
 
 // Returns success (exit 0) regardless of whether a server is running, so the
 // caller can detect liveness without a nonzero exit aborting the flow.
-export const PROCESS_CHECK_COMMAND = 'pgrep -f "opencode serve" || true';
+export const PROCESS_CHECK_COMMAND = `pgrep -f "opencode serve --port ${PORT}" || true`;
 
 // Bounds for polling the stop sequence: how long and how often to check that
 // the process has actually exited.

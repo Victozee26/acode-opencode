@@ -1,11 +1,23 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { startServer, stopServer, waitForReady, getServerLog } from '../../src/opencode/server';
+import {
+  startServer,
+  stopServer,
+  waitForReady,
+  getServerLog,
+  buildStartCommand,
+  getServerPassword,
+  isV2Server,
+} from '../../src/opencode/server';
 import * as executorModule from '../../src/terminal/executor';
+import { SERVER_PASSWORD_ENV, PORT } from '../../src/config/server';
 import {
   STOP_POLL_INTERVAL,
   STOP_POLL_TIMEOUT,
   READY_POLL_INTERVAL,
   READY_TIMEOUT,
+  KILL_COMMAND,
+  HARD_KILL_COMMAND,
+  PROCESS_CHECK_COMMAND,
 } from '../../src/config/opencode';
 
 vi.mock('../../src/terminal/executor');
@@ -71,7 +83,7 @@ describe('startServer', () => {
         'proot warning: can\'t sanitize binding "/proc/self/fd/0": No such file or directory\n' +
           'Warning: OPENCODE_SERVER_PASSWORD is not set; server is unsecured.\n' +
           'proot info: vpid 1: terminated with signal 9\n' +
-          'opencode server listening on http://127.0.0.1:4096',
+          'opencode server listening on http://127.0.0.1:4123',
       );
       return Promise.resolve({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
     });
@@ -83,7 +95,7 @@ describe('startServer', () => {
     expect(getServerLog()).toBe(
       'Warning: OPENCODE_SERVER_PASSWORD is not set; server is unsecured.\n' +
         'proot info: vpid 1: terminated with signal 9\n' +
-        'opencode server listening on http://127.0.0.1:4096',
+        'opencode server listening on http://127.0.0.1:4123',
     );
   });
 });
@@ -151,7 +163,7 @@ describe('stopServer', () => {
     );
 
     // Assert
-    await expect(promise).rejects.toThrow('Cannot stop server: port 4096 still occupied after SIGKILL');
+    await expect(promise).rejects.toThrow('Cannot stop server: port 4123 still occupied after SIGKILL');
   });
 
   it('should_throw_after_both_poll_phases_when_server_never_down', async () => {
@@ -175,6 +187,101 @@ describe('stopServer', () => {
 
     // Assert
     await expect(promise).rejects.toThrow('Cannot stop server');
+  });
+});
+
+describe('v2 server auth', () => {
+  it('should_scope_kill_and_process_checks_to_plugin_port', () => {
+    // Assert
+    for (const command of [KILL_COMMAND, HARD_KILL_COMMAND, PROCESS_CHECK_COMMAND]) {
+      expect(command).toContain(`--port ${PORT}`);
+    }
+  });
+
+  it('should_build_plain_command_when_password_null', () => {
+    // Act
+    const command = buildStartCommand(null);
+
+    // Assert
+    expect(command).toBe('opencode serve --port 4123 --hostname 127.0.0.1');
+  });
+
+  it('should_prefix_password_via_env_when_password_set', () => {
+    // Act
+    const command = buildStartCommand('secret');
+
+    // Assert
+    expect(command).toBe(
+      `env ${SERVER_PASSWORD_ENV}=secret opencode serve --port 4123 --hostname 127.0.0.1`,
+    );
+  });
+
+  it('should_enable_auth_when_cli_is_v2', async () => {
+    // Arrange
+    mockExecute.mockResolvedValue('2.0.27');
+
+    // Act
+    await startServer();
+
+    // Assert
+    expect(isV2Server()).toBe(true);
+    const password = getServerPassword();
+    expect(password).toMatch(/^[0-9a-f]{48}$/);
+    expect(mockStartBackground).toHaveBeenCalledWith(
+      expect.stringContaining(`${SERVER_PASSWORD_ENV}=${password}`),
+      expect.any(Function),
+      true,
+    );
+    respondDown();
+    await stopServer();
+  });
+
+  it('should_skip_auth_when_cli_is_v1', async () => {
+    // Arrange
+    mockExecute.mockResolvedValue('1.8.0');
+
+    // Act
+    await startServer();
+
+    // Assert
+    expect(isV2Server()).toBe(false);
+    expect(getServerPassword()).toBeNull();
+    expect(mockStartBackground).toHaveBeenCalledWith(
+      'opencode serve --port 4123 --hostname 127.0.0.1',
+      expect.any(Function),
+      true,
+    );
+    respondDown();
+    await stopServer();
+  });
+
+  it('should_clear_password_when_server_stops', async () => {
+    // Arrange
+    mockExecute.mockResolvedValue('2.0.27');
+    await startServer();
+    expect(getServerPassword()).not.toBeNull();
+    respondDown();
+
+    // Act
+    await stopServer();
+
+    // Assert
+    expect(getServerPassword()).toBeNull();
+    expect(isV2Server()).toBe(false);
+  });
+
+  it('should_clear_auth_when_background_start_fails', async () => {
+    // Arrange
+    mockExecute.mockResolvedValue('2.0.27');
+    mockStartBackground.mockRejectedValueOnce(new Error('spawn failed'));
+
+    // Act
+    const promise = startServer();
+
+    // Assert
+    await expect(promise).rejects.toThrow('spawn failed');
+    expect(getServerPassword()).toBeNull();
+    expect(isV2Server()).toBe(false);
   });
 });
 

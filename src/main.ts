@@ -16,9 +16,18 @@ import {
 import type { RenderActions } from './ui/index';
 import type { HeaderActions } from './types';
 import { checkInstalled, installOpenCode, uninstallOpenCode } from './opencode/install';
-import { startServer, waitForReady, restartServer, stopServer, getServerLog } from './opencode/server';
+import {
+  startServer,
+  waitForReady,
+  restartServer,
+  stopServer,
+  getServerLog,
+  getServerPassword,
+} from './opencode/server';
+import { buildAuthTokenUrl } from './opencode/auth';
+import { BASE_URL } from './config/server';
 import { isServerUp, isServerDownConfirmed } from './opencode/health';
-import { checkForUpdates, installUpdate } from './opencode/update';
+import { checkForUpdates, installUpdate, getInstalledVersion } from './opencode/update';
 import { getRuntimeVersions } from './opencode/diagnostics';
 import { createLogger, setLogLevel } from './logger';
 import { extractErrorInfo } from './error';
@@ -50,6 +59,11 @@ export class AcodePlugin {
   private handleShow!: () => void;
   private updateInfo: UpdateInfo | null = null;
   private updateStatus: UpdateStatus | null = null;
+  private iframeUrl: string = BASE_URL;
+  // Password typed by the user for an already-running server the plugin did
+  // not start (see resolveAlreadyRunningUrl). One-shot per session: cleared on
+  // stop, never persisted.
+  private enteredPassword: string | null = null;
   private healthProbeTimer: ReturnType<typeof setInterval> | null = null;
   private healthCheckInProgress = false;
   private healthProbeEpoch = 0;
@@ -129,6 +143,7 @@ export class AcodePlugin {
           restart: () => this.handleRestart(),
           stop: () => this.handleStop(),
           back: () => this.$page?.hide(),
+          iframeUrl: this.iframeUrl,
           updateInfo: this.updateInfo,
           updateStatus: this.updateStatus,
           onUpdateClick: () => this.handleUpdateClick(),
@@ -225,6 +240,7 @@ export class AcodePlugin {
       if (serverUp) {
         log.info('startFlow: server already up, skipping start');
         this.showToast('OpenCode server already running');
+        this.iframeUrl = await this.resolveAlreadyRunningUrl();
         transition(AppState.Ready);
         return;
       }
@@ -233,6 +249,7 @@ export class AcodePlugin {
 
       await startServer();
       await waitForReady();
+      this.iframeUrl = this.resolveIframeUrl();
 
       transition(AppState.Ready);
       log.info('startFlow: ready');
@@ -256,6 +273,7 @@ export class AcodePlugin {
       await restartServer();
       log.info('handleRestart: restartServer done, waiting for ready');
       await waitForReady();
+      this.iframeUrl = this.resolveIframeUrl();
       log.info('handleRestart: server ready, transitioning to Ready');
       transition(AppState.Ready);
       log.info('handleRestart: ready');
@@ -327,6 +345,7 @@ export class AcodePlugin {
       const serverUp = await isServerUp();
       if (serverUp) {
         log.info('reinstallFlow: server already up, skipping start');
+        this.iframeUrl = await this.resolveAlreadyRunningUrl();
         transition(AppState.Ready);
         return;
       }
@@ -334,6 +353,7 @@ export class AcodePlugin {
       transition(AppState.StartingServer);
       await startServer();
       await waitForReady();
+      this.iframeUrl = this.resolveIframeUrl();
 
       transition(AppState.Ready);
       log.info('reinstallFlow: ready');
@@ -351,10 +371,59 @@ export class AcodePlugin {
       await stopServer();
       log.info('handleStop: server stopped');
       this.isRunning = false;
+      this.iframeUrl = BASE_URL;
+      this.enteredPassword = null;
       transition(AppState.Idle);
       this.showToast('Server stopped');
     } catch (err) {
       this.handleError('handleStop', err);
+    }
+  }
+
+  /**
+   * Resolves the iframe URL for a plugin-started server: builds the
+   * `?auth_token=` URL from the held password, or the plain base URL when no
+   * password is held (V1 server). Synchronous and infallible — no network.
+   */
+  private resolveIframeUrl(): string {
+    const password = getServerPassword();
+    return password ? buildAuthTokenUrl(password) : BASE_URL;
+  }
+
+  /**
+   * Resolves the iframe URL for an already-running server the plugin did not
+   * start. Reuses a held or previously entered password when available;
+   * otherwise prompts once via the native dialog. Cancel/empty degrades to
+   * the plain base URL (manual login in the web UI).
+   */
+  private async resolveAlreadyRunningUrl(): Promise<string> {
+    const known = getServerPassword() ?? this.enteredPassword;
+    if (known) {
+      return buildAuthTokenUrl(known);
+    }
+    const entered = await this.promptServerPassword();
+    if (entered) {
+      this.enteredPassword = entered;
+      return buildAuthTokenUrl(entered);
+    }
+    return BASE_URL;
+  }
+
+  /**
+   * Asks for the running server's password via the native prompt dialog.
+   * Returns the typed password, or null on cancel/empty/failure.
+   */
+  private async promptServerPassword(): Promise<string | null> {
+    try {
+      const answer = await acode.prompt(
+        'OpenCode server is already running. Enter its password to sign in automatically, or cancel for manual login.',
+        '',
+        'text',
+        { placeholder: 'Server password' },
+      );
+      return answer ? answer : null;
+    } catch {
+      return null;
     }
   }
 
@@ -383,9 +452,10 @@ export class AcodePlugin {
    * Handler for the "Update" click in the hamburger menu.
    *
    * Sets status to 'installing' (triggering a pulsing banner), installs the
-   * latest opencode-ai via npm, then re-checks versions. On success the banner
-   * disappears (currentVersion matches latest). On failure the banner shows an
-   * error state clickable for retry. Guarded against re-entrant clicks.
+   * latest release via npm, then refreshes the banner to the newly installed
+   * version (the pre-update info would otherwise show the stale old version).
+   * On failure the banner shows an error state clickable for retry. Guarded
+   * against re-entrant clicks.
    */
   private async handleUpdateClick(): Promise<void> {
     if (this.updateStatus === 'installing') return;
@@ -401,6 +471,11 @@ export class AcodePlugin {
       const fresh = await this.runUpdateCheck();
       if (fresh) {
         this.updateInfo = fresh;
+      } else {
+        const installed = await getInstalledVersion();
+        if (installed) {
+          this.updateInfo = { currentVersion: installed, latestVersion: installed };
+        }
       }
       updateHeader(getState().currentState, this.getHeaderActions());
       const freshInfo = this.updateInfo;

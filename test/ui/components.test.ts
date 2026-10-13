@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createErrorDisplay } from '../../src/ui/components';
 import { AppState, StateContext } from '../../src/types';
 import { VERSION_PENDING } from '../../src/config/opencode';
+import { BASE_URL } from '../../src/config/server';
 
 function makeContext(error: StateContext['error']): StateContext {
   return {
@@ -250,6 +251,7 @@ interface RenderActions {
   restart: () => void;
   stop: () => void;
   back: () => void;
+  iframeUrl?: string;
   updateInfo?: UpdateInfo | null;
   updateStatus?: UpdateStatus | null;
   onUpdateClick?: () => void;
@@ -423,6 +425,40 @@ describe('render with persistent containers', () => {
 
     // Assert
     expect(content.querySelector('iframe')).toBe(iframe);
+  });
+});
+
+describe('Ready iframe url', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('should_load_base_url_when_no_iframeUrl_provided', async () => {
+    // Arrange
+    const { initUiPage, render } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+
+    // Act
+    render(AppState.Ready, { currentState: AppState.Ready, error: null }, makeActions());
+
+    // Assert
+    expect(document.querySelector('iframe')!.getAttribute('src')).toBe(BASE_URL);
+  });
+
+  it('should_load_token_url_when_iframeUrl_provided', async () => {
+    // Arrange
+    const { initUiPage, render } = await loadFreshUi();
+    initUiPage({ body: document.body } as any);
+    const actions = makeActions();
+    actions.iframeUrl = `${BASE_URL}/?auth_token=abc123`;
+
+    // Act
+    render(AppState.Ready, { currentState: AppState.Ready, error: null }, actions);
+
+    // Assert
+    expect(document.querySelector('iframe')!.getAttribute('src')).toBe(
+      `${BASE_URL}/?auth_token=abc123`,
+    );
   });
 });
 

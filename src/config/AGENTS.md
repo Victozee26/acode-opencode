@@ -6,21 +6,22 @@ Single source of truth for every named constant in the plugin: network/server va
 
 ## Ownership
 
-Owned by the root AGENTS.md. Ten files:
-- `server.ts` — network/server core: `PORT`, `HOSTNAME`, `BASE_URL` (leaf, imports nothing).
-- `opencode.ts` — OpenCode lifecycle: install/start/stop/readiness commands and timeouts (`NPM_VERSION_COMMAND`, `NODE_VERSION_COMMAND`, `RUNTIME_VERSION_PROBE_TIMEOUT`, `VERSION_PENDING`, `VERSION_UNKNOWN`, `NPM_ALLOW_SCRIPTS_MIN_VERSION`, `INSTALL_DEPS_COMMAND`, `INSTALL_OPENCODE_COMMAND`, `INSTALL_OPENCODE_COMMAND_ALLOW_SCRIPTS`, `CHECK_COMMAND`, `UNINSTALL_COMMAND`, `READY_POLL_INTERVAL`, `READY_TIMEOUT`, `SERVER_LOG_LINES`, `SERVER_LOG_NOISE_PREFIXES`, `KILL_COMMAND`, `HARD_KILL_COMMAND`, `PROCESS_CHECK_COMMAND`, `STOP_POLL_TIMEOUT`, `STOP_POLL_INTERVAL`).
+Owned by the root AGENTS.md. Nine files:
+- `server.ts` — network/server core: `PORT`, `HOSTNAME`, `BASE_URL` (leaf, imports nothing), plus serve-auth values `SERVER_USERNAME`, `SERVER_PASSWORD_ENV`, `AUTH_TOKEN_PARAM`.
+- `auth.ts` — V2 auth values: `PASSWORD_BYTE_LENGTH`, `V2_MAJOR_VERSION` (leaf, imports nothing).
+- `opencode.ts` — OpenCode lifecycle: install/start/stop/readiness commands and timeouts (`NPM_VERSION_COMMAND`, `NODE_VERSION_COMMAND`, `RUNTIME_VERSION_PROBE_TIMEOUT`, `VERSION_PENDING`, `VERSION_UNKNOWN`, `NPM_ALLOW_SCRIPTS_MIN_VERSION`, `INSTALL_DEPS_COMMAND`, `INSTALL_OPENCODE_COMMAND`, `INSTALL_OPENCODE_COMMAND_ALLOW_SCRIPTS` (V2 `@opencode/cli` package), `CHECK_COMMAND`, `UNINSTALL_COMMAND` (both V1 + V2 packages), `READY_POLL_INTERVAL`, `READY_TIMEOUT`, `SERVER_LOG_LINES`, `SERVER_LOG_NOISE_PREFIXES`, `KILL_COMMAND`, `HARD_KILL_COMMAND`, `PROCESS_CHECK_COMMAND`, `STOP_POLL_TIMEOUT`, `STOP_POLL_INTERVAL`).
 - `health.ts` — health probe + diagnostics: `HEALTH_CHECK_URL` (derives from `BASE_URL` in `server.ts`), `HEALTH_CHECK_TIMEOUT`, `ERROR_FALLBACK_MESSAGE`, `HEALTH_PROBE_INTERVAL`, `HEALTH_CRASH_CONFIRM_ATTEMPTS`, `HEALTH_CRASH_RETRY_INTERVAL`, `HEALTH_CONNECTION_LOST_MESSAGE`.
 - `ui.ts` — rendering constants: `SPINNER_DEG_PER_SEC`, `SPINNER_FPS`, `FLOATING_BUTTON_IDLE_OPACITY_TIMEOUT`, `FAB_SCRIM_BACKGROUND`, `FAB_SCRIM_BLUR`, `FAB_SCRIM_Z_INDEX`, `FAB_Z_INDEX`, `HEADER_CONTAINER_ID`, `CONTENT_CONTAINER_ID`, `HEADER_LANDSCAPE_HIDDEN_CLASS`, `LANDSCAPE_MEDIA_QUERY`.
 - `app.ts` — legacy global debug master switch: `DEBUG` (kept for backward compat; runtime control is via `logLevel` setting, `none` disables).
 - `settings.ts` — iframe scale, log-level, and hide-header-in-landscape setting constants: `SETTINGS_KEY_IFRAME_SCALE`, `DEFAULT_IFRAME_SCALE`, `IFRAME_SCALE_MIN`, `IFRAME_SCALE_MAX`, `IFRAME_SCALE_STEP`, `SETTINGS_KEY_LOG_LEVEL`, `DEFAULT_LOG_LEVEL`, `SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE`, `DEFAULT_HIDE_HEADER_IN_LANDSCAPE`.
-- `update.ts` — update commands: `VERSION_CHECK_COMMAND` (`opencode --version`), `LATEST_VERSION_COMMAND` (`npm view opencode-ai version`), `INSTALL_UPDATE_COMMAND` (`npm install -g opencode-ai`), `INSTALL_UPDATE_COMMAND_ALLOW_SCRIPTS` (`npm install -g --allow-scripts=opencode-ai opencode-ai`).
+- `update.ts` — update commands: `VERSION_CHECK_COMMAND` (`opencode --version`), `LATEST_VERSION_COMMAND` (`npm view @opencode/cli version`, V2 track — V1 installs are offered migration), `INSTALL_UPDATE_COMMAND` (`npm install -g @opencode/cli`), `INSTALL_UPDATE_COMMAND_ALLOW_SCRIPTS` (`npm install -g --allow-scripts=@opencode/cli @opencode/cli`), `UNINSTALL_V1_COMMAND` (`npm uninstall -g opencode-ai`, best-effort pre-update migration cleanup).
 - `index.ts` — barrel re-exporting every sub-module (`export *`). Convenience for tests; source consumers import the specific sub-module directly.
 
 ## Local Contracts
 
 - Every constant is exported as a named `const` — no magic numbers/strings anywhere else in the codebase.
 - `config/` is a leaf package of pure constants. Sub-modules import nothing outside `config/`. Cross-config imports (e.g. `health.ts` ← `server.ts` for `BASE_URL`) are allowed; no imports from `../opencode`, `../ui`, `../terminal`, etc.
-- `PORT` is fixed at `4096` and `HOSTNAME` is loopback `127.0.0.1` (hard constraint — never `0.0.0.0` without auth). `BASE_URL` and `HEALTH_CHECK_URL` derive from them, so change the source constants rather than the derived URLs.
+- `PORT` is fixed at `4123` (not the upstream default `4096`, to avoid clashing with manually started servers) and `HOSTNAME` is loopback `127.0.0.1` (hard constraint — never `0.0.0.0` without auth). `BASE_URL` and `HEALTH_CHECK_URL` derive from them, so change the source constants rather than the derived URLs.
 - Consumers import from the specific sub-module (`../config/server`, `../config/opencode`, `../config/health`, `../config/ui`, `../config/app`), not the barrel, except tests which may use `../config` (resolves to `index.ts`).
 
 ## Work Guidance

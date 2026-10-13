@@ -20,7 +20,7 @@ interface CordovaHttp {
 
 // Resolve the Cordova Advanced HTTP plugin from the global window, if present.
 // It runs on the native network stack, so WebView CORS does NOT apply and a
-// loopback probe to 127.0.0.1:4096 actually resolves (a plain `fetch` hangs
+// loopback probe to 127.0.0.1:4123 actually resolves (a plain `fetch` hangs
 // forever in this WebView). Returns undefined when the plugin is absent — e.g. a
 // browser test environment — in which case we cannot probe at all.
 function getCordovaHttp(): CordovaHttp | undefined {

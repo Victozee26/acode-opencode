@@ -3,6 +3,7 @@ import {
   INSTALL_UPDATE_COMMAND,
   INSTALL_UPDATE_COMMAND_ALLOW_SCRIPTS,
   LATEST_VERSION_COMMAND,
+  UNINSTALL_V1_COMMAND,
   VERSION_CHECK_COMMAND,
 } from '../config/update';
 import { selectNpmCommand } from './npm';
@@ -13,9 +14,9 @@ import { createLogger } from '../logger';
 const log = createLogger('update');
 
 /**
- * Checks whether a newer version of opencode-ai is available on npm.
+ * Checks whether a newer version of OpenCode is available on npm.
  *
- * Runs `opencode --version` and `npm view opencode-ai version` in parallel,
+ * Runs `opencode --version` and `npm view @opencode/cli version` in parallel,
  * then compares versions. The promise never rejects — all errors are logged
  * and swallowed so the caller can fire-and-forget without crash risk.
  *
@@ -57,15 +58,22 @@ export async function checkForUpdates(): Promise<UpdateInfo | null> {
 }
 
 /**
- * Installs the latest opencode-ai version from npm.
+ * Installs the latest OpenCode version from npm.
  *
- * Runs the command chosen by {@link selectNpmCommand} via the Alpine terminal:
- * `npm install -g --allow-scripts=opencode-ai opencode-ai` on npm >= 11.16.0,
- * plain `npm install -g opencode-ai` otherwise. Throws on failure so the
+ * Best-effort removes the legacy V1 package first so the update migrates
+ * instead of leaving both packages behind, then runs the command chosen by
+ * {@link selectNpmCommand} via the Alpine terminal:
+ * `npm install -g --allow-scripts=@opencode/cli @opencode/cli` on npm >= 11.16.0,
+ * plain `npm install -g @opencode/cli` otherwise. Throws on failure so the
  * caller can transition to an error state in the UI.
  */
 export async function installUpdate(): Promise<void> {
   log.info('installUpdate: installing');
+  try {
+    await execute(UNINSTALL_V1_COMMAND);
+  } catch (err) {
+    log.info('installUpdate: V1 uninstall skipped', err);
+  }
   const command = await selectNpmCommand(
     INSTALL_UPDATE_COMMAND_ALLOW_SCRIPTS,
     INSTALL_UPDATE_COMMAND,
@@ -73,4 +81,17 @@ export async function installUpdate(): Promise<void> {
   log.info(`installUpdate: running "${command}"`);
   await execute(command);
   log.info('installUpdate: done');
+}
+
+/**
+ * Probes the currently installed CLI version. Returns the parsed version or
+ * null when the probe fails or the output is unparseable. Never rejects —
+ * used to refresh the update banner after an install.
+ */
+export async function getInstalledVersion(): Promise<string | null> {
+  try {
+    return parseVersion(await execute(VERSION_CHECK_COMMAND));
+  } catch {
+    return null;
+  }
 }
