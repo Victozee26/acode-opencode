@@ -14,25 +14,29 @@ Owned by the root AGENTS.md. Single file: `executor.ts`.
 
 Blocking command execution. Resolves with command output on success, rejects on non-zero exit. On rejection, the thrown error includes the original message and any captured command output: `"Command failed: <original message>\nOutput: <output>"`. If no output is available, the error is `"Command failed: <original message>"`.
 
-### `startBackground(command, onData?, alpine = true): Promise<BackgroundProcess>`
+### `startProcess(command, onData?, alpine = true): Promise<ProcessHandle>`
 
-Launches a persistent process via `Executor.BackgroundExecutor.start()`. Unlike `execute`, the returned promise resolves with a `BackgroundProcess` handle (containing `uuid`) once launched — it does NOT wait for the process to exit. The optional `onData` callback receives typed output chunks (`stdout`, `stderr`, `exit`, `unknown`). The returned `BackgroundProcess` exposes `stop()`, `isRunning()`, and `write(input)` methods.
+Launches a persistent process via `Executor.start()` — the **foreground** executor, so Acode keeps the process alive under a foreground service even after the app leaves the foreground. Acode's background executor (`Executor.BackgroundExecutor`) must not be used for long-lived processes: Android is free to kill those once Acode is backgrounded. Unlike `execute`, the returned promise resolves with a `ProcessHandle` (containing `uuid`) once launched — it does NOT wait for the process to exit. The optional `onData` callback receives typed output chunks (`stdout`, `stderr`, `exit`, `unknown`). The returned `ProcessHandle` exposes `stop()`, `isRunning()`, and `write(input)` methods.
 
-### `stopBackground(uuid): Promise<string>`
+### `stopProcess(uuid): Promise<string>`
 
-Stops a persistent background process by UUID via `Executor.BackgroundExecutor.stop()`.
+Stops a persistent process by UUID via `Executor.stop()`.
 
-### `isBackgroundRunning(uuid): Promise<boolean>`
+### `isProcessRunning(uuid): Promise<boolean>`
 
-Checks whether a persistent background process is still alive via `Executor.BackgroundExecutor.isRunning()`.
+Checks whether a persistent process is still alive via `Executor.isRunning()`.
 
-### `writeBackground(uuid, input): Promise<string>`
+### `writeProcess(uuid, input): Promise<string>`
 
-Writes input to a persistent background process's stdin via `Executor.BackgroundExecutor.write()`.
+Writes input to a persistent process's stdin via `Executor.write()`.
+
+### `ensureAlpineAvailable(): Promise<void>`
+
+Fails with an actionable message when Acode's terminal runtime is not installed yet (`Terminal.isInstalled()` reports false), instead of letting `apk`/`npm` fail with an opaque shell error. Called by `execute()` and `startProcess()`. On builds that do not expose `Terminal.isInstalled()` the check is skipped and the command runs.
 
 ### `executeVerbose(command, onProgress?, alpine = true): Promise<string>`
 
-Runs a command as a background process and streams its output in real-time via the optional `onProgress` callback while waiting for exit. Resolves with full accumulated stdout on success, rejects with exit code and captured output on failure. Used for installation commands where live UI feedback is desired (npm install output, apk add progress).
+Runs a command as a persistent process and streams its output in real-time via the optional `onProgress` callback while waiting for exit. Resolves with full accumulated stdout on success, rejects with exit code and captured output on failure. Used for installation commands where live UI feedback is desired (npm install output, apk add progress).
 
 ### General rules
 

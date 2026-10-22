@@ -1,34 +1,101 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   execute,
-  startBackground,
-  stopBackground,
-  isBackgroundRunning,
-  writeBackground,
+  startProcess,
+  stopProcess,
+  isProcessRunning,
+  writeProcess,
   executeVerbose,
+  ensureAlpineAvailable,
 } from '../../src/terminal/executor';
 
 const mockExecute = vi.fn();
+const mockStart = vi.fn();
+const mockStop = vi.fn();
+const mockIsRunning = vi.fn();
+const mockWrite = vi.fn();
+// The background executor is mocked too, so the tests can prove that no
+// long-lived process is started on it: Android may kill background processes
+// once Acode leaves the foreground.
 const mockBgStart = vi.fn();
-const mockBgStop = vi.fn();
-const mockBgIsRunning = vi.fn();
-const mockBgWrite = vi.fn();
 
 beforeEach(() => {
+  // Drop the globals stubbed by the previous test before setting up the mocks.
+  vi.unstubAllGlobals();
   vi.stubGlobal('Executor', {
     execute: mockExecute,
+    start: mockStart,
+    stop: mockStop,
+    isRunning: mockIsRunning,
+    write: mockWrite,
     BackgroundExecutor: {
       start: mockBgStart,
-      stop: mockBgStop,
-      isRunning: mockBgIsRunning,
-      write: mockBgWrite,
+      stop: vi.fn(),
+      isRunning: vi.fn(),
+      write: vi.fn(),
     },
   });
+  // No terminal global by default: the plugin then skips the runtime check,
+  // which is the behaviour on Acode builds that do not expose it.
+  vi.stubGlobal('Terminal', undefined);
   mockExecute.mockReset();
+  mockStart.mockReset();
+  mockStop.mockReset();
+  mockIsRunning.mockReset();
+  mockWrite.mockReset();
   mockBgStart.mockReset();
-  mockBgStop.mockReset();
-  mockBgIsRunning.mockReset();
-  mockBgWrite.mockReset();
+});
+
+describe('ensureAlpineAvailable', () => {
+  it('should_throw_when_the_terminal_runtime_is_missing', async () => {
+    // Arrange
+    vi.stubGlobal('Terminal', { isInstalled: vi.fn().mockResolvedValue(false) });
+
+    // Act
+    const promise = ensureAlpineAvailable();
+
+    // Assert
+    await expect(promise).rejects.toThrow("terminal environment is not installed");
+  });
+
+  it('should_resolve_when_the_terminal_runtime_is_available', async () => {
+    // Arrange
+    vi.stubGlobal('Terminal', { isInstalled: vi.fn().mockResolvedValue(true) });
+
+    // Act / Assert
+    await expect(ensureAlpineAvailable()).resolves.toBeUndefined();
+  });
+
+  it('should_skip_the_check_when_the_terminal_global_is_absent', async () => {
+    // Arrange
+    vi.stubGlobal('Terminal', undefined);
+
+    // Act / Assert
+    await expect(ensureAlpineAvailable()).resolves.toBeUndefined();
+  });
+
+  it('should_skip_the_check_when_the_probe_fails', async () => {
+    // Arrange
+    vi.stubGlobal('Terminal', {
+      isInstalled: vi.fn().mockRejectedValue(new Error('probe failed')),
+    });
+
+    // Act / Assert
+    await expect(ensureAlpineAvailable()).resolves.toBeUndefined();
+  });
+
+  it('should_reject_the_command_when_the_terminal_runtime_is_missing', async () => {
+    // Arrange
+    vi.stubGlobal('Terminal', { isInstalled: vi.fn().mockResolvedValue(false) });
+    mockExecute.mockResolvedValue('hello');
+
+    // Act
+    const promise = execute('echo hello');
+
+    // Assert
+    await expect(promise).rejects.toThrow("terminal environment is not installed");
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
 });
 
 describe('execute', () => {
@@ -102,37 +169,49 @@ describe('execute', () => {
   });
 });
 
-describe('startBackground', () => {
+describe('startProcess', () => {
   it('should_return_uuid_when_start_succeeds', async () => {
     // Arrange
-    mockBgStart.mockResolvedValue('test-uuid');
+    mockStart.mockResolvedValue('test-uuid');
 
     // Act
-    const process = await startBackground('my-command');
+    const process = await startProcess('my-command');
 
     // Assert
     expect(process.uuid).toBe('test-uuid');
   });
 
-  it('should_reject_when_start_fails', async () => {
+  it('should_start_on_the_foreground_executor', async () => {
     // Arrange
-    mockBgStart.mockRejectedValue(new Error('spawn failed'));
+    mockStart.mockResolvedValue('test-uuid');
 
     // Act
-    const promise = startBackground('my-command');
+    await startProcess('my-command');
+
+    // Assert - the background executor is the one Android may kill
+    expect(mockStart).toHaveBeenCalled();
+    expect(mockBgStart).not.toHaveBeenCalled();
+  });
+
+  it('should_reject_when_start_fails', async () => {
+    // Arrange
+    mockStart.mockRejectedValue(new Error('spawn failed'));
+
+    // Act
+    const promise = startProcess('my-command');
 
     // Assert
     await expect(promise).rejects.toThrow('spawn failed');
   });
 });
 
-describe('stopBackground', () => {
+describe('stopProcess', () => {
   it('should_return_stopped_when_delegated', async () => {
     // Arrange
-    mockBgStop.mockResolvedValue('stopped');
+    mockStop.mockResolvedValue('stopped');
 
     // Act
-    const result = await stopBackground('test-uuid');
+    const result = await stopProcess('test-uuid');
 
     // Assert
     expect(result).toBe('stopped');
@@ -140,23 +219,23 @@ describe('stopBackground', () => {
 
   it('should_reject_when_stop_fails', async () => {
     // Arrange
-    mockBgStop.mockRejectedValue(new Error('stop failed'));
+    mockStop.mockRejectedValue(new Error('stop failed'));
 
     // Act
-    const promise = stopBackground('test-uuid');
+    const promise = stopProcess('test-uuid');
 
     // Assert
     await expect(promise).rejects.toThrow('stop failed');
   });
 });
 
-describe('isBackgroundRunning', () => {
+describe('isProcessRunning', () => {
   it('should_return_true_when_running', async () => {
     // Arrange
-    mockBgIsRunning.mockResolvedValue(true);
+    mockIsRunning.mockResolvedValue(true);
 
     // Act
-    const result = await isBackgroundRunning('test-uuid');
+    const result = await isProcessRunning('test-uuid');
 
     // Assert
     expect(result).toBe(true);
@@ -164,23 +243,23 @@ describe('isBackgroundRunning', () => {
 
   it('should_return_false_when_not_running', async () => {
     // Arrange
-    mockBgIsRunning.mockResolvedValue(false);
+    mockIsRunning.mockResolvedValue(false);
 
     // Act
-    const result = await isBackgroundRunning('test-uuid');
+    const result = await isProcessRunning('test-uuid');
 
     // Assert
     expect(result).toBe(false);
   });
 });
 
-describe('writeBackground', () => {
+describe('writeProcess', () => {
   it('should_return_ok_when_write_succeeds', async () => {
     // Arrange
-    mockBgWrite.mockResolvedValue('ok');
+    mockWrite.mockResolvedValue('ok');
 
     // Act
-    const result = await writeBackground('test-uuid', 'input data');
+    const result = await writeProcess('test-uuid', 'input data');
 
     // Assert
     expect(result).toBe('ok');
@@ -188,22 +267,22 @@ describe('writeBackground', () => {
 
   it('should_reject_when_write_fails', async () => {
     // Arrange
-    mockBgWrite.mockRejectedValue(new Error('write failed'));
+    mockWrite.mockRejectedValue(new Error('write failed'));
 
     // Act
-    const promise = writeBackground('test-uuid', 'input data');
+    const promise = writeProcess('test-uuid', 'input data');
 
     // Assert
     await expect(promise).rejects.toThrow('write failed');
   });
 });
 
-describe('BackgroundProcess methods', () => {
+describe('ProcessHandle methods', () => {
   it('should_stop_when_process_stop_called', async () => {
     // Arrange
-    mockBgStart.mockResolvedValue('test-uuid');
-    mockBgStop.mockResolvedValue('stopped');
-    const process = await startBackground('my-command');
+    mockStart.mockResolvedValue('test-uuid');
+    mockStop.mockResolvedValue('stopped');
+    const process = await startProcess('my-command');
 
     // Act
     const result = await process.stop();
@@ -214,9 +293,9 @@ describe('BackgroundProcess methods', () => {
 
   it('should_return_true_when_process_isRunning_called', async () => {
     // Arrange
-    mockBgStart.mockResolvedValue('test-uuid');
-    mockBgIsRunning.mockResolvedValue(true);
-    const process = await startBackground('my-command');
+    mockStart.mockResolvedValue('test-uuid');
+    mockIsRunning.mockResolvedValue(true);
+    const process = await startProcess('my-command');
 
     // Act
     const result = await process.isRunning();
@@ -227,9 +306,9 @@ describe('BackgroundProcess methods', () => {
 
   it('should_write_when_process_write_called', async () => {
     // Arrange
-    mockBgStart.mockResolvedValue('test-uuid');
-    mockBgWrite.mockResolvedValue('ok');
-    const process = await startBackground('my-command');
+    mockStart.mockResolvedValue('test-uuid');
+    mockWrite.mockResolvedValue('ok');
+    const process = await startProcess('my-command');
 
     // Act
     const result = await process.write('hello');
@@ -244,7 +323,7 @@ describe('executeVerbose', () => {
 
   beforeEach(() => {
     capturedCallback = null;
-    mockBgStart.mockImplementation((_cmd, cb) => {
+    mockStart.mockImplementation((_cmd, cb) => {
       capturedCallback = cb;
       return Promise.resolve('vb-uuid');
     });
@@ -253,6 +332,7 @@ describe('executeVerbose', () => {
   it('should_resolve_with_stdout_when_exit_0', async () => {
     // Arrange
     const promise = executeVerbose('echo hi');
+    await vi.waitFor(() => expect(capturedCallback).toBeTypeOf('function'));
 
     // Act
     capturedCallback!('stdout', 'hello ');
@@ -266,6 +346,7 @@ describe('executeVerbose', () => {
   it('should_reject_with_exit_code_when_non_zero', async () => {
     // Arrange
     const promise = executeVerbose('bad-command');
+    await vi.waitFor(() => expect(capturedCallback).toBeTypeOf('function'));
 
     // Act
     capturedCallback!('stderr', 'error: not found\n');
@@ -278,6 +359,7 @@ describe('executeVerbose', () => {
   it('should_include_stderr_when_rejecting', async () => {
     // Arrange
     const promise = executeVerbose('bad-command');
+    await vi.waitFor(() => expect(capturedCallback).toBeTypeOf('function'));
 
     // Act
     capturedCallback!('stderr', 'error: not found\n');
@@ -291,6 +373,7 @@ describe('executeVerbose', () => {
     // Arrange
     const lines: string[] = [];
     const promise = executeVerbose('cmd', (text) => lines.push(text));
+    await vi.waitFor(() => expect(capturedCallback).toBeTypeOf('function'));
 
     // Act
     capturedCallback!('stdout', 'fetching packages\n');
@@ -302,9 +385,9 @@ describe('executeVerbose', () => {
     expect(lines).toEqual(['fetching packages', 'installing']);
   });
 
-  it('should_reject_when_startBackground_fails', async () => {
+  it('should_reject_when_startProcess_fails', async () => {
     // Arrange
-    mockBgStart.mockRejectedValue(new Error('spawn failed'));
+    mockStart.mockRejectedValue(new Error('spawn failed'));
 
     // Act
     const promise = executeVerbose('cmd');

@@ -272,6 +272,39 @@ describe('destroy', () => {
     // Assert
     expect(stateModule.getState().currentState).toBe(AppState.Idle);
   });
+
+  it('should_stop_the_server_when_destroy_called', async () => {
+    // Arrange
+    const mockPage = makeMockPage();
+    (globalThis as any).acode = {
+      addIcon: vi.fn(),
+      require: vi.fn().mockReturnValue(vi.fn().mockReturnValue({ show: vi.fn(), hide: vi.fn() })),
+    };
+    mockStopServer.mockResolvedValue(undefined);
+    const plugin = makePlugin();
+    await plugin.init('https://base/', mockPage as any, {} as any, '');
+
+    // Act
+    await plugin.destroy();
+
+    // Assert - the server this plugin started must not outlive the plugin
+    expect(mockStopServer).toHaveBeenCalled();
+  });
+
+  it('should_not_throw_when_the_server_cannot_be_stopped', async () => {
+    // Arrange
+    const mockPage = makeMockPage();
+    (globalThis as any).acode = {
+      addIcon: vi.fn(),
+      require: vi.fn().mockReturnValue(vi.fn().mockReturnValue({ show: vi.fn(), hide: vi.fn() })),
+    };
+    mockStopServer.mockRejectedValue(new Error('stop failed'));
+    const plugin = makePlugin();
+    await plugin.init('https://base/', mockPage as any, {} as any, '');
+
+    // Act
+    await expect(plugin.destroy()).resolves.toBeUndefined();
+  });
 });
 
 describe('handleRestart', () => {

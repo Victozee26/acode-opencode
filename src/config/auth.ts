@@ -8,3 +8,7 @@ export const PASSWORD_BYTE_LENGTH = 24;
 // Below this the plugin keeps the legacy behavior (no password, iframe loads
 // the base URL directly); at/above it the pairing flow is used.
 export const V2_MAJOR_VERSION = 2;
+
+// HTTP basic-auth scheme used by the V2 server. The username is fixed
+// (SERVER_USERNAME in server.ts), so only the password varies per launch.
+export const BASIC_AUTH_SCHEME = 'Basic ';

@@ -26,6 +26,52 @@ function buildCommandError(originalMessage: string, output: string): Error {
 }
 
 /**
+ * Acode's terminal plugin exposes two executors: the global `Executor` (the
+ * foreground executor) and `Executor.BackgroundExecutor`. The background one
+ * starts processes without a foreground service, so Android is free to kill
+ * them once Acode leaves the foreground — fine for commands that finish in
+ * seconds, but the OpenCode server has to survive the user switching away
+ * from Acode. Every process this plugin starts therefore goes through the
+ * foreground executor, which Acode runs under a foreground service.
+ */
+
+/**
+ * Terminal globals as Acode exposes them. `Terminal.isInstalled()` reports
+ * whether the Alpine runtime has been downloaded; `Executor` is the global
+ * executor instance.
+ */
+interface TerminalGlobal {
+  isInstalled?: () => Promise<boolean>;
+}
+
+/**
+ * Fails fast with an actionable message when Acode's terminal runtime is not
+ * installed yet, instead of letting `apk`/`npm` fail with an opaque shell
+ * error.
+ *
+ * Skips the check on builds that do not expose `Terminal.isInstalled()` — the
+ * command then runs and Acode reports the real failure.
+ */
+export async function ensureAlpineAvailable(): Promise<void> {
+  const terminal = (globalThis as { Terminal?: TerminalGlobal }).Terminal;
+  if (!terminal || typeof terminal.isInstalled !== 'function') return;
+
+  let installed = false;
+  try {
+    installed = await terminal.isInstalled();
+  } catch (err: unknown) {
+    log.warn('ensureAlpineAvailable: isInstalled() failed, continuing', err);
+    return;
+  }
+
+  if (!installed) {
+    throw new Error(
+      "Acode's terminal environment is not installed yet. Open Acode's Terminal, install it, then try again.",
+    );
+  }
+}
+
+/**
  * Run a shell command through Acode's built-in terminal and resolve with its
  * stdout.
  *
@@ -33,10 +79,12 @@ function buildCommandError(originalMessage: string, output: string): Error {
  * @param alpine - Whether to run inside Alpine Linux (default true; essentially
  *   all commands in this plugin run in Alpine, so this rarely changes).
  * @returns The captured command output on success.
- * @throws Rejects on non-zero exit. The thrown error embeds the original message
- *   plus any captured command output so callers can surface diagnostics.
+ * @throws Rejects when the terminal runtime is missing or the command exits
+ *   non-zero. The thrown error embeds the original message plus any captured
+ *   command output so callers can surface diagnostics.
  */
 export async function execute(command: string, alpine = true): Promise<string> {
+  await ensureAlpineAvailable();
   log.info(`executing: ${command}`);
   try {
     const result = await Executor.execute(command, alpine);
@@ -51,10 +99,9 @@ export async function execute(command: string, alpine = true): Promise<string> {
 }
 
 /**
- * Handle to a persistent background process started via
- * {@link Executor.BackgroundExecutor}.
+ * Handle to a persistent process started via {@link startProcess}.
  */
-export interface BackgroundProcess {
+export interface ProcessHandle {
   readonly uuid: string;
   stop(): Promise<string>;
   isRunning(): Promise<boolean>;
@@ -62,61 +109,62 @@ export interface BackgroundProcess {
 }
 
 /**
- * Run a command as a persistent background process that survives session
- * teardown. Unlike {@link execute}, the returned promise resolves once the
- * process is launched (returning a UUID handle), not when it exits.
+ * Run a command as a persistent process that survives session teardown and
+ * stays alive while Acode is in the background. Unlike {@link execute}, the
+ * returned promise resolves once the process is launched (returning a UUID
+ * handle), not when it exits.
+ *
+ * The process runs on Acode's foreground executor, so Android keeps it alive
+ * when the user leaves Acode — that is what the OpenCode server needs.
  *
  * @param command - The command string to execute.
  * @param onData - Optional streaming callback receiving typed output chunks
  *   (`stdout`, `stderr`, `exit`, `unknown`).
  * @param alpine - Whether to run inside Alpine Linux (default true).
- * @returns A {@link BackgroundProcess} handle encapsulating the UUID with
- *   convenience methods for stop/isRunning/write.
+ * @returns A {@link ProcessHandle} encapsulating the UUID with convenience
+ *   methods for stop/isRunning/write.
  */
-export async function startBackground(
+export async function startProcess(
   command: string,
   onData?: ExecutorOutputCallback,
   alpine = true,
-): Promise<BackgroundProcess> {
-  log.info(`startBackground: launching "${command}"`);
-  const uuid = await Executor.BackgroundExecutor.start(
-    command,
-    onData ?? (() => {}),
-    alpine,
-  );
-  log.info(`startBackground: started, uuid=${uuid}`);
+): Promise<ProcessHandle> {
+  await ensureAlpineAvailable();
+  log.info(`startProcess: launching "${command}"`);
+  const uuid = await Executor.start(command, onData ?? (() => {}), alpine);
+  log.info(`startProcess: started, uuid=${uuid}`);
   return {
     uuid,
-    stop: () => stopBackground(uuid),
-    isRunning: () => isBackgroundRunning(uuid),
-    write: (input: string) => writeBackground(uuid, input),
+    stop: () => stopProcess(uuid),
+    isRunning: () => isProcessRunning(uuid),
+    write: (input: string) => writeProcess(uuid, input),
   };
 }
 
 /**
- * Stop a persistent background process by its UUID.
+ * Stop a persistent process by its UUID.
  */
-export async function stopBackground(uuid: string): Promise<string> {
-  log.info(`stopBackground: uuid=${uuid}`);
-  return Executor.BackgroundExecutor.stop(uuid);
+export async function stopProcess(uuid: string): Promise<string> {
+  log.info(`stopProcess: uuid=${uuid}`);
+  return Executor.stop(uuid);
 }
 
 /**
- * Check whether a persistent background process is still running.
+ * Check whether a persistent process is still running.
  */
-export async function isBackgroundRunning(uuid: string): Promise<boolean> {
-  return Executor.BackgroundExecutor.isRunning(uuid);
+export async function isProcessRunning(uuid: string): Promise<boolean> {
+  return Executor.isRunning(uuid);
 }
 
 /**
- * Write input to a persistent background process's stdin.
+ * Write input to a persistent process's stdin.
  */
-export async function writeBackground(uuid: string, input: string): Promise<string> {
-  return Executor.BackgroundExecutor.write(uuid, input);
+export async function writeProcess(uuid: string, input: string): Promise<string> {
+  return Executor.write(uuid, input);
 }
 
 /**
- * Run a shell command as a background process and stream its output in
+ * Run a shell command as a persistent process and stream its output in
  * real-time via the optional `onProgress` callback, then resolve when the
  * process exits.
  *
@@ -144,7 +192,7 @@ export async function executeVerbose(
     let stdout = '';
     let settled = false;
 
-    startBackground(
+    startProcess(
       command,
       (type, data) => {
         if (settled) return;

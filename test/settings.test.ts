@@ -1,10 +1,17 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+} from 'vitest';
 import {
   getSettingsSchema,
   getIframeScale,
   resetSettingsCache,
   getLogLevel,
   setOnLogLevelChange,
+  getRemoteHost,
 } from '../src/settings';
 import {
   DEFAULT_IFRAME_SCALE,
@@ -15,6 +22,7 @@ import {
   DEFAULT_LOG_LEVEL,
   SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE,
 } from '../src/config/settings';
+import { SETTINGS_KEY_REMOTE_HOST } from '../src/config/remote';
 
 vi.mock('../src/logger', async () => {
   const actual = await vi.importActual<typeof import('../src/logger')>('../src/logger');
@@ -40,13 +48,13 @@ beforeEach(() => {
 });
 
 describe('getSettingsSchema', () => {
-  it('should_return_3_entries_when_called', () => {
+  it('should_return_4_entries_when_called', () => {
     // Arrange
     // Act
     const schema = getSettingsSchema();
 
     // Assert
-    expect(schema.list).toHaveLength(3);
+    expect(schema.list).toHaveLength(4);
   });
 
   it('should_contain_expected_keys_when_called', () => {
@@ -61,6 +69,7 @@ describe('getSettingsSchema', () => {
       SETTINGS_KEY_IFRAME_SCALE,
       SETTINGS_KEY_LOG_LEVEL,
       SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE,
+      SETTINGS_KEY_REMOTE_HOST,
     ]);
   });
 });
@@ -251,6 +260,41 @@ describe('settings change callback', () => {
 
     // Assert
     expect(getLogLevel()).toBe('debug');
+  });
+});
+
+describe('getRemoteHost', () => {
+  it('should_return_empty_when_settings_returns_null', () => {
+    // Arrange
+    mockSettingsGet.mockReturnValue(null);
+
+    // Act
+    const host = getRemoteHost();
+
+    // Assert
+    expect(host).toBe('');
+  });
+
+  it('should_return_host_when_settings_returns_host', () => {
+    // Arrange
+    mockSettingsGet.mockReturnValue('192.168.1.10:4096');
+
+    // Act
+    const host = getRemoteHost();
+
+    // Assert
+    expect(host).toBe('192.168.1.10:4096');
+  });
+
+  it('should_trim_whitespace_when_settings_returns_padded_host', () => {
+    // Arrange
+    mockSettingsGet.mockReturnValue('  opencode.example.com  ');
+
+    // Act
+    const host = getRemoteHost();
+
+    // Assert
+    expect(host).toBe('opencode.example.com');
   });
 });
 

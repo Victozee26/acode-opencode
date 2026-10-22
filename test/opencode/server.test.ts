@@ -10,6 +10,7 @@ import {
 } from '../../src/opencode/server';
 import * as executorModule from '../../src/terminal/executor';
 import { SERVER_PASSWORD_ENV, PORT } from '../../src/config/server';
+import { HEALTH_CONFIG_URL } from '../../src/config/health';
 import {
   STOP_POLL_INTERVAL,
   STOP_POLL_TIMEOUT,
@@ -23,8 +24,8 @@ import {
 vi.mock('../../src/terminal/executor');
 
 const mockExecute = vi.mocked(executorModule.execute);
-const mockStartBackground = vi.mocked(executorModule.startBackground);
-const mockStopBackground = vi.mocked(executorModule.stopBackground);
+const mockStartProcess = vi.mocked(executorModule.startProcess);
+const mockStopProcess = vi.mocked(executorModule.stopProcess);
 
 const mockSendRequest = vi.fn();
 
@@ -42,8 +43,8 @@ const respondDown = (): void => {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
-  mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
-  mockStopBackground.mockResolvedValue('stopped');
+  mockStartProcess.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.ProcessHandle);
+  mockStopProcess.mockResolvedValue('stopped');
   mockExecute.mockResolvedValue('ok');
   (window as any).cordova = { plugin: { http: { sendRequest: mockSendRequest } } };
 });
@@ -53,9 +54,9 @@ afterEach(() => {
 });
 
 describe('startServer', () => {
-  it('should_resolve_when_background_process_launches', async () => {
+  it('should_resolve_when_the_process_launches', async () => {
     // Arrange
-    mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
+    mockStartProcess.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.ProcessHandle);
 
     // Act
     const promise = startServer();
@@ -64,9 +65,9 @@ describe('startServer', () => {
     await expect(promise).resolves.toBeUndefined();
   });
 
-  it('should_reject_when_background_start_fails', async () => {
+  it('should_reject_when_start_fails', async () => {
     // Arrange
-    mockStartBackground.mockRejectedValue(new Error('spawn failed'));
+    mockStartProcess.mockRejectedValue(new Error('spawn failed'));
 
     // Act
     const promise = startServer();
@@ -77,7 +78,7 @@ describe('startServer', () => {
 
   it('should_drop_proot_warnings_but_keep_proot_info_in_server_log', async () => {
     // Arrange
-    mockStartBackground.mockImplementation((_command, onData) => {
+    mockStartProcess.mockImplementation((_command, onData) => {
       onData?.(
         'stdout',
         'proot warning: can\'t sanitize binding "/proc/self/fd/0": No such file or directory\n' +
@@ -85,7 +86,7 @@ describe('startServer', () => {
           'proot info: vpid 1: terminated with signal 9\n' +
           'opencode server listening on http://127.0.0.1:4123',
       );
-      return Promise.resolve({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
+      return Promise.resolve({ uuid: 'test-uuid' } as executorModule.ProcessHandle);
     });
 
     // Act
@@ -103,13 +104,13 @@ describe('startServer', () => {
 describe('stopServer', () => {
   it('should_resolve_when_server_goes_down_after_stop', async () => {
     // Arrange
-    mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
+    mockStartProcess.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.ProcessHandle);
     await startServer();
-    mockStartBackground.mockClear();
-    mockStopBackground.mockClear();
+    mockStartProcess.mockClear();
+    mockStopProcess.mockClear();
     mockExecute.mockClear();
     mockSendRequest.mockClear();
-    mockStopBackground.mockResolvedValue('stopped');
+    mockStopProcess.mockResolvedValue('stopped');
     mockSendRequest
       .mockImplementationOnce((_u: string, _o: unknown, success: () => void) => success())
       .mockImplementationOnce(
@@ -127,13 +128,13 @@ describe('stopServer', () => {
 
   it('should_resolve_promptly_when_server_already_down', async () => {
     // Arrange
-    mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
+    mockStartProcess.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.ProcessHandle);
     await startServer();
-    mockStartBackground.mockClear();
-    mockStopBackground.mockClear();
+    mockStartProcess.mockClear();
+    mockStopProcess.mockClear();
     mockExecute.mockClear();
     mockSendRequest.mockClear();
-    mockStopBackground.mockResolvedValue('stopped');
+    mockStopProcess.mockResolvedValue('stopped');
     respondDown();
 
     // Act
@@ -145,13 +146,13 @@ describe('stopServer', () => {
 
   it('should_throw_when_port_still_occupied_after_SIGKILL', async () => {
     // Arrange
-    mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
+    mockStartProcess.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.ProcessHandle);
     await startServer();
-    mockStartBackground.mockClear();
-    mockStopBackground.mockClear();
+    mockStartProcess.mockClear();
+    mockStopProcess.mockClear();
     mockExecute.mockClear();
     mockSendRequest.mockClear();
-    mockStopBackground.mockResolvedValue('stopped');
+    mockStopProcess.mockResolvedValue('stopped');
     mockExecute.mockResolvedValue('ok');
     respondUp();
     const promise = stopServer();
@@ -168,13 +169,13 @@ describe('stopServer', () => {
 
   it('should_throw_after_both_poll_phases_when_server_never_down', async () => {
     // Arrange
-    mockStartBackground.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.BackgroundProcess);
+    mockStartProcess.mockResolvedValue({ uuid: 'test-uuid' } as executorModule.ProcessHandle);
     await startServer();
-    mockStartBackground.mockClear();
-    mockStopBackground.mockClear();
+    mockStartProcess.mockClear();
+    mockStopProcess.mockClear();
     mockExecute.mockClear();
     mockSendRequest.mockClear();
-    mockStopBackground.mockResolvedValue('stopped');
+    mockStopProcess.mockResolvedValue('stopped');
     mockExecute.mockResolvedValue('ok');
     respondUp();
     const promise = stopServer();
@@ -227,7 +228,7 @@ describe('v2 server auth', () => {
     expect(isV2Server()).toBe(true);
     const password = getServerPassword();
     expect(password).toMatch(/^[0-9a-f]{48}$/);
-    expect(mockStartBackground).toHaveBeenCalledWith(
+    expect(mockStartProcess).toHaveBeenCalledWith(
       expect.stringContaining(`${SERVER_PASSWORD_ENV}=${password}`),
       expect.any(Function),
       true,
@@ -246,7 +247,7 @@ describe('v2 server auth', () => {
     // Assert
     expect(isV2Server()).toBe(false);
     expect(getServerPassword()).toBeNull();
-    expect(mockStartBackground).toHaveBeenCalledWith(
+    expect(mockStartProcess).toHaveBeenCalledWith(
       'opencode serve --port 4123 --hostname 127.0.0.1',
       expect.any(Function),
       true,
@@ -270,10 +271,10 @@ describe('v2 server auth', () => {
     expect(isV2Server()).toBe(false);
   });
 
-  it('should_clear_auth_when_background_start_fails', async () => {
+  it('should_clear_auth_when_start_fails', async () => {
     // Arrange
     mockExecute.mockResolvedValue('2.0.27');
-    mockStartBackground.mockRejectedValueOnce(new Error('spawn failed'));
+    mockStartProcess.mockRejectedValueOnce(new Error('spawn failed'));
 
     // Act
     const promise = startServer();
@@ -295,6 +296,24 @@ describe('waitForReady', () => {
 
     // Assert
     await expect(promise).resolves.toBeUndefined();
+  });
+
+  it('should_probe_with_the_launch_password', async () => {
+    // Arrange — a V2 launch holds the password the API expects
+    mockExecute.mockResolvedValue('2.1.2');
+    await startServer();
+    mockSendRequest.mockClear();
+    respondUp();
+
+    // Act
+    await waitForReady();
+
+    // Assert
+    const [url, options] = mockSendRequest.mock.calls[0];
+    expect(url).toBe(HEALTH_CONFIG_URL);
+    expect((options as { headers?: Record<string, string> }).headers?.Authorization).toBe(
+      `Basic ${btoa(`opencode:${getServerPassword()}`)}`,
+    );
   });
 
   it('should_throw_timeout_with_alive_when_pgrep_has_output', async () => {

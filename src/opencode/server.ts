@@ -1,4 +1,4 @@
-import { execute, startBackground, stopBackground } from '../terminal/executor';
+import { execute, startProcess, stopProcess } from '../terminal/executor';
 import {
   READY_POLL_INTERVAL,
   READY_TIMEOUT,
@@ -68,14 +68,14 @@ function clearServerAuth(): void {
 
 export function buildStartCommand(password: string | null): string {
   const serve = `opencode serve --port ${PORT} --hostname ${HOSTNAME}`;
-  // NOTE: `env(1)`, not a shell `VAR=x` prefix — BackgroundExecutor hands the
-  // command to the Alpine launcher without shell assignment parsing (a `VAR=x`
-  // prefix fails with "not found" / exit 127). `env` works either way.
+  // NOTE: `env(1)`, not a shell `VAR=x` prefix — the Executor hands the command
+  // to the Alpine launcher without shell assignment parsing (a `VAR=x` prefix
+  // fails with "not found" / exit 127). `env` works either way.
   return password ? `env ${SERVER_PASSWORD_ENV}=${password} ${serve}` : serve;
 }
 
 export async function startServer(): Promise<void> {
-  log.info('startServer: launching via BackgroundExecutor');
+  log.info('startServer: launching via the foreground Executor');
   const major = await getInstalledMajor();
   serverMajor = major;
   serverPassword = needsPairing(major) ? generatePassword() : null;
@@ -88,7 +88,7 @@ export async function startServer(): Promise<void> {
   ringBuffer.length = 0;
 
   try {
-    const bg = await startBackground(
+    const process = await startProcess(
       command,
       (type, data) => {
         const trimmed = data.trim();
@@ -106,8 +106,8 @@ export async function startServer(): Promise<void> {
       true,
     );
 
-    serverUuid = bg.uuid;
-    log.info(`startServer: BackgroundExecutor started, uuid=${serverUuid}`);
+    serverUuid = process.uuid;
+    log.info(`startServer: foreground Executor started, uuid=${serverUuid}`);
   } catch (err) {
     clearServerAuth();
     throw err;
@@ -119,7 +119,7 @@ export async function waitForReady(): Promise<void> {
   log.info('waitForReady: polling started');
 
   while (Date.now() - startedAt < READY_TIMEOUT) {
-    const up = await isServerUp();
+    const up = await isServerUp({ password: serverPassword });
     log.info(`waitForReady: poll attempt -> isServerUp=${up} (${Date.now() - startedAt}ms)`);
     if (up) {
       log.info('waitForReady: server ready');
@@ -150,7 +150,7 @@ async function pollUntilDown(timeout: number): Promise<boolean> {
   log.info(`pollUntilDown: polling for ${timeout}ms`);
 
   while (Date.now() - startedAt < timeout) {
-    const up = await isServerUp();
+    const up = await isServerUp({ password: serverPassword });
     log.info(`pollUntilDown: isServerUp=${up}`);
     if (!up) {
       log.info(`pollUntilDown: server down after ${Date.now() - startedAt}ms`);
@@ -171,10 +171,10 @@ export async function stopServer(): Promise<void> {
   }
 
   try {
-    log.info(`stopServer: stopping via BackgroundExecutor (uuid=${serverUuid})`);
-    await stopBackground(serverUuid);
+    log.info(`stopServer: stopping via the foreground Executor (uuid=${serverUuid})`);
+    await stopProcess(serverUuid);
   } catch (err) {
-    log.warn('stopServer: stopBackground() failed, falling back to pkill', err);
+    log.warn('stopServer: stopProcess() failed, falling back to pkill', err);
     try {
       await execute(KILL_COMMAND);
     } catch {

@@ -1,6 +1,6 @@
 import { execute } from '../terminal/executor';
 import { BASE_URL, SERVER_USERNAME, AUTH_TOKEN_PARAM } from '../config/server';
-import { PASSWORD_BYTE_LENGTH, V2_MAJOR_VERSION } from '../config/auth';
+import { PASSWORD_BYTE_LENGTH, V2_MAJOR_VERSION, BASIC_AUTH_SCHEME } from '../config/auth';
 import { VERSION_CHECK_COMMAND } from '../config/update';
 import { parseVersion } from './version';
 
@@ -29,8 +29,29 @@ function base64UrlEncode(value: string): string {
  * plugin started or whose password the user provided.
  */
 export function buildAuthTokenUrl(password: string): string {
+  return buildAuthTokenUrlFor(BASE_URL, password);
+}
+
+/**
+ * Builds the sign-in URL for a specific server base URL.
+ *
+ * Same token format as `buildAuthTokenUrl`, but pointed at an arbitrary base
+ * URL — used for remote servers, which the plugin does not start itself.
+ */
+export function buildAuthTokenUrlFor(baseUrl: string, password: string): string {
   const token = base64UrlEncode(`${SERVER_USERNAME}:${password}`);
-  return `${BASE_URL}/?${AUTH_TOKEN_PARAM}=${token}`;
+  return `${baseUrl}/?${AUTH_TOKEN_PARAM}=${token}`;
+}
+
+/**
+ * Builds the HTTP basic-auth `Authorization` header value for the server's
+ * fixed username and the per-launch password.
+ *
+ * The server answers `/api/*` with 401 until a request carries a valid
+ * pair, so this header is what turns an auth-walled probe into a readable one.
+ */
+export function buildBasicAuthHeader(password: string): string {
+  return `${BASIC_AUTH_SCHEME}${btoa(`${SERVER_USERNAME}:${password}`)}`;
 }
 
 /**

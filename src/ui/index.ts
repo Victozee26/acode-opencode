@@ -38,6 +38,9 @@ export interface RenderActions {
   onUpdateClick?: () => void;
   onCancelUpdate?: () => void;
   onReinstall?: () => void;
+  // True while the plugin is connected to a remote server. Local-only actions
+  // (reinstalling OpenCode on this device) are hidden in that mode.
+  remote?: boolean;
 }
 
 const log = createLogger('ui');
@@ -66,7 +69,6 @@ const STYLESHEETS = [
   'styles/errorDisplay.css',
   'styles/iframe.css',
   'styles/ready.css',
-  'styles/confirmModal.css',
 ];
 
 let orientationMql: MediaQueryList | null = null;
@@ -216,8 +218,12 @@ export function render(
       { id: 'start', label: 'Start Server', onClick: actions.start },
       { id: 'restart', label: 'Restart Server', onClick: actions.restart },
       { id: 'stop', label: 'Stop Server', onClick: actions.stop },
-      { id: 'reinstall', label: 'Reinstall OpenCode', onClick: () => actions.onReinstall?.() },
     ];
+    if (!actions.remote) {
+      // Reinstalling OpenCode on this device is meaningless while the plugin
+      // talks to a remote server.
+      fabActions.push({ id: 'reinstall', label: 'Reinstall OpenCode', onClick: () => actions.onReinstall?.() });
+    }
     const banner = buildUpdateBanner(actions);
     pageHeader!.appendChild(createCustomHeader(fabActions, state === AppState.Ready, pluginBaseUrl, actions.back, banner));
   }

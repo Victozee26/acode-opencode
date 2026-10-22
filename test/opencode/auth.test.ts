@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   generatePassword,
   buildAuthTokenUrl,
+  buildBasicAuthHeader,
   getInstalledMajor,
   needsPairing,
 } from '../../src/opencode/auth';
@@ -67,6 +68,26 @@ describe('buildAuthTokenUrl', () => {
     // Assert
     const token = url.split(`${AUTH_TOKEN_PARAM}=`)[1];
     expect(token).toMatch(/^[A-Za-z0-9_-]+$/);
+  });
+});
+
+describe('buildBasicAuthHeader', () => {
+  it('should_encode_username_and_password_as_basic_auth', () => {
+    // Act
+    const header = buildBasicAuthHeader('secret-pw');
+
+    // Assert
+    expect(header).toBe(`Basic ${btoa('opencode:secret-pw')}`);
+  });
+
+  it('should_use_standard_base64_not_url_safe_alphabet', () => {
+    // Act
+    const header = buildBasicAuthHeader('p@ss/word+');
+
+    // Assert
+    expect(header).toBe(`Basic ${btoa('opencode:p@ss/word+')}`);
+    expect(header).not.toContain('-');
+    expect(header).not.toContain('_');
   });
 });
 

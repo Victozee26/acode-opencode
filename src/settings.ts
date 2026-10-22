@@ -10,6 +10,7 @@ import {
   DEFAULT_HIDE_HEADER_IN_LANDSCAPE,
 } from './config/settings';
 import { createLogger, setLogLevel } from './logger';
+import { SETTINGS_KEY_REMOTE_HOST } from './config/remote';
 
 const PLUGIN_ID = plugin.id;
 
@@ -82,6 +83,14 @@ export function getSettingsSchema(): Acode.PluginSettings {
         info: 'Automatically hide header in landscape orientation to maximize content area',
         checkbox: (rec[SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE] as boolean) ?? DEFAULT_HIDE_HEADER_IN_LANDSCAPE,
         value: (rec[SETTINGS_KEY_HIDE_HEADER_IN_LANDSCAPE] as boolean) ?? DEFAULT_HIDE_HEADER_IN_LANDSCAPE,
+      },
+      {
+        key: SETTINGS_KEY_REMOTE_HOST,
+        text: 'Remote host',
+        info: 'Connect to an OpenCode server running on another machine (e.g. 192.168.1.10:4096 or https://host). Leave empty to run the server locally.',
+        prompt: 'Enter remote host',
+        promptType: 'text',
+        value: (rec[SETTINGS_KEY_REMOTE_HOST] as string) ?? '',
       },
     ],
     cb(_key: string, value: unknown) {
@@ -195,6 +204,31 @@ export function getHideHeaderInLandscape(): boolean {
     // settings module not available — use cached default
   }
   return cachedHideHeaderInLandscape;
+}
+
+/**
+ * Read the remote host from Acode's settings module.
+ *
+ * An empty string means local mode: the plugin starts and manages its own
+ * OpenCode server. A non-empty value is the host the plugin connects to
+ * instead (see parseRemoteHost in opencode/remote.ts).
+ */
+export function getRemoteHost(): string {
+  try {
+    let raw: unknown = getPluginRecord()[SETTINGS_KEY_REMOTE_HOST];
+    if (raw == null) {
+      try {
+        const s = acode.require('settings') as any;
+        if (typeof s.get === 'function') raw = s.get(SETTINGS_KEY_REMOTE_HOST);
+      } catch {}
+    }
+    if (raw != null) {
+      return String(raw).trim();
+    }
+  } catch {
+    // settings module not available — treat as local mode
+  }
+  return '';
 }
 
 export function resetSettingsCache(): void {

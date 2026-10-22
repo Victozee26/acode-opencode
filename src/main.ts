@@ -26,12 +26,27 @@ import {
 } from './opencode/server';
 import { buildAuthTokenUrl } from './opencode/auth';
 import { BASE_URL } from './config/server';
-import { isServerUp, isServerDownConfirmed } from './opencode/health';
+import { isServerUp, isServerDownConfirmed, probeServer } from './opencode/health';
+import { parseRemoteHost, buildRemoteIframeUrl, RemoteHost } from './opencode/remote';
+import {
+  REMOTE_BAD_PASSWORD_MESSAGE,
+  REMOTE_INVALID_HOST_MESSAGE,
+  REMOTE_PROMPT_MESSAGE,
+  REMOTE_PROMPT_PLACEHOLDER,
+  REMOTE_PROMPT_TITLE,
+  REMOTE_UNREACHABLE_MESSAGE,
+} from './config/remote';
 import { checkForUpdates, installUpdate, getInstalledVersion } from './opencode/update';
 import { getRuntimeVersions } from './opencode/diagnostics';
 import { createLogger, setLogLevel } from './logger';
 import { extractErrorInfo } from './error';
-import { getSettingsSchema, setOnScaleChange, setOnHideHeaderChange, getLogLevel } from './settings';
+import {
+  getSettingsSchema,
+  setOnScaleChange,
+  setOnHideHeaderChange,
+  getLogLevel,
+  getRemoteHost,
+} from './settings';
 import { HEALTH_PROBE_INTERVAL, HEALTH_CONNECTION_LOST_MESSAGE } from './config/health';
 
 const log = createLogger('main');
@@ -64,6 +79,11 @@ export class AcodePlugin {
   // not start (see resolveAlreadyRunningUrl). One-shot per session: cleared on
   // stop, never persisted.
   private enteredPassword: string | null = null;
+  // Remote connection state: set when the plugin connects to an OpenCode server
+  // on another machine instead of starting a local one. Holds the parsed host
+  // and the password the user entered for it (never persisted). Null means the
+  // plugin runs its own local server.
+  private remote: { host: RemoteHost; password: string | null } | null = null;
   private healthProbeTimer: ReturnType<typeof setInterval> | null = null;
   private healthCheckInProgress = false;
   private healthProbeEpoch = 0;
@@ -149,6 +169,7 @@ export class AcodePlugin {
           onUpdateClick: () => this.handleUpdateClick(),
           onCancelUpdate: () => this.handleCancelUpdate(),
           onReinstall: () => this.handleReinstall(),
+          remote: this.remote !== null,
         };
         render(state, context, actions);
         if (state === AppState.Error) {
@@ -205,6 +226,16 @@ export class AcodePlugin {
     }
     this.$page?.hide();
     this.$page = null;
+    // Stop the server this plugin started, so disabling the plugin does not
+    // leave an orphaned `opencode serve` holding port 4123. `stopServer()` is a
+    // no-op when the plugin never started the server (e.g. the user pointed it
+    // at a server that was already running), so an external server is never
+    // touched.
+    try {
+      await stopServer();
+    } catch (err: unknown) {
+      log.warn('destroy: could not stop the server', err);
+    }
     reset();
   }
 
@@ -221,6 +252,21 @@ export class AcodePlugin {
     if (this.isRunning) return;
     this.isRunning = true;
     log.info('startFlow: beginning');
+
+    // A configured remote host replaces the whole local lifecycle: the plugin
+    // neither installs nor starts OpenCode locally, it just connects. An
+    // unparsable host is an error — it must not silently fall back to running
+    // a local server, which is not what the user asked for.
+    const remoteSetting = getRemoteHost();
+    if (remoteSetting) {
+      const remoteHost = parseRemoteHost(remoteSetting);
+      if (!remoteHost) {
+        setError(REMOTE_INVALID_HOST_MESSAGE, '');
+        return;
+      }
+      await this.startRemoteFlow(remoteHost);
+      return;
+    }
 
     transition(AppState.CheckingInstall);
 
@@ -262,9 +308,16 @@ export class AcodePlugin {
   /**
    * Restarts the OpenCode server after it's already been brought up once.
    * Reuses the StartingServer state and restartServer() rather than re-running
-   * the full install/check flow.
+   * the full install/check flow. In remote mode there is no local server to
+   * restart, so the remote connection is re-established instead.
    */
   private async handleRestart(): Promise<void> {
+    if (this.remote) {
+      log.info('handleRestart: remote mode — reconnecting');
+      await this.startRemoteFlow(this.remote.host);
+      return;
+    }
+
     log.info('handleRestart: restart requested');
     transition(AppState.StartingServer);
 
@@ -373,6 +426,7 @@ export class AcodePlugin {
       this.isRunning = false;
       this.iframeUrl = BASE_URL;
       this.enteredPassword = null;
+      this.remote = null;
       transition(AppState.Idle);
       this.showToast('Server stopped');
     } catch (err) {
@@ -425,6 +479,95 @@ export class AcodePlugin {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Connects to a remote OpenCode server instead of starting a local one.
+   *
+   * The remote server is probed first: an auth challenge means the user is
+   * asked for the password once, a wrong password is reported as an error,
+   * and an unreachable host is reported as such. The resolved host and
+   * password become the target of the Ready-state health check.
+   */
+  private async startRemoteFlow(host: RemoteHost): Promise<void> {
+    log.info(`startRemoteFlow: connecting to ${host.baseUrl}`);
+    transition(AppState.CheckingServer);
+    this.remote = { host, password: null };
+
+    try {
+      const verdict = await probeServer({ baseUrl: host.baseUrl });
+      if (verdict === 'unauthorized') {
+        await this.authorizeRemote(host);
+        return;
+      }
+      if (verdict !== 'up') {
+        setError(REMOTE_UNREACHABLE_MESSAGE, '');
+        return;
+      }
+      this.iframeUrl = buildRemoteIframeUrl(host.baseUrl, null);
+      transition(AppState.Ready);
+      log.info('startRemoteFlow: ready');
+    } catch (err: unknown) {
+      this.handleError('startRemoteFlow', err);
+    }
+  }
+
+  /**
+   * Asks for the remote server's password and retries the probe with it.
+   * A rejected password is an error; cancelling degrades to the plain base
+   * URL, so the user can still sign in by hand in the web UI.
+   */
+  private async authorizeRemote(host: RemoteHost): Promise<void> {
+    const entered = await this.promptRemotePassword();
+    if (!entered) {
+      this.iframeUrl = buildRemoteIframeUrl(host.baseUrl, null);
+      transition(AppState.Ready);
+      return;
+    }
+
+    const verdict = await probeServer({ baseUrl: host.baseUrl, password: entered });
+    if (verdict === 'unauthorized') {
+      setError(REMOTE_BAD_PASSWORD_MESSAGE, '');
+      return;
+    }
+    if (verdict !== 'up') {
+      setError(REMOTE_UNREACHABLE_MESSAGE, '');
+      return;
+    }
+
+    this.remote = { host, password: entered };
+    this.iframeUrl = buildRemoteIframeUrl(host.baseUrl, entered);
+    transition(AppState.Ready);
+    log.info('authorizeRemote: remote server ready');
+  }
+
+  /**
+   * Asks for the remote server's password via the native prompt dialog.
+   * Returns the typed password, or null on cancel/empty/failure.
+   */
+  private async promptRemotePassword(): Promise<string | null> {
+    try {
+      const answer = await acode.prompt(
+        REMOTE_PROMPT_TITLE,
+        REMOTE_PROMPT_MESSAGE,
+        'text',
+        { placeholder: REMOTE_PROMPT_PLACEHOLDER },
+      );
+      return answer ? answer : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * The server the Ready-state health check probes: the remote host in remote
+   * mode, the plugin's own local server otherwise.
+   */
+  private getProbeTarget(): { baseUrl: string; password: string | null } {
+    if (this.remote) {
+      return { baseUrl: this.remote.host.baseUrl, password: this.remote.password };
+    }
+    return { baseUrl: BASE_URL, password: getServerPassword() };
   }
 
   /**
@@ -535,7 +678,7 @@ export class AcodePlugin {
         const epoch = this.healthProbeEpoch;
         this.healthCheckInProgress = true;
         try {
-          const down = await isServerDownConfirmed();
+          const down = await isServerDownConfirmed(this.getProbeTarget());
           if (epoch !== this.healthProbeEpoch) {
             return;
           }
